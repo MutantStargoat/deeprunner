@@ -6,7 +6,7 @@
  * If you intend to redistribute parts of the code without the LICENSE file
  * replace this paragraph with the full contents of the LICENSE file.
  */
-static inline void cgm_rcons(cgm_ray *r, float x, float y, float z, float dx, float dy, float dz)
+static CGM_INLINE void cgm_rcons(cgm_ray *r, float x, float y, float z, float dx, float dy, float dz)
 {
 	r->origin.x = x;
 	r->origin.y = y;
@@ -16,24 +16,24 @@ static inline void cgm_rcons(cgm_ray *r, float x, float y, float z, float dx, fl
 	r->dir.z = dz;
 }
 
-static inline void cgm_rmul_mr(cgm_ray *ray, const float *m)
+static CGM_INLINE void cgm_rmul_mr(cgm_ray *ray, const float *m)
 {
 	cgm_vmul_m4v3(&ray->origin, m);
 	cgm_vmul_m3v3(&ray->dir, m);
 }
 
-static inline void cgm_rmul_rm(cgm_ray *ray, const float *m)
+static CGM_INLINE void cgm_rmul_rm(cgm_ray *ray, const float *m)
 {
 	cgm_vmul_v3m4(&ray->origin, m);
 	cgm_vmul_v3m3(&ray->dir, m);
 }
 
-static inline void cgm_rreflect(cgm_ray *ray, const cgm_vec3 *n)
+static CGM_INLINE void cgm_rreflect(cgm_ray *ray, const cgm_vec3 *n)
 {
 	cgm_vreflect(&ray->dir, n);
 }
 
-static inline void cgm_rrefract(cgm_ray *ray, const cgm_vec3 *n, float ior)
+static CGM_INLINE void cgm_rrefract(cgm_ray *ray, const cgm_vec3 *n, float ior)
 {
 	cgm_vrefract(&ray->dir, n, ior);
 }

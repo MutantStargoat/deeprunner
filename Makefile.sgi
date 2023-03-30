@@ -1,27 +1,33 @@
-obj = src/main.o src/miniglut.o src/game.o src/scr_menu.o src/scr_game.o src/util.o
+obj = src/main.o src/miniglut.o src/game.o src/scr_menu.o src/scr_game.o \
+	  src/util.o
 bin = game
 
 dbg = -g
 opt = -O3
 def = -DMINIGLUT_USE_LIBC
+inc = -Ilibs -Ilibs/imago -Ilibs/treestor/include -Ilibs/goat3d/include
+libs = libs/unix/imago.a libs/unix/goat3d.a libs/unix/treestor.a
 
 CFLAGS = $(warn) $(dbg) $(opt) $(inc) $(def)
-LDFLAGS = -lGL -lGLU -lX11 -lm
+LDFLAGS = $(libs) -lGL -lGLU -lX11 -lm
 
 $(bin): $(obj) libs
 	$(CC) -o $@ $(obj) $(LDFLAGS)
 
 .c.o:
-	$(CC) -c $< $(CFLAGS) -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 .PHONY: clean
 clean:
 	rm -f $(obj) $(bin)
 
 .PHONY: libs
-libs:
-	$(MAKE) -C libs
+libs: make-libs
+
+.PHONY: make-libs
+make-libs:
+	cd libs; $(MAKE)
 
 .PHONY: clean-libs
 clean-libs:
-	$(MAKE) -C libs clean
+	cd libs; $(MAKE) clean

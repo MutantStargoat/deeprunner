@@ -20,13 +20,16 @@ jobj = jpeglib/jcapimin.o jpeglib/jcapistd.o jpeglib/jccoefct.o jpeglib/jccolor.
 	   jpeglib/jfdctint.o jpeglib/jidctflt.o jpeglib/jidctfst.o jpeglib/jidctint.o \
 	   jpeglib/jidctred.o jpeglib/jmemmgr.o jpeglib/jmemnobs.o jpeglib/jquant1.o \
 	   jpeglib/jquant2.o jpeglib/jutils.o
-src = $(mobj) $(zobj) $(pobj) $(jobj)
-alib = ../unix/libimago.a
+obj = $(mobj) $(zobj) $(pobj) $(jobj)
+alib = ../unix/imago.a
 
 CFLAGS = -O3 -Izlib -Ilibpng -Ijpeglib $(pic)
 
 $(alib): $(obj)
 	$(AR) rcs $@ $(obj)
+
+.c.o:
+	$(CC) $(CFLAGS) -c $< -o $@
 
 .PHONY: clean
 clean:

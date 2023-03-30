@@ -6,7 +6,7 @@
  * If you intend to redistribute parts of the code without the LICENSE file
  * replace this paragraph with the full contents of the LICENSE file.
  */
-static inline void cgm_wcons(cgm_vec4 *v, float x, float y, float z, float w)
+static CGM_INLINE void cgm_wcons(cgm_vec4 *v, float x, float y, float z, float w)
 {
 	v->x = x;
 	v->y = y;
@@ -14,7 +14,7 @@ static inline void cgm_wcons(cgm_vec4 *v, float x, float y, float z, float w)
 	v->w = w;
 }
 
-static inline void cgm_wadd(cgm_vec4 *a, const cgm_vec4 *b)
+static CGM_INLINE void cgm_wadd(cgm_vec4 *a, const cgm_vec4 *b)
 {
 	a->x += b->x;
 	a->y += b->y;
@@ -22,7 +22,7 @@ static inline void cgm_wadd(cgm_vec4 *a, const cgm_vec4 *b)
 	a->w += b->w;
 }
 
-static inline void cgm_wsub(cgm_vec4 *a, const cgm_vec4 *b)
+static CGM_INLINE void cgm_wsub(cgm_vec4 *a, const cgm_vec4 *b)
 {
 	a->x -= b->x;
 	a->y -= b->y;
@@ -30,7 +30,7 @@ static inline void cgm_wsub(cgm_vec4 *a, const cgm_vec4 *b)
 	a->w -= b->w;
 }
 
-static inline void cgm_wmul(cgm_vec4 *a, const cgm_vec4 *b)
+static CGM_INLINE void cgm_wmul(cgm_vec4 *a, const cgm_vec4 *b)
 {
 	a->x *= b->x;
 	a->y *= b->y;
@@ -38,7 +38,7 @@ static inline void cgm_wmul(cgm_vec4 *a, const cgm_vec4 *b)
 	a->w *= b->w;
 }
 
-static inline void cgm_wscale(cgm_vec4 *v, float s)
+static CGM_INLINE void cgm_wscale(cgm_vec4 *v, float s)
 {
 	v->x *= s;
 	v->y *= s;
@@ -46,7 +46,7 @@ static inline void cgm_wscale(cgm_vec4 *v, float s)
 	v->w *= s;
 }
 
-static inline void cgm_wmul_m4v4(cgm_vec4 *v, const float *m)
+static CGM_INLINE void cgm_wmul_m4v4(cgm_vec4 *v, const float *m)
 {
 	float x = v->x * m[0] + v->y * m[4] + v->z * m[8] + v->w * m[12];
 	float y = v->x * m[1] + v->y * m[5] + v->z * m[9] + v->w * m[13];
@@ -57,7 +57,7 @@ static inline void cgm_wmul_m4v4(cgm_vec4 *v, const float *m)
 	v->z = z;
 }
 
-static inline void cgm_wmul_v4m4(cgm_vec4 *v, const float *m)
+static CGM_INLINE void cgm_wmul_v4m4(cgm_vec4 *v, const float *m)
 {
 	float x = v->x * m[0] + v->y * m[1] + v->z * m[2] + v->w * m[3];
 	float y = v->x * m[4] + v->y * m[5] + v->z * m[6] + v->w * m[7];
@@ -68,7 +68,7 @@ static inline void cgm_wmul_v4m4(cgm_vec4 *v, const float *m)
 	v->z = z;
 }
 
-static inline void cgm_wmul_m34v4(cgm_vec4 *v, const float *m)
+static CGM_INLINE void cgm_wmul_m34v4(cgm_vec4 *v, const float *m)
 {
 	float x = v->x * m[0] + v->y * m[4] + v->z * m[8] + v->w * m[12];
 	float y = v->x * m[1] + v->y * m[5] + v->z * m[9] + v->w * m[13];
@@ -77,7 +77,7 @@ static inline void cgm_wmul_m34v4(cgm_vec4 *v, const float *m)
 	v->y = y;
 }
 
-static inline void cgm_wmul_v4m43(cgm_vec4 *v, const float *m)
+static CGM_INLINE void cgm_wmul_v4m43(cgm_vec4 *v, const float *m)
 {
 	float x = v->x * m[0] + v->y * m[1] + v->z * m[2] + v->w * m[3];
 	float y = v->x * m[4] + v->y * m[5] + v->z * m[6] + v->w * m[7];
@@ -86,7 +86,7 @@ static inline void cgm_wmul_v4m43(cgm_vec4 *v, const float *m)
 	v->y = y;
 }
 
-static inline void cgm_wmul_m3v4(cgm_vec4 *v, const float *m)
+static CGM_INLINE void cgm_wmul_m3v4(cgm_vec4 *v, const float *m)
 {
 	float x = v->x * m[0] + v->y * m[4] + v->z * m[8];
 	float y = v->x * m[1] + v->y * m[5] + v->z * m[9];
@@ -95,7 +95,7 @@ static inline void cgm_wmul_m3v4(cgm_vec4 *v, const float *m)
 	v->y = y;
 }
 
-static inline void cgm_wmul_v4m3(cgm_vec4 *v, const float *m)
+static CGM_INLINE void cgm_wmul_v4m3(cgm_vec4 *v, const float *m)
 {
 	float x = v->x * m[0] + v->y * m[1] + v->z * m[2];
 	float y = v->x * m[4] + v->y * m[5] + v->z * m[6];
@@ -104,22 +104,22 @@ static inline void cgm_wmul_v4m3(cgm_vec4 *v, const float *m)
 	v->y = y;
 }
 
-static inline float cgm_wdot(const cgm_vec4 *a, const cgm_vec4 *b)
+static CGM_INLINE float cgm_wdot(const cgm_vec4 *a, const cgm_vec4 *b)
 {
 	return a->x * b->x + a->y * b->y + a->z * b->z + a->w * b->w;
 }
 
-static inline float cgm_wlength(const cgm_vec4 *v)
+static CGM_INLINE float cgm_wlength(const cgm_vec4 *v)
 {
 	return sqrt(v->x * v->x + v->y * v->y + v->z * v->z + v->w * v->w);
 }
 
-static inline float cgm_wlength_sq(const cgm_vec4 *v)
+static CGM_INLINE float cgm_wlength_sq(const cgm_vec4 *v)
 {
 	return v->x * v->x + v->y * v->y + v->z * v->z + v->w * v->w;
 }
 
-static inline float cgm_wdist(const cgm_vec4 *a, const cgm_vec4 *b)
+static CGM_INLINE float cgm_wdist(const cgm_vec4 *a, const cgm_vec4 *b)
 {
 	float dx = a->x - b->x;
 	float dy = a->y - b->y;
@@ -128,7 +128,7 @@ static inline float cgm_wdist(const cgm_vec4 *a, const cgm_vec4 *b)
 	return sqrt(dx * dx + dy * dy + dz * dz + dw * dw);
 }
 
-static inline float cgm_wdist_sq(const cgm_vec4 *a, const cgm_vec4 *b)
+static CGM_INLINE float cgm_wdist_sq(const cgm_vec4 *a, const cgm_vec4 *b)
 {
 	float dx = a->x - b->x;
 	float dy = a->y - b->y;
@@ -137,7 +137,7 @@ static inline float cgm_wdist_sq(const cgm_vec4 *a, const cgm_vec4 *b)
 	return dx * dx + dy * dy + dz * dz + dw * dw;
 }
 
-static inline void cgm_wnormalize(cgm_vec4 *v)
+static CGM_INLINE void cgm_wnormalize(cgm_vec4 *v)
 {
 	float len = cgm_wlength(v);
 	if(len != 0.0f) {
@@ -149,7 +149,7 @@ static inline void cgm_wnormalize(cgm_vec4 *v)
 	}
 }
 
-static inline void cgm_wlerp(cgm_vec4 *res, const cgm_vec4 *a, const cgm_vec4 *b, float t)
+static CGM_INLINE void cgm_wlerp(cgm_vec4 *res, const cgm_vec4 *a, const cgm_vec4 *b, float t)
 {
 	res->x = a->x + (b->x - a->x) * t;
 	res->y = a->y + (b->y - a->y) * t;

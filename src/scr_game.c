@@ -5,6 +5,7 @@
 #include "miniglut.h"
 #include "game.h"
 #include "util.h"
+#include "goat3d.h"
 
 static int ginit(void);
 static void gdestroy(void);
@@ -27,13 +28,44 @@ struct game_screen scr_game = {
 static float cam_theta, cam_phi = 20, cam_dist = 10;
 static float cam_pan[3];
 
+static struct goat3d *gscn;
+static int dlist;
+
+
 static int ginit(void)
 {
+	int i, num, nfaces;
+
+	if(!(gscn = goat3d_create()) || goat3d_load(gscn, "data/track1.g3d")) {
+		return -1;
+	}
+
+	dlist = glGenLists(1);
+	glNewList(dlist, GL_COMPILE);
+	num = goat3d_get_node_count(gscn);
+	for(i=0; i<num; i++) {
+		struct goat3d_node *node = goat3d_get_node(gscn, i);
+		if(goat3d_get_node_type(node) == GOAT3D_NODE_MESH) {
+			struct goat3d_mesh *mesh = goat3d_get_node_object(node);
+
+			glEnableClientState(GL_VERTEX_ARRAY);
+			glVertexPointer(3, GL_FLOAT, 0, goat3d_get_mesh_attribs(mesh, GOAT3D_MESH_ATTR_VERTEX));
+
+			nfaces = goat3d_get_mesh_face_count(mesh) / 3;
+			glDrawElements(GL_TRIANGLES, nfaces * 3, GL_UNSIGNED_INT, goat3d_get_mesh_faces(mesh));
+
+			glDisableClientState(GL_VERTEX_ARRAY);
+
+		}
+	}
+	glEndList();
+
 	return 0;
 }
 
 static void gdestroy(void)
 {
+	goat3d_free(gscn);
 }
 
 static int gstart(void)
@@ -47,7 +79,6 @@ static void gstop(void)
 
 static void gdisplay(void)
 {
-	static int dlist;
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	glTranslatef(0, 0, -cam_dist);
@@ -55,16 +86,7 @@ static void gdisplay(void)
 	glRotatef(cam_theta, 0, 1, 0);
 	glTranslatef(cam_pan[0], cam_pan[1], cam_pan[2]);
 
-	glColor3f(1, 1, 1);
-	glFrontFace(GL_CW);
-	if(!dlist) {
-		dlist = glGenLists(1);
-		glNewList(dlist, GL_COMPILE);
-		glutSolidTeapot(1);
-		glEndList();
-	}
 	glCallList(dlist);
-	glFrontFace(GL_CCW);
 }
 
 static void greshape(int x, int y)
