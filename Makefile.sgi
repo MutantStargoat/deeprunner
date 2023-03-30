@@ -1,0 +1,27 @@
+obj = src/main.o src/miniglut.o src/game.o src/scr_menu.o src/scr_game.o src/util.o
+bin = game
+
+dbg = -g
+opt = -O3
+def = -DMINIGLUT_USE_LIBC
+
+CFLAGS = $(warn) $(dbg) $(opt) $(inc) $(def)
+LDFLAGS = -lGL -lGLU -lX11 -lm
+
+$(bin): $(obj) libs
+	$(CC) -o $@ $(obj) $(LDFLAGS)
+
+.c.o:
+	$(CC) -c $< $(CFLAGS) -o $@
+
+.PHONY: clean
+clean:
+	rm -f $(obj) $(bin)
+
+.PHONY: libs
+libs:
+	$(MAKE) -C libs
+
+.PHONY: clean-libs
+clean-libs:
+	$(MAKE) -C libs clean
