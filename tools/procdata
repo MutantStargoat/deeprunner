@@ -1,0 +1,4 @@
+#!/bin/sh
+
+[ ! -e data/track1.g3d -o datasrc/track1.gltf -nt data/track1.g3d ] && \
+	ass2goat datasrc/track1.gltf && mv datasrc/track1.goat3d data/track1.g3d

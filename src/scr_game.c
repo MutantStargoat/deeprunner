@@ -51,11 +51,21 @@ static int ginit(void)
 			glEnableClientState(GL_VERTEX_ARRAY);
 			glVertexPointer(3, GL_FLOAT, 0, goat3d_get_mesh_attribs(mesh, GOAT3D_MESH_ATTR_VERTEX));
 
+			if(goat3d_get_mesh_attrib_count(mesh, GOAT3D_MESH_ATTR_NORMAL)) {
+				glEnableClientState(GL_NORMAL_ARRAY);
+				glNormalPointer(GL_FLOAT, 0, goat3d_get_mesh_attribs(mesh, GOAT3D_MESH_ATTR_NORMAL));
+			}
+			if(goat3d_get_mesh_attrib_count(mesh, GOAT3D_MESH_ATTR_TEXCOORD)) {
+				glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+				glTexCoordPointer(2, GL_FLOAT, 0, goat3d_get_mesh_attribs(mesh, GOAT3D_MESH_ATTR_TEXCOORD));
+			}
+
 			nfaces = goat3d_get_mesh_face_count(mesh) / 3;
 			glDrawElements(GL_TRIANGLES, nfaces * 3, GL_UNSIGNED_INT, goat3d_get_mesh_faces(mesh));
 
 			glDisableClientState(GL_VERTEX_ARRAY);
-
+			glDisableClientState(GL_NORMAL_ARRAY);
+			glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 		}
 	}
 	glEndList();
