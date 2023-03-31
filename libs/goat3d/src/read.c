@@ -54,6 +54,11 @@ int g3dimpl_scnload(struct goat3d *g, struct goat3d_io *io)
 	struct ts_node *tsroot, *c;
 	const char *str;
 
+	/* attempt to load it as gltf first */
+	if((g3dimpl_loadgltf(g, io)) == 0) {
+		return 0;
+	}
+
 	tsio.data = io->cls;
 	tsio.read = io->read;
 	tsio.write = io->write;
