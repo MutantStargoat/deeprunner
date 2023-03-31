@@ -1,6 +1,7 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <GL/gl.h>
+#include "miniglut.h"
 #include <GL/glu.h>
 #include "game.h"
 #include "input.h"
@@ -55,6 +56,8 @@ void game_shutdown(void)
 {
 	int i;
 
+	putchar('\n');
+
 	for(i=0; i<num_screens; i++) {
 		if(screens[i]->destroy) {
 			screens[i]->destroy();
@@ -64,11 +67,27 @@ void game_shutdown(void)
 
 void game_display(void)
 {
+	static long nframes, interv, prev_msec;
+	long msec;
+
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	cur_scr->display();
 
 	game_swap_buffers();
+
+
+	msec = glutGet(GLUT_ELAPSED_TIME);
+	interv += msec - prev_msec;
+	prev_msec = msec;
+	if(interv >= 1000) {
+		float fps = (float)(nframes * 1000) / interv;
+		printf("\rfps: %.2f    ", fps);
+		fflush(stdout);
+		nframes = 0;
+		interv = 0;
+	}
+	nframes++;
 }
 
 void game_reshape(int x, int y)
