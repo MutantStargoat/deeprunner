@@ -34,7 +34,10 @@ static int dlist;
 
 static int ginit(void)
 {
-	int i, num, nfaces;
+	int i, j, num, nfaces;
+	int *idxarr;
+	float *varr, *narr, *uvarr;
+	float xform[16];
 
 	if(!(gscn = goat3d_create()) || goat3d_load(gscn, "data/track1.g3d")) {
 		return -1;
@@ -48,24 +51,35 @@ static int ginit(void)
 		if(goat3d_get_node_type(node) == GOAT3D_NODE_MESH) {
 			struct goat3d_mesh *mesh = goat3d_get_node_object(node);
 
+			goat3d_get_node_matrix(node, xform);
+			glPushMatrix();
+			glMultMatrixf(xform);
+
+			varr = goat3d_get_mesh_attribs(mesh, GOAT3D_MESH_ATTR_VERTEX);
+			narr = goat3d_get_mesh_attribs(mesh, GOAT3D_MESH_ATTR_NORMAL);
+			uvarr = goat3d_get_mesh_attribs(mesh, GOAT3D_MESH_ATTR_TEXCOORD);
+
 			glEnableClientState(GL_VERTEX_ARRAY);
-			glVertexPointer(3, GL_FLOAT, 0, goat3d_get_mesh_attribs(mesh, GOAT3D_MESH_ATTR_VERTEX));
+			glVertexPointer(3, GL_FLOAT, 0, varr);
 
-			if(goat3d_get_mesh_attrib_count(mesh, GOAT3D_MESH_ATTR_NORMAL)) {
+			if(narr) {
 				glEnableClientState(GL_NORMAL_ARRAY);
-				glNormalPointer(GL_FLOAT, 0, goat3d_get_mesh_attribs(mesh, GOAT3D_MESH_ATTR_NORMAL));
+				glNormalPointer(GL_FLOAT, 0, narr);
 			}
-			if(goat3d_get_mesh_attrib_count(mesh, GOAT3D_MESH_ATTR_TEXCOORD)) {
+			if(uvarr) {
 				glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-				glTexCoordPointer(2, GL_FLOAT, 0, goat3d_get_mesh_attribs(mesh, GOAT3D_MESH_ATTR_TEXCOORD));
+				glTexCoordPointer(2, GL_FLOAT, 0, uvarr);
 			}
 
-			nfaces = goat3d_get_mesh_face_count(mesh) / 3;
-			glDrawElements(GL_TRIANGLES, nfaces * 3, GL_UNSIGNED_INT, goat3d_get_mesh_faces(mesh));
+			nfaces = goat3d_get_mesh_face_count(mesh);
+			idxarr = goat3d_get_mesh_faces(mesh);
+			glDrawElements(GL_TRIANGLES, nfaces * 3, GL_UNSIGNED_INT, idxarr);
 
 			glDisableClientState(GL_VERTEX_ARRAY);
 			glDisableClientState(GL_NORMAL_ARRAY);
 			glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+
+			glPopMatrix();
 		}
 	}
 	glEndList();
