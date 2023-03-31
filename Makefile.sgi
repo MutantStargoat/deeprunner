@@ -1,5 +1,5 @@
 obj = src/main.o src/miniglut.o src/game.o src/scr_menu.o src/scr_game.o \
-	  src/util.o
+	  src/util.o src/input.o
 bin = game
 
 dbg = -g
