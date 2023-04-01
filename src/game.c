@@ -3,6 +3,7 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include "game.h"
+#include "input.h"
 
 int mouse_x, mouse_y, mouse_state[3];
 int win_width, win_height;
@@ -39,6 +40,8 @@ int game_init(void)
 	if(!cur_scr) {
 		game_chscr(&scr_game);	/* TODO: scr_menu */
 	}
+
+	init_input();
 
 	glClearColor(0.1, 0.1, 0.1, 1);
 	glEnable(GL_DEPTH_TEST);
