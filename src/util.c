@@ -46,3 +46,14 @@ char *strdup_nf_impl(const char *s, const char *file, int line)
 	memcpy(res, s, len + 1);
 	return res;
 }
+
+
+int match_prefix(const char *str, const char *prefix)
+{
+	while(*str && *prefix) {
+		if(*str++ != *prefix++) {
+			return 0;
+		}
+	}
+	return *prefix ? 0 : 1;
+}

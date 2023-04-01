@@ -58,6 +58,7 @@ int g3dimpl_scnload(struct goat3d *g, struct goat3d_io *io)
 	if((g3dimpl_loadgltf(g, io)) == 0) {
 		return 0;
 	}
+	io->seek(0, SEEK_SET, io->cls);
 
 	tsio.data = io->cls;
 	tsio.read = io->read;

@@ -30,3 +30,7 @@ libs:
 .PHONY: clean-libs
 clean-libs:
 	$(MAKE) -C libs clean
+
+.PHONY: data
+data:
+	tools/procdata

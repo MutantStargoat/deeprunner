@@ -34,12 +34,12 @@ static int dlist;
 
 static int ginit(void)
 {
-	int i, j, num, nfaces;
+	int i, num, nfaces;
 	int *idxarr;
 	float *varr, *narr, *uvarr;
 	float xform[16];
 
-	if(!(gscn = goat3d_create()) || goat3d_load(gscn, "data/track1.g3d")) {
+	if(!(gscn = goat3d_create()) || goat3d_load(gscn, "data/level1.g3d")) {
 		return -1;
 	}
 
@@ -48,6 +48,9 @@ static int ginit(void)
 	num = goat3d_get_node_count(gscn);
 	for(i=0; i<num; i++) {
 		struct goat3d_node *node = goat3d_get_node(gscn, i);
+		if(match_prefix(goat3d_get_node_name(node), "portal_")) {
+			continue;
+		}
 		if(goat3d_get_node_type(node) == GOAT3D_NODE_MESH) {
 			struct goat3d_mesh *mesh = goat3d_get_node_object(node);
 
