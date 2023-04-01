@@ -7,8 +7,11 @@
 #include "input.h"
 
 int mouse_x, mouse_y, mouse_state[3];
+int mouse_grabbed;
+unsigned int modkeys;
 int win_width, win_height;
 float win_aspect;
+int fullscr;
 
 struct game_screen *cur_scr;
 
@@ -112,7 +115,15 @@ void game_keyboard(int key, int press)
 		switch(key) {
 		case 27:
 			game_quit();
-			break;
+			return;
+
+		case '\n':
+		case '\r':
+			if(modkeys & GKEY_MOD_ALT) {
+		case GKEY_F11:
+				game_fullscreen(-1);
+			}
+			return;
 		}
 	}
 

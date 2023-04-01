@@ -13,6 +13,12 @@ enum {
 	GKEY_INS
 };
 
+enum {
+	GKEY_MOD_SHIFT	= 1,
+	GKEY_MOD_CTRL	= 4,
+	GKEY_MOD_ALT	= 8
+};
+
 
 struct game_screen {
 	const char *name;
@@ -29,8 +35,11 @@ struct game_screen {
 };
 
 extern int mouse_x, mouse_y, mouse_state[3];
+extern int mouse_grabbed;
+extern unsigned int modkeys;
 extern int win_width, win_height;
 extern float win_aspect;
+extern int fullscr;
 
 extern struct game_screen *cur_scr;
 
@@ -49,5 +58,7 @@ void game_chscr(struct game_screen *scr);
 /* defined in main.c */
 void game_swap_buffers(void);
 void game_quit(void);
+void game_fullscreen(int fs);
+void game_grabmouse(int grab);
 
 #endif	/* GAME_H_ */

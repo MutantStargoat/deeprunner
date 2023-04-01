@@ -10,11 +10,13 @@ def = -DMINIGLUT_USE_LIBC
 inc = -Ilibs -Ilibs/imago -Ilibs/treestor/include -Ilibs/goat3d/include
 libs = libs/unix/imago.a libs/unix/goat3d.a libs/unix/treestor.a
 
-CFLAGS = $(warn) $(dbg) $(opt) $(inc) $(def)
+CFLAGS = $(warn) $(dbg) $(opt) $(inc) $(def) -MMD
 LDFLAGS = $(libs) -lGL -lGLU -lX11 -lm
 
 $(bin): $(obj) libs
 	$(CC) -o $@ $(obj) $(LDFLAGS)
+
+-include $(dep)
 
 .c.o:
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -22,6 +24,10 @@ $(bin): $(obj) libs
 .PHONY: clean
 clean:
 	rm -f $(obj) $(bin)
+
+.PHONY: cleandep
+cleandep:
+	rm -f $(dep)
 
 .PHONY: libs
 libs:

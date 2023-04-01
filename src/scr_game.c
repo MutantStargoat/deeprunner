@@ -31,7 +31,9 @@ struct game_screen scr_game = {
 	gkeyb, gmouse, gmotion
 };
 
-static float cam_theta, cam_phi = 20, cam_dist;
+static float view_mat[16], proj_mat[16];
+
+static float cam_theta, cam_phi, cam_dist;
 static cgm_vec3 cam_pan;
 
 static struct goat3d *gscn;
@@ -126,17 +128,15 @@ static void gupdate(void)
 {
 	if(inpstate & INP_MOVE_BITS) {
 		cgm_vec3 fwd, right;
-		float theta = cam_theta * M_PI / 180.0f;
-		float phi = cam_phi * M_PI / 180.0f;
 
 		float dx = 0, dy = 0;
 
-		fwd.x = -sin(theta) * cos(phi);
-		fwd.y = sin(phi);
-		fwd.z = cos(theta) * cos(phi);
-		right.x = cos(theta);
+		fwd.x = -sin(cam_theta) * cos(cam_phi);
+		fwd.y = sin(cam_phi);
+		fwd.z = cos(cam_theta) * cos(cam_phi);
+		right.x = cos(cam_theta);
 		right.y = 0;
-		right.z = sin(theta);
+		right.z = sin(cam_theta);
 
 		if(inpstate & INP_FWD_BIT) {
 			dy += 0.1;
@@ -172,12 +172,12 @@ static void gdisplay(void)
 		tm_acc -= TSTEP;
 	}
 
+	cgm_mtranslation(view_mat, 0, 0, -cam_dist);
+	cgm_mprerotate(view_mat, cam_phi, 1, 0, 0);
+	cgm_mprerotate(view_mat, cam_theta, 0, 1, 0);
+	cgm_mpretranslate(view_mat, cam_pan.x, cam_pan.y, cam_pan.z);
 	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	glTranslatef(0, 0, -cam_dist);
-	glRotatef(cam_phi, 1, 0, 0);
-	glRotatef(cam_theta, 0, 1, 0);
-	glTranslatef(cam_pan.x, cam_pan.y, cam_pan.z);
+	glLoadMatrixf(view_mat);
 
 	set_light_dir(0, -1, 1, 5);
 	set_light_dir(1, 5, 0, 3);
@@ -188,6 +188,9 @@ static void gdisplay(void)
 
 static void greshape(int x, int y)
 {
+	cgm_mperspective(proj_mat, cgm_deg_to_rad(60), win_aspect, 0.1, 100);
+	glMatrixMode(GL_PROJECTION);
+	glLoadMatrixf(proj_mat);
 }
 
 static void gkeyb(int key, int press)
@@ -204,24 +207,43 @@ static void gkeyb(int key, int press)
 			break;
 		}
 	}
+
+	if(press) {
+		switch(key) {
+		case '`':
+			if(!fullscr) {
+				game_grabmouse(-1);	/* toggle */
+			}
+			break;
+		}
+	}
 }
 
 static void gmouse(int bn, int press, int x, int y)
 {
 }
 
+#define PIHALF	(M_PI / 2.0)
+
 static void gmotion(int x, int y)
 {
-	int dx = x - mouse_x;
-	int dy = y - mouse_y;
+	int dx, dy;
+
+	if(mouse_grabbed) {
+		dx = x - win_width / 2;
+		dy = y - win_height / 2;
+	} else {
+		dx = x - mouse_x;
+		dy = y - mouse_y;
+	}
 
 	if(!(dx | dy)) return;
 
-	if(mouse_state[0]) {
-		cam_theta += dx * 0.5;
-		cam_phi += dy * 0.5;
-		if(cam_phi < -90) cam_phi = -90;
-		if(cam_phi > 90) cam_phi = 90;
+	if(mouse_state[0] || mouse_grabbed) {
+		cam_theta += dx * 0.01;
+		cam_phi += dy * 0.01;
+		if(cam_phi < -PIHALF) cam_phi = -PIHALF;
+		if(cam_phi > PIHALF) cam_phi = PIHALF;
 	}
 	/*
 	if(mouse_state[1]) {

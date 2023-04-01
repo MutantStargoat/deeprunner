@@ -5,13 +5,16 @@
 #include "game.h"
 
 static void idle(void);
+static void reshape(int x, int y);
 static void keydown(unsigned char key, int x, int y);
 static void keyup(unsigned char key, int x, int y);
 static void skeydown(int key, int x, int y);
 static void skeyup(int key, int x, int y);
 static void mouse(int bn, int st, int x, int y);
+static void motion(int x, int y);
 static int translate_skey(int key);
 
+static int warping;
 
 int main(int argc, char **argv)
 {
@@ -22,13 +25,14 @@ int main(int argc, char **argv)
 
 	glutDisplayFunc(game_display);
 	glutIdleFunc(idle);
-	glutReshapeFunc(game_reshape);
+	glutReshapeFunc(reshape);
 	glutKeyboardFunc(keydown);
 	glutKeyboardUpFunc(keyup);
 	glutSpecialFunc(skeydown);
 	glutSpecialUpFunc(skeyup);
 	glutMouseFunc(mouse);
-	glutMotionFunc(game_motion);
+	glutMotionFunc(motion);
+	glutPassiveMotionFunc(motion);
 
 	if(game_init() == -1) {
 		return 1;
@@ -49,14 +53,74 @@ void game_quit(void)
 	exit(0);
 }
 
+void game_fullscreen(int fs)
+{
+	static int prev_w, prev_h;
+	static int prev_grab;
+
+	if(fs == -1) {
+		fs = !fullscr;
+	}
+
+	if(fs == fullscr) return;
+
+	if(fs) {
+		prev_w = glutGet(GLUT_WINDOW_WIDTH);
+		prev_h = glutGet(GLUT_WINDOW_HEIGHT);
+		prev_grab = mouse_grabbed;
+		game_grabmouse(1);
+		glutFullScreen();
+	} else {
+		glutReshapeWindow(prev_w, prev_h);
+		if(!prev_grab) {
+			game_grabmouse(0);
+		}
+	}
+	fullscr = fs;
+}
+
+void game_grabmouse(int grab)
+{
+	static int prev_x, prev_y;
+
+	if(grab == -1) {
+		grab = !mouse_grabbed;
+	}
+
+	if(grab == mouse_grabbed) return;
+
+	if(grab) {
+		warping = 1;
+		prev_x = mouse_x;
+		prev_y = mouse_y;
+		glutWarpPointer(win_width / 2, win_height / 2);
+		glutSetCursor(GLUT_CURSOR_NONE);
+	} else {
+		warping = 1;
+		glutWarpPointer(prev_x, prev_y);
+		glutSetCursor(GLUT_CURSOR_INHERIT);
+	}
+	mouse_grabbed = grab;
+}
+
 
 static void idle(void)
 {
 	glutPostRedisplay();
 }
 
+static void reshape(int x, int y)
+{
+	if(fullscr) {
+		warping = 1;
+		glutWarpPointer(x / 2, y / 2);
+	}
+	game_reshape(x, y);
+}
+
 static void keydown(unsigned char key, int x, int y)
 {
+	modkeys = glutGetModifiers();
 	game_keyboard(key, 1);
 }
 
@@ -67,8 +131,9 @@ static void keyup(unsigned char key, int x, int y)
 
 static void skeydown(int key, int x, int y)
 {
-	int k = translate_skey(key);
-	if(k >= 0) {
+	int k;
+	modkeys = glutGetModifiers();
+	if((k = translate_skey(key)) >= 0) {
 		game_keyboard(k, 1);
 	}
 }
@@ -83,7 +148,23 @@ static void skeyup(int key, int x, int y)
 
 static void mouse(int bn, int st, int x, int y)
 {
+	modkeys = glutGetModifiers();
 	game_mouse(bn - GLUT_LEFT_BUTTON, st == GLUT_DOWN, x, y);
+}
+
+static void motion(int x, int y)
+{
+	if(mouse_grabbed) {
+		if(!warping) {
+			game_motion(x, y);
+			warping = 1;
+			glutWarpPointer(win_width / 2, win_height / 2);
+		} else {
+			warping = 0;
+		}
+	} else {
+		game_motion(x, y);
+	}
 }
 
 static int translate_skey(int key)
@@ -109,7 +190,7 @@ static int translate_skey(int key)
 		return GKEY_INS;
 	default:
 		if(key >= GLUT_KEY_F1 && key <= GLUT_KEY_F12) {
-			return key - (GLUT_KEY_F1 + GKEY_F1);
+			return key - GLUT_KEY_F1 + GKEY_F1;
 		}
 	}
 
