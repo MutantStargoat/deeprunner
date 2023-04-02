@@ -12,6 +12,9 @@ static void skeydown(int key, int x, int y);
 static void skeyup(int key, int x, int y);
 static void mouse(int bn, int st, int x, int y);
 static void motion(int x, int y);
+static void sball_motion(int x, int y, int z);
+static void sball_rotate(int x, int y, int z);
+static void sball_button(int bn, int st);
 static int translate_skey(int key);
 
 static int warping;
@@ -33,6 +36,9 @@ int main(int argc, char **argv)
 	glutMouseFunc(mouse);
 	glutMotionFunc(motion);
 	glutPassiveMotionFunc(motion);
+	glutSpaceballMotionFunc(sball_motion);
+	glutSpaceballRotateFunc(sball_rotate);
+	glutSpaceballButtonFunc(sball_button);
 
 	if(game_init() == -1) {
 		return 1;
@@ -165,6 +171,18 @@ static void motion(int x, int y)
 	} else {
 		game_motion(x, y);
 	}
+}
+
+static void sball_motion(int x, int y, int z)
+{
+}
+
+static void sball_rotate(int x, int y, int z)
+{
+}
+
+static void sball_button(int bn, int st)
+{
 }
 
 static int translate_skey(int key)
