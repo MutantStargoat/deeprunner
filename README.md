@@ -6,6 +6,10 @@ other computer systems old and new.
 
 Status: project just started.
 
+Data files are in a separate subversion repo. Grab them with:
+
+    svn co svn://mutantstargoat.com/datadirs/deeprunner data
+
 License
 -------
 Copyright (C) 2023 John Tsiombikas <nuclear@mutantstargoat.com>
