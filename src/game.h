@@ -1,6 +1,8 @@
 #ifndef GAME_H_
 #define GAME_H_
 
+#define GAME_CFG_FILE	"game.cfg"
+
 enum {
 	GKEY_ESC	= 27,
 	GKEY_DEL	= 127,
@@ -41,6 +43,7 @@ extern int win_width, win_height;
 extern float win_aspect;
 extern int fullscr;
 
+extern long time_msec;
 extern struct game_screen *cur_scr;
 
 

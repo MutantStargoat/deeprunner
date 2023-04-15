@@ -6,12 +6,14 @@ bin = game
 warn = -pedantic -Wall
 dbg = -g
 opt = -O3
-def = -DMINIGLUT_USE_LIBC
-inc = -Ilibs -Ilibs/imago -Ilibs/treestor/include -Ilibs/goat3d/include
-libs = libs/unix/imago.a libs/unix/goat3d.a libs/unix/treestor.a
+def = -DMINIGLUT_USE_LIBC -DMIKMOD_STATIC
+inc = -Ilibs -Ilibs/imago -Ilibs/treestor/include -Ilibs/goat3d/include \
+	  -Ilibs/mikmod/include
+libs = libs/unix/imago.a libs/unix/goat3d.a libs/unix/treestor.a \
+	   libs/unix/mikmod.a
 
 CFLAGS = $(warn) $(dbg) $(opt) $(inc) $(def) -MMD
-LDFLAGS = $(libs) -lGL -lGLU -lX11 -lm
+LDFLAGS = $(libs) -lGL -lGLU -lX11 -lasound -lm
 
 $(bin): $(obj) libs
 	$(CC) -o $@ $(obj) $(LDFLAGS)

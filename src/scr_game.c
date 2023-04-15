@@ -8,6 +8,7 @@
 #include "goat3d.h"
 #include "input.h"
 #include "cgmath/cgmath.h"
+#include "audio.h"
 
 static int ginit(void);
 static void gdestroy(void);
@@ -38,6 +39,8 @@ static cgm_vec3 cam_pan;
 
 static struct goat3d *gscn;
 static int dlist;
+
+static struct au_module *mod;
 
 
 static int ginit(void)
@@ -115,11 +118,23 @@ static int gstart(void)
 	glEnable(GL_LIGHT1);
 	set_light_color(2, 0.5, 0.6, 1, 0.3);
 	glEnable(GL_LIGHT2);
+
+
+	if(!(mod = au_load_module("data/sc-fuse.it"))) {
+		fprintf(stderr, "failed to open music\n");
+	} else {
+		au_play_module(mod);
+	}
 	return 0;
 }
 
 static void gstop(void)
 {
+	if(mod) {
+		au_stop_module(mod);
+		au_free_module(mod);
+		mod = 0;
+	}
 }
 
 #define TSTEP	(1.0f / 30.0f)

@@ -5,6 +5,10 @@
 #include <GL/glu.h>
 #include "game.h"
 #include "input.h"
+#include "audio.h"
+#include "options.h"
+
+static void draw_volume_bar(void);
 
 int mouse_x, mouse_y, mouse_state[3];
 int mouse_grabbed;
@@ -13,6 +17,8 @@ int win_width, win_height;
 float win_aspect;
 int fullscr;
 
+long time_msec;
+
 struct game_screen *cur_scr;
 
 /* available screens */
@@ -20,12 +26,22 @@ extern struct game_screen scr_menu, scr_game;
 #define MAX_SCREENS	4
 static struct game_screen *screens[MAX_SCREENS];
 static int num_screens;
+static long last_vol_chg = -16384;
 
 
 int game_init(void)
 {
 	int i;
 	char *start_scr_name;
+
+	load_options(GAME_CFG_FILE);
+
+	if(au_init() == -1) {
+		return -1;
+	}
+	au_music_volume(opt.vol_mus);
+	au_sfx_volume(opt.vol_sfx);
+	au_volume(opt.vol_master);
 
 	/* initialize screens */
 	screens[num_screens++] = &scr_menu;
@@ -59,6 +75,8 @@ void game_shutdown(void)
 {
 	int i;
 
+	save_options(GAME_CFG_FILE);
+
 	putchar('\n');
 
 	for(i=0; i<num_screens; i++) {
@@ -71,18 +89,22 @@ void game_shutdown(void)
 void game_display(void)
 {
 	static long nframes, interv, prev_msec;
-	long msec;
+
+	time_msec = glutGet(GLUT_ELAPSED_TIME);
+
+	au_update();
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	cur_scr->display();
 
+	draw_volume_bar();
+
 	game_swap_buffers();
 
 
-	msec = glutGet(GLUT_ELAPSED_TIME);
-	interv += msec - prev_msec;
-	prev_msec = msec;
+	interv += time_msec - prev_msec;
+	prev_msec = time_msec;
 	if(interv >= 1000) {
 		float fps = (float)(nframes * 1000) / interv;
 		printf("\rfps: %.2f    ", fps);
@@ -124,6 +146,26 @@ void game_keyboard(int key, int press)
 				game_fullscreen(-1);
 			}
 			return;
+
+		case '-':
+			opt.vol_master = au_volume(AU_VOLDN | 31);
+			last_vol_chg = time_msec;
+			break;
+
+		case '=':
+			opt.vol_master = au_volume(AU_VOLUP | 31);
+			last_vol_chg = time_msec;
+			break;
+
+		case 'm':
+			opt.music ^= 1;
+			last_vol_chg = time_msec;
+			if(opt.music) {
+				au_volume(opt.vol_master);
+			} else {
+				au_volume(0);
+			}
+			break;
 		}
 	}
 
@@ -167,3 +209,101 @@ void game_chscr(struct game_screen *scr)
 	}
 	cur_scr = scr;
 }
+
+#define VOL_BARS	8
+static void draw_volume_bar(void)
+{
+	int i;
+
+	if(time_msec - last_vol_chg < 3000) {
+		glPushAttrib(GL_ENABLE_BIT | GL_POLYGON_BIT);
+
+		glMatrixMode(GL_PROJECTION);
+		glPushMatrix();
+		glLoadIdentity();
+		glOrtho(0, 640, 0, 480, -1, 1);
+
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+
+		glDisable(GL_TEXTURE_2D);
+		glDisable(GL_LIGHTING);
+
+		/* draw speaker icon */
+		glTranslatef(520, 460, 0);
+		glScalef(3.2f, 2.8f, 3.2f);
+		glBegin(GL_QUADS);
+		glColor3ub(128, 240, 128);
+		glVertex3f(-5, -2, 0);
+		glVertex3f(-3.6f, -2, 0);
+		glVertex3f(-3.6f, 2, 0);
+		glVertex3f(-5, 2, 0);
+		glVertex3f(-3, -2, 0);
+		glVertex3f(0, -5, 0);
+		glVertex3f(0, 5, 0);
+		glVertex3f(-3, 2, 0);
+		if(opt.music) {
+			glVertex3f(0.9f, 3.7f, 0);
+			glVertex3f(1.9f, 1.9f, 0);
+			glVertex3f(2.5f, 2.3f, 0);
+			glVertex3f(1.3f, 4, 0);
+			glVertex3f(2.2f, 0, 0);
+			glVertex3f(3, 0, 0);
+			glVertex3f(2.5f, 2.3f, 0);
+			glVertex3f(1.9f, 1.9f, 0);
+			glVertex3f(1.9f, -1.9f, 0);
+			glVertex3f(2.5f, -2.3f, 0);
+			glVertex3f(3, 0, 0);
+			glVertex3f(2.2f, 0, 0);
+			glVertex3f(1.3f, -4, 0);
+			glVertex3f(2.5f, -2.3f, 0);
+			glVertex3f(1.9f, -1.9f, 0);
+			glVertex3f(0.9f, -3.7f, 0);
+
+			glVertex3f(3.6f, 2.8f, 0);
+			glVertex3f(4.3f, 3.2f, 0);
+			glVertex3f(2.9f, 5.5f, 0);
+			glVertex3f(2.2f, 5, 0);
+			glVertex3f(4.1f, 0, 0);
+			glVertex3f(5, 0, 0);
+			glVertex3f(4.3f, 3.2f, 0);
+			glVertex3f(3.6f, 2.8f, 0);
+			glVertex3f(3.6f, -2.8f, 0);
+			glVertex3f(4.3f, -3.2f, 0);
+			glVertex3f(5, 0, 0);
+			glVertex3f(4.1f, 0, 0);
+			glVertex3f(2.2f, -5, 0);
+			glVertex3f(2.9f, -5.5f, 0);
+			glVertex3f(4.3f, -3.2f, 0);
+			glVertex3f(3.6f, -2.8f, 0);
+		} else {
+			glVertex3f(-7, -5, 0);
+			glVertex3f(-6, -6, 0);
+			glVertex3f(4, 5, 0);
+			glVertex3f(3, 6, 0);
+		}
+
+		if(opt.music) {
+			for(i=0; i<VOL_BARS; i++) {
+				float x = 8 + i * 3.5;
+				if(opt.vol_master < 255 && i >= opt.vol_master >> 5) {
+					glEnd();
+					glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+					glBegin(GL_QUADS);
+				}
+				glVertex3f(x, -3.5, 0);
+				glVertex3f(x + 1.5, -3.5, 0);
+				glVertex3f(x + 1.5, 3.5, 0);
+				glVertex3f(x, 3.5, 0);
+			}
+		}
+		glEnd();
+
+		glMatrixMode(GL_PROJECTION);
+		glPopMatrix();
+		glMatrixMode(GL_MODELVIEW);
+
+		glPopAttrib();
+	}
+}
+
