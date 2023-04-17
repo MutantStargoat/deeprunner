@@ -34,6 +34,9 @@ struct game_screen {
 	void (*keyboard)(int, int);
 	void (*mouse)(int, int, int, int);
 	void (*motion)(int, int);
+	void (*sball_motion)(int, int, int);
+	void (*sball_rotate)(int, int, int);
+	void (*sball_button)(int, int);
 };
 
 extern int mouse_x, mouse_y, mouse_state[3];
@@ -55,12 +58,16 @@ void game_reshape(int x, int y);
 void game_keyboard(int key, int press);
 void game_mouse(int bn, int st, int x, int y);
 void game_motion(int x, int y);
+void game_sball_motion(int x, int y, int z);
+void game_sball_rotate(int x, int y, int z);
+void game_sball_button(int bn, int st);
 
 void game_chscr(struct game_screen *scr);
 
 /* defined in main.c */
 void game_swap_buffers(void);
 void game_quit(void);
+void game_resize(int x, int y);
 void game_fullscreen(int fs);
 void game_grabmouse(int grab);
 

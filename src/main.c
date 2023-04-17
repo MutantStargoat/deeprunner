@@ -12,9 +12,6 @@ static void skeydown(int key, int x, int y);
 static void skeyup(int key, int x, int y);
 static void mouse(int bn, int st, int x, int y);
 static void motion(int x, int y);
-static void sball_motion(int x, int y, int z);
-static void sball_rotate(int x, int y, int z);
-static void sball_button(int bn, int st);
 static int translate_skey(int key);
 
 static int warping;
@@ -24,7 +21,7 @@ int main(int argc, char **argv)
 	glutInit(&argc, argv);
 	glutInitWindowSize(640, 480);
 	glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
-	glutCreateWindow("deeprace");
+	glutCreateWindow("DeepRunner");
 
 	glutDisplayFunc(game_display);
 	glutIdleFunc(idle);
@@ -36,9 +33,9 @@ int main(int argc, char **argv)
 	glutMouseFunc(mouse);
 	glutMotionFunc(motion);
 	glutPassiveMotionFunc(motion);
-	glutSpaceballMotionFunc(sball_motion);
-	glutSpaceballRotateFunc(sball_rotate);
-	glutSpaceballButtonFunc(sball_button);
+	glutSpaceballMotionFunc(game_sball_motion);
+	glutSpaceballRotateFunc(game_sball_rotate);
+	glutSpaceballButtonFunc(game_sball_button);
 
 	if(game_init() == -1) {
 		return 1;
@@ -57,6 +54,13 @@ void game_swap_buffers(void)
 void game_quit(void)
 {
 	exit(0);
+}
+
+void game_resize(int x, int y)
+{
+	if(x == win_width && y == win_height) return;
+
+	glutReshapeWindow(x, y);
 }
 
 void game_fullscreen(int fs)
@@ -171,18 +175,6 @@ static void motion(int x, int y)
 	} else {
 		game_motion(x, y);
 	}
-}
-
-static void sball_motion(int x, int y, int z)
-{
-}
-
-static void sball_rotate(int x, int y, int z)
-{
-}
-
-static void sball_button(int bn, int st)
-{
 }
 
 static int translate_skey(int key)

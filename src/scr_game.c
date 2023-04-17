@@ -7,8 +7,11 @@
 #include "util.h"
 #include "goat3d.h"
 #include "input.h"
+#include "player.h"
 #include "cgmath/cgmath.h"
 #include "audio.h"
+#include "options.h"
+#include "player.h"
 
 static int ginit(void);
 static void gdestroy(void);
@@ -19,6 +22,9 @@ static void greshape(int x, int y);
 static void gkeyb(int key, int press);
 static void gmouse(int bn, int press, int x, int y);
 static void gmotion(int x, int y);
+static void gsball_motion(int x, int y, int z);
+static void gsball_rotate(int x, int y, int z);
+static void gsball_button(int bn, int state);
 
 static void set_light_dir(int idx, float x, float y, float z);
 static void set_light_color(int idx, float r, float g, float b, float s);
@@ -29,13 +35,13 @@ struct game_screen scr_game = {
 	ginit, gdestroy,
 	gstart, gstop,
 	gdisplay, greshape,
-	gkeyb, gmouse, gmotion
+	gkeyb, gmouse, gmotion,
+	gsball_motion, gsball_rotate, gsball_button
 };
 
 static float view_mat[16], proj_mat[16];
 
-static float cam_theta, cam_phi, cam_dist;
-static cgm_vec3 cam_pan;
+static struct player player;
 
 static struct goat3d *gscn;
 static int dlist;
@@ -112,6 +118,7 @@ static int gstart(void)
 
 	glLightModelfv(GL_LIGHT_MODEL_AMBIENT, amb);
 
+	glEnable(GL_LIGHTING);
 	set_light_color(0, 1, 1, 1, 0.8);
 	glEnable(GL_LIGHT0);
 	set_light_color(1, 1, 0.6, 0.5, 0.2);
@@ -119,11 +126,14 @@ static int gstart(void)
 	set_light_color(2, 0.5, 0.6, 1, 0.3);
 	glEnable(GL_LIGHT2);
 
+	init_player(&player);
 
-	if(!(mod = au_load_module("data/sc-fuse.it"))) {
-		fprintf(stderr, "failed to open music\n");
-	} else {
-		au_play_module(mod);
+	if(opt.music) {
+		if(!(mod = au_load_module("data/sc-fuse.it"))) {
+			fprintf(stderr, "failed to open music\n");
+		} else {
+			au_play_module(mod);
+		}
 	}
 	return 0;
 }
@@ -142,6 +152,7 @@ static void gstop(void)
 static void gupdate(void)
 {
 	if(inpstate & INP_MOVE_BITS) {
+		/*
 		cgm_vec3 fwd, right;
 
 		float dx = 0, dy = 0;
@@ -169,6 +180,7 @@ static void gupdate(void)
 		cam_pan.x += right.x * dx + fwd.x * dy;
 		cam_pan.y += fwd.y * dy;
 		cam_pan.z += right.z * dx + fwd.z * dy;
+		*/
 	}
 }
 
@@ -177,6 +189,7 @@ static void gdisplay(void)
 	static long prev_msec;
 	static float tm_acc;
 	long msec;
+	float xform[16];
 
 	msec = glutGet(GLUT_ELAPSED_TIME);
 	tm_acc += (float)(msec - prev_msec) / 1000.0f;
@@ -187,10 +200,9 @@ static void gdisplay(void)
 		tm_acc -= TSTEP;
 	}
 
-	cgm_mtranslation(view_mat, 0, 0, -cam_dist);
-	cgm_mprerotate(view_mat, cam_phi, 1, 0, 0);
-	cgm_mprerotate(view_mat, cam_theta, 0, 1, 0);
-	cgm_mpretranslate(view_mat, cam_pan.x, cam_pan.y, cam_pan.z);
+	cgm_mtranslation(view_mat, player.pos.x, player.pos.y, player.pos.z);
+	cgm_mrotation_quat(xform, &player.rot);
+	cgm_mmul(view_mat, xform);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadMatrixf(view_mat);
 
@@ -254,33 +266,48 @@ static void gmotion(int x, int y)
 
 	if(!(dx | dy)) return;
 
+	if(modkeys & GKEY_MOD_SHIFT) {
+		dy = 0;
+	}
+	if(modkeys & GKEY_MOD_CTRL) {
+		dx = 0;
+	}
+
 	if(mouse_state[0] || mouse_grabbed) {
-		cam_theta += dx * 0.01;
-		cam_phi += dy * 0.01;
-		if(cam_phi < -PIHALF) cam_phi = -PIHALF;
-		if(cam_phi > PIHALF) cam_phi = PIHALF;
-	}
-	/*
-	if(mouse_state[1]) {
-		float up[3], right[3];
-		float theta = cam_theta * M_PI / 180.0f;
-		float phi = cam_phi * M_PI / 180.0f;
+		float len, theta, phi;
+		cgm_quat rot;
+		cgm_vec3 vdir = {0, 0, 1};
+		float xform[16];
 
-		up[0] = -sin(theta) * sin(phi);
-		up[1] = -cos(phi);
-		up[2] = cos(theta) * sin(phi);
-		right[0] = cos(theta);
-		right[1] = 0;
-		right[2] = sin(theta);
+		theta = dx * 0.1;
+		phi = dy * 0.1;
 
-		cam_pan[0] += (right[0] * dx + up[0] * dy) * 0.01;
-		cam_pan[1] += up[1] * dy * 0.01;
-		cam_pan[2] += (right[2] * dx + up[2] * dy) * 0.01;
+		len = sqrt(theta * theta + phi * phi);
+
+		cgm_qrotation(&rot, len, phi, theta, 0);
+		cgm_qmul(&rot, &player.rot);
+		player.rot = rot;
+		cgm_qnormalize(&player.rot);
+
+		cgm_mrotation_quat(xform, &player.rot);
+		cgm_mtranspose(xform);
+		cgm_vmul_m4v3(&vdir, xform);
+		printf("view dir: %f %f %f\n", vdir.x, vdir.y, vdir.z);
 	}
-	*/
-	if(mouse_state[2]) {
-		cam_dist += dy * 0.1;
-		if(cam_dist < 0) cam_dist = 0;
+}
+
+static void gsball_motion(int x, int y, int z)
+{
+}
+
+static void gsball_rotate(int x, int y, int z)
+{
+}
+
+static void gsball_button(int bn, int press)
+{
+	if(press) {
+		init_player(&player);
 	}
 }
 

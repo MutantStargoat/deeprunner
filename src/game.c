@@ -35,6 +35,7 @@ int game_init(void)
 	char *start_scr_name;
 
 	load_options(GAME_CFG_FILE);
+	game_resize(opt.xres, opt.yres);
 
 	if(au_init() == -1) {
 		return -1;
@@ -66,8 +67,6 @@ int game_init(void)
 	glClearColor(0.1, 0.1, 0.1, 1);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
-	glEnable(GL_LIGHTING);
-	glEnable(GL_LIGHT0);
 	return 0;
 }
 
@@ -194,6 +193,27 @@ void game_motion(int x, int y)
 	}
 	mouse_x = x;
 	mouse_y = y;
+}
+
+void game_sball_motion(int x, int y, int z)
+{
+	if(cur_scr->sball_motion) {
+		cur_scr->sball_motion(x, y, z);
+	}
+}
+
+void game_sball_rotate(int x, int y, int z)
+{
+	if(cur_scr->sball_rotate) {
+		cur_scr->sball_rotate(x, y, z);
+	}
+}
+
+void game_sball_button(int bn, int st)
+{
+	if(cur_scr->sball_button) {
+		cur_scr->sball_button(bn, st == GLUT_DOWN);
+	}
 }
 
 void game_chscr(struct game_screen *scr)
