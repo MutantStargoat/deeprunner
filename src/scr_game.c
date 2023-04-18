@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <math.h>
 #include <GL/gl.h>
+#include <GL/glu.h>
+#include "imago2.h"
 #include "miniglut.h"
 #include "game.h"
 #include "util.h"
@@ -18,6 +20,7 @@ static void gdestroy(void);
 static int gstart(void);
 static void gstop(void);
 static void gdisplay(void);
+static void draw_ui(void);
 static void greshape(int x, int y);
 static void gkeyb(int key, int press);
 static void gmouse(int bn, int press, int x, int y);
@@ -46,8 +49,11 @@ static struct player player;
 static struct goat3d *gscn;
 static int dlist;
 static unsigned int dbgtex;
+static unsigned int uitex;
 
 static struct au_module *mod;
+
+static int dbg_atest, dbg_split;
 
 
 static int ginit(void)
@@ -126,6 +132,11 @@ static int ginit(void)
 		free(pix);
 	}
 
+	if((uitex = img_gltexture_load("data/uibars.png"))) {
+		glBindTexture(GL_TEXTURE_2D, uitex);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	}
 	return 0;
 }
 
@@ -221,12 +232,85 @@ static void gdisplay(void)
 	set_light_dir(1, 5, 0, 3);
 	set_light_dir(2, -0.5, -2, -3);
 
-	glBindTexture(GL_TEXTURE_2D, dbgtex);
 	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, dbgtex);
 
 	glCallList(dlist);
 
+	draw_ui();
+
 	glDisable(GL_TEXTURE_2D);
+}
+
+#define UIW		256
+#define UIH		128
+static void draw_ui(void)
+{
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glLoadIdentity();
+	glOrtho(0, win_aspect * 480, 0, 480, -1, 1);
+
+	glPushAttrib(GL_ENABLE_BIT);
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+	glDisable(GL_LIGHTING);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	if(dbg_atest) {
+		glEnable(GL_ALPHA_TEST);
+		glAlphaFunc(GL_GREATER, 0.008);
+	}
+
+	if(dbg_split) {
+		glBindTexture(GL_TEXTURE_2D, uitex);
+		glBegin(GL_QUADS);
+		glColor3f(1, 1, 1);
+		glTexCoord2f(0, 0.5); glVertex2f(0, 480 - 64);
+		glTexCoord2f(0.5, 0.5); glVertex2f(128, 480 - 64);
+		glTexCoord2f(0.5, 0); glVertex2f(128, 480);
+		glTexCoord2f(0, 0); glVertex2f(0, 480);
+
+		glTexCoord2f(0.5, 0.5); glVertex2f(128, 480 - 64);
+		glTexCoord2f(1, 0.5); glVertex2f(256, 480 - 64);
+		glTexCoord2f(1, 0); glVertex2f(256, 480);
+		glTexCoord2f(0.5, 0); glVertex2f(128, 480);
+
+		glTexCoord2f(0, 0.75); glVertex2f(0, 480 - 96);
+		glTexCoord2f(0.5, 0.75); glVertex2f(128, 480 - 96);
+		glTexCoord2f(0.5, 0.5); glVertex2f(128, 480 - 64);
+		glTexCoord2f(0, 0.5); glVertex2f(0, 480 - 64);
+		glEnd();
+
+	} else {
+		glBindTexture(GL_TEXTURE_2D, uitex);
+		glBegin(GL_QUADS);
+		glColor3f(1, 1, 1);
+		glTexCoord2f(0, 1); glVertex2f(0, 480 - UIH);
+		glTexCoord2f(1, 1); glVertex2f(UIW, 480 - UIH);
+		glTexCoord2f(1, 0); glVertex2f(UIW, 480);
+		glTexCoord2f(0, 0); glVertex2f(0, 480);
+		glEnd();
+	}
+
+	glDisable(GL_TEXTURE_2D);
+	glBegin(GL_LINES);
+	glColor3f(0.5, 0.8, 0.5);
+	glVertex2f(320 - 6, 240);
+	glVertex2f(320 - 2, 240);
+	glVertex2f(320 + 2, 240);
+	glVertex2f(320 + 6, 240);
+	glVertex2f(320, 240 - 6);
+	glVertex2f(320, 240 - 2);
+	glVertex2f(320, 240 + 6);
+	glVertex2f(320, 240 + 2);
+	glEnd();
+
+	glPopAttrib();
+	glPopMatrix();
+	glMatrixMode(GL_MODELVIEW);
 }
 
 static void greshape(int x, int y)
@@ -257,6 +341,16 @@ static void gkeyb(int key, int press)
 			if(!fullscr) {
 				game_grabmouse(-1);	/* toggle */
 			}
+			break;
+
+		case '1':
+			dbg_split ^= 1;
+			printf("dbg_split: %d\n", dbg_split);
+			break;
+
+		case '2':
+			dbg_atest ^= 1;
+			printf("dbg_atest: %d\n", dbg_atest);
 			break;
 		}
 	}
