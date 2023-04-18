@@ -20,7 +20,8 @@
 #ifndef MIKMOD_CTYPE_H
 #define MIKMOD_CTYPE_H
 
-#if defined(_MSC_VER) && _MSC_VER < 1800
+/* _COMPILER_VERSION is defined by the SGI MIPSPro compiler */
+#if (defined(_MSC_VER) && _MSC_VER < 1800) || (defined(__sgi) && defined(_COMPILER_VERSION))
 #define inline __inline
 #endif
 

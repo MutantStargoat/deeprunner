@@ -4,3 +4,5 @@
 game
 *.a
 mklevel
+data/
+*.cfg

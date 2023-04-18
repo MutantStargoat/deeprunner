@@ -1,5 +1,5 @@
 obj = src/main.o src/miniglut.o src/game.o src/scr_menu.o src/scr_game.o \
-	  src/util.o src/input.o src/audio.o
+	  src/util.o src/input.o src/audio.o src/options.o
 bin = game
 
 dbg = -g
@@ -11,7 +11,7 @@ libs = libs/unix/imago.a libs/unix/goat3d.a libs/unix/treestor.a \
 	   libs/unix/mikmod.a
 
 CFLAGS = $(warn) $(dbg) $(opt) $(inc) $(def)
-LDFLAGS = $(libs) -lGL -lGLU -lX11 -laudio -lm
+LDFLAGS = $(libs) -lGL -lGLU -lX11 -laudio -lm -lpthread
 
 $(bin): $(obj) libs
 	$(CC) -o $@ $(obj) $(LDFLAGS)

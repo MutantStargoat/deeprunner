@@ -41,7 +41,7 @@ int au_init(void)
 	MikMod_RegisterDriver(&drv_alsa);
 #elif defined(__FreeBSD__)
 	MikMod_RegisterDriver(&drv_oss);
-#elif defined(__sgi__)
+#elif defined(__sgi)
 	MikMod_RegisterDriver(&drv_sgi);
 #elif defined(_WIN32)
 	MikMod_RegisterDriver(&drv_ds);
@@ -73,6 +73,8 @@ int au_init(void)
 		}
 #endif
 	}
+
+	printf("MikMod driver: %s\n", MikMod_InfoDriver());
 	return 0;
 }
 
