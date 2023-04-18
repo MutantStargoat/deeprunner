@@ -16,7 +16,9 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "imago2.h"
+#include <GL/gl.h>
 
+#if 0
 /* to avoid dependency to OpenGL, I'll define all the relevant GL macros manually */
 #define GL_UNPACK_ALIGNMENT		0x0cf5
 
@@ -80,6 +82,18 @@ static gl_get_error_func gl_get_error;
 static gl_pixel_storei_func gl_pixel_storei;
 
 static int load_glfunc(void);
+#endif
+
+#ifndef GL_SRGB
+#define GL_SLUMINANCE			0x8c46
+#define GL_SRGB					0x8c40
+#define GL_SRGB_ALPHA			0x8c42
+#endif
+#ifndef GL_RGBA32F
+#define GL_RGBA32F				0x8814
+#define GL_RGB32F				0x8815
+#define GL_LUMINANCE32F			0x8818
+#endif
 
 unsigned int img_fmt_glfmt(enum img_fmt fmt)
 {
@@ -183,18 +197,24 @@ unsigned int img_glintfmt_srgb(struct img_pixmap *img)
 	return img_fmt_glintfmt_srgb(img->fmt);
 }
 
+#define gl_gen_textures	glGenTextures
+#define gl_bind_texture glBindTexture
+#define gl_tex_parameteri glTexParameteri
+#define gl_pixel_storei glPixelStorei
+#define gl_tex_image2d glTexImage2D
+
 unsigned int img_gltexture(struct img_pixmap *img)
 {
 	unsigned int tex;
 	unsigned int intfmt, fmt, type;
-
+/*
 	if(!gl_gen_textures) {
 		if(load_glfunc() == -1) {
 			fprintf(stderr, "imago: failed to initialize the OpenGL helpers\n");
 			return 0;
 		}
 	}
-
+*/
 	if(img->fmt == IMG_FMT_IDX8) {
 		struct img_pixmap rgb;
 
@@ -218,14 +238,8 @@ unsigned int img_gltexture(struct img_pixmap *img)
 	gl_tex_parameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	gl_tex_parameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	gl_pixel_storei(GL_UNPACK_ALIGNMENT, 1);
-	if(!gl_generate_mipmap) {
-		gl_tex_parameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP_SGIS, 1);
-		gl_get_error();	/* clear errors in case SGIS_generate_mipmap is not supported */
-	}
+	gl_tex_parameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP_SGIS, 1);
 	gl_tex_image2d(GL_TEXTURE_2D, 0, intfmt, img->width, img->height, 0, fmt, type, img->pixels);
-	if(gl_generate_mipmap) {
-		gl_generate_mipmap(GL_TEXTURE_2D);
-	}
 	return tex;
 }
 
@@ -277,7 +291,8 @@ unsigned int img_gltexture_read(struct img_io *io)
 	return tex;
 }
 
-#if defined(__unix__) || defined(__APPLE__)
+#if 0
+#if defined(__unix__) || defined(unix) || defined(__APPLE__)
 #include <dlfcn.h>
 
 #ifndef RTLD_DEFAULT
@@ -291,7 +306,7 @@ unsigned int img_gltexture_read(struct img_io *io)
 
 static int load_glfunc(void)
 {
-#if defined(__unix__) || defined(__APPLE__)
+#if defined(__unix__) || defined(unix) || defined(__APPLE__)
 	gl_gen_textures = (gl_gen_textures_func)dlsym(RTLD_DEFAULT, "glGenTextures");
 	gl_bind_texture = (gl_bind_texture_func)dlsym(RTLD_DEFAULT, "glBindTexture");
 	gl_tex_parameteri = (gl_tex_parameteri_func)dlsym(RTLD_DEFAULT, "glTexParameteri");
@@ -316,3 +331,4 @@ static int load_glfunc(void)
 
 	return (gl_gen_textures && gl_bind_texture && gl_tex_parameteri && gl_tex_image2d && gl_get_error && gl_pixel_storei) ? 0 : -1;
 }
+#endif

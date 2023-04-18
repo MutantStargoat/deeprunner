@@ -53,7 +53,7 @@ static unsigned int uitex;
 
 static struct au_module *mod;
 
-static int dbg_atest, dbg_split;
+static int dbg_atest, dbg_split, dbg_noui;
 
 
 static int ginit(void)
@@ -246,6 +246,8 @@ static void gdisplay(void)
 #define UIH		128
 static void draw_ui(void)
 {
+	if(dbg_noui) return;
+
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	glMatrixMode(GL_PROJECTION);
@@ -341,6 +343,11 @@ static void gkeyb(int key, int press)
 			if(!fullscr) {
 				game_grabmouse(-1);	/* toggle */
 			}
+			break;
+
+		case '0':
+			dbg_noui ^= 1;
+			printf("dbg_noui: %d\n", dbg_noui);
 			break;
 
 		case '1':
