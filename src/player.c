@@ -2,7 +2,8 @@
 #include "options.h"
 
 #define MOUSE_SPEED		(opt.mouse_speed * 0.0002)
-#define SBALL_SPEED		(opt.sball_speed * 0.00002)
+#define SBALL_RSPEED	(opt.sball_speed * 0.00002)
+#define SBALL_TSPEED	(opt.sball_speed * 0.00004)
 
 void init_player(struct player *p)
 {
@@ -32,14 +33,14 @@ void update_player_sball(struct player *p)
 	cgm_quat rot;
 
 	if((len = cgm_vlength(&p->sball_rot)) != 0.0f) {
-		cgm_qrotation(&rot, len * SBALL_SPEED, p->sball_rot.x / len,
+		cgm_qrotation(&rot, len * SBALL_RSPEED, p->sball_rot.x / len,
 				p->sball_rot.y / len, p->sball_rot.z / len);
 		cgm_qmul(&rot, &p->rot);
 		p->rot = rot;
 		cgm_vcons(&p->sball_rot, 0, 0, 0);
 	}
 
-	cgm_vadd_scaled(&p->vel, &p->sball_mov, SBALL_SPEED);
+	cgm_vadd_scaled(&p->vel, &p->sball_mov, SBALL_TSPEED);
 	cgm_vcons(&p->sball_mov, 0, 0, 0);
 }
 

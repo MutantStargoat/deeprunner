@@ -1,6 +1,6 @@
 #!/bin/sh
 
-[ ! -e data/level1.g3d -o datasrc/level1.gltf -nt data/level1.g3d ] && \
-	ass2goat datasrc/level1.gltf && mv datasrc/level1.goat3d data/level1.g3d
+[ ! -e data/level1.g3d -o data/src/level1.gltf -nt data/level1.g3d ] && \
+	ass2goat data/src/level1.gltf && mv data/src/level1.goat3d data/level1.g3d
 
 exit 0
