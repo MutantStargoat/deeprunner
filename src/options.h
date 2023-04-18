@@ -7,6 +7,9 @@ struct options {
 	int fullscreen;
 	int vol_master, vol_mus, vol_sfx;
 	int music;
+
+	int inv_mouse_y;
+	int mouse_speed, sball_speed;
 };
 
 extern struct options opt;

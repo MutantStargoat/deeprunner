@@ -148,40 +148,30 @@ static void gstop(void)
 }
 
 #define TSTEP	(1.0f / 30.0f)
+#define KB_MOVE_SPEED	0.2
 
 static void gupdate(void)
 {
 	if(inpstate & INP_MOVE_BITS) {
-		/*
-		cgm_vec3 fwd, right;
-
 		float dx = 0, dy = 0;
 
-		fwd.x = -sin(cam_theta) * cos(cam_phi);
-		fwd.y = sin(cam_phi);
-		fwd.z = cos(cam_theta) * cos(cam_phi);
-		right.x = cos(cam_theta);
-		right.y = 0;
-		right.z = sin(cam_theta);
-
 		if(inpstate & INP_FWD_BIT) {
-			dy += 0.1;
+			player.vel.z += KB_MOVE_SPEED;
 		}
 		if(inpstate & INP_BACK_BIT) {
-			dy -= 0.1;
+			player.vel.z -= KB_MOVE_SPEED;
 		}
 		if(inpstate & INP_RIGHT_BIT) {
-			dx -= 0.1;
+			player.vel.x -= KB_MOVE_SPEED;
 		}
 		if(inpstate & INP_LEFT_BIT) {
-			dx += 0.1;
+			player.vel.x += KB_MOVE_SPEED;
 		}
-
-		cam_pan.x += right.x * dx + fwd.x * dy;
-		cam_pan.y += fwd.y * dy;
-		cam_pan.z += right.z * dx + fwd.z * dy;
-		*/
 	}
+
+	update_player_sball(&player);
+
+	update_player(&player);
 }
 
 static void gdisplay(void)
@@ -189,20 +179,21 @@ static void gdisplay(void)
 	static long prev_msec;
 	static float tm_acc;
 	long msec;
-	float xform[16];
 
 	msec = glutGet(GLUT_ELAPSED_TIME);
 	tm_acc += (float)(msec - prev_msec) / 1000.0f;
 	prev_msec = msec;
 
+	/* updating mouse input every frame feels more fluid */
+	update_player_mouse(&player);
+
+	/* update all other game logic once per timestep */
 	while(tm_acc >= TSTEP) {
 		gupdate();
 		tm_acc -= TSTEP;
 	}
 
-	cgm_mtranslation(view_mat, player.pos.x, player.pos.y, player.pos.z);
-	cgm_mrotation_quat(xform, &player.rot);
-	cgm_mmul(view_mat, xform);
+	player_view_matrix(&player, view_mat);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadMatrixf(view_mat);
 
@@ -266,42 +257,20 @@ static void gmotion(int x, int y)
 
 	if(!(dx | dy)) return;
 
-	if(modkeys & GKEY_MOD_SHIFT) {
-		dy = 0;
-	}
-	if(modkeys & GKEY_MOD_CTRL) {
-		dx = 0;
-	}
-
 	if(mouse_state[0] || mouse_grabbed) {
-		float len, theta, phi;
-		cgm_quat rot;
-		cgm_vec3 vdir = {0, 0, 1};
-		float xform[16];
-
-		theta = dx * 0.1;
-		phi = dy * 0.1;
-
-		len = sqrt(theta * theta + phi * phi);
-
-		cgm_qrotation(&rot, len, phi, theta, 0);
-		cgm_qmul(&rot, &player.rot);
-		player.rot = rot;
-		cgm_qnormalize(&player.rot);
-
-		cgm_mrotation_quat(xform, &player.rot);
-		cgm_mtranspose(xform);
-		cgm_vmul_m4v3(&vdir, xform);
-		printf("view dir: %f %f %f\n", vdir.x, vdir.y, vdir.z);
+		player.mouse_input.x += dx;
+		player.mouse_input.y += opt.inv_mouse_y ? -dy : dy;
 	}
 }
 
 static void gsball_motion(int x, int y, int z)
 {
+	cgm_vcons(&player.sball_mov, -x, -y, z);
 }
 
 static void gsball_rotate(int x, int y, int z)
 {
+	cgm_vcons(&player.sball_rot, -x, -y, z);
 }
 
 static void gsball_button(int bn, int press)

@@ -10,13 +10,18 @@
 #define DEF_VOL			255
 #define DEF_MUS			1
 #define DEF_FULLSCR		1
+#define DEF_INVMOUSEY	0
+#define DEF_MOUSE_SPEED	50
+#define DEF_SBALL_SPEED	50
 
 struct options opt = {
 	DEF_XRES, DEF_YRES,
 	DEF_VSYNC,
 	DEF_FULLSCR,
 	DEF_VOL, DEF_VOL, DEF_VOL,
-	DEF_MUS
+	DEF_MUS,
+	DEF_INVMOUSEY,
+	DEF_MOUSE_SPEED, DEF_SBALL_SPEED
 };
 
 int load_options(const char *fname)
@@ -37,6 +42,10 @@ int load_options(const char *fname)
 	opt.vol_mus = ts_lookup_int(cfg, "options.audio.volmusic", DEF_VOL);
 	opt.vol_sfx = ts_lookup_int(cfg, "options.audio.volsfx", DEF_VOL);
 	opt.music = ts_lookup_int(cfg, "options.audio.music", DEF_MUS);
+
+	opt.inv_mouse_y = ts_lookup_int(cfg, "options.ctl.invmousey", DEF_INVMOUSEY);
+	opt.mouse_speed = ts_lookup_int(cfg, "options.ctl.mousespeed", DEF_MOUSE_SPEED);
+	opt.sball_speed = ts_lookup_int(cfg, "options.ctl.sballspeed", DEF_SBALL_SPEED);
 
 	ts_free_tree(cfg);
 	return 0;
@@ -72,6 +81,12 @@ int save_options(const char *fname)
 	WROPT(2, "volmusic = %d", opt.vol_mus, DEF_VOL);
 	WROPT(2, "volsfx = %d", opt.vol_sfx, DEF_VOL);
 	WROPT(2, "music = %d", opt.music ? 1 : 0, DEF_MUS);
+	fprintf(fp, "\t}\n");
+
+	fprintf(fp, "\tcontrols {\n");
+	WROPT(2, "invmousey = %d", opt.inv_mouse_y, DEF_INVMOUSEY);
+	WROPT(2, "mousespeed = %d", opt.mouse_speed, DEF_MOUSE_SPEED);
+	WROPT(2, "sballspeed = %d", opt.sball_speed, DEF_SBALL_SPEED);
 	fprintf(fp, "\t}\n");
 
 	fprintf(fp, "}\n");
