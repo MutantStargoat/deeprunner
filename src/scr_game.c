@@ -45,6 +45,7 @@ static struct player player;
 
 static struct goat3d *gscn;
 static int dlist;
+static unsigned int dbgtex;
 
 static struct au_module *mod;
 
@@ -104,6 +105,28 @@ static int ginit(void)
 	}
 	glEndList();
 
+	{
+		int j;
+		unsigned char *pix, *pptr;
+
+		pptr = pix = malloc(256 * 256);
+
+		for(i=0; i<256; i++) {
+			for(j=0; j<256; j++) {
+				*pptr++ = (i ^ j) | 0x80;
+			}
+		}
+
+		glGenTextures(1, &dbgtex);
+		glBindTexture(GL_TEXTURE_2D, dbgtex);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP_SGIS, GL_TRUE);
+		glTexImage2D(GL_TEXTURE_2D, 0, 1, 256, 256, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, pix);
+
+		free(pix);
+	}
+
 	return 0;
 }
 
@@ -153,8 +176,6 @@ static void gstop(void)
 static void gupdate(void)
 {
 	if(inpstate & INP_MOVE_BITS) {
-		float dx = 0, dy = 0;
-
 		if(inpstate & INP_FWD_BIT) {
 			player.vel.z += KB_MOVE_SPEED;
 		}
@@ -201,7 +222,12 @@ static void gdisplay(void)
 	set_light_dir(1, 5, 0, 3);
 	set_light_dir(2, -0.5, -2, -3);
 
+	glBindTexture(GL_TEXTURE_2D, dbgtex);
+	glEnable(GL_TEXTURE_2D);
+
 	glCallList(dlist);
+
+	glDisable(GL_TEXTURE_2D);
 }
 
 static void greshape(int x, int y)
