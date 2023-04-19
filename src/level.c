@@ -4,8 +4,8 @@
 #include "util.h"
 #include "treestor.h"
 
-static int read_room(struct room *room, struct goat3d *gscn, struct goat3d_node *gnode);
-static int conv_mesh(struct mesh *mesh, struct goat3d *gscn, struct goat3d_mesh *gmesh);
+static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, struct goat3d_node *gnode);
+static int conv_mesh(struct level *lvl, struct mesh *mesh, struct goat3d *gscn, struct goat3d_mesh *gmesh);
 
 struct room *alloc_room(void)
 {
@@ -85,7 +85,7 @@ int lvl_load(struct level *lvl, const char *fname)
 			return -1;
 		}
 		room->name = strdup_nf(goat3d_get_node_name(gnode));
-		if(read_room(room, gscn, gnode) == -1) {
+		if(read_room(lvl, room, gscn, gnode) == -1) {
 			fprintf(stderr, "lvl_load(%s): failed to read room\n", fname);
 			free_room(room);
 			continue;
@@ -100,7 +100,25 @@ int lvl_load(struct level *lvl, const char *fname)
 	return 0;
 }
 
-static int read_room(struct room *room, struct goat3d *gscn, struct goat3d_node *gnode)
+struct texture *lvl_texture(struct level *lvl, const char *fname)
+{
+	struct texture *tex;
+	int i, count = darr_size(lvl->textures);
+
+	for(i=0; i<count; i++) {
+		if(strcmp(lvl->textures[i]->img->name, fname) == 0) {
+			return lvl->textures[i];
+		}
+	}
+
+	if(!(tex = tex_load(fname))) {
+		return 0;
+	}
+	darr_push(lvl->textures, &tex);
+	return tex;
+}
+
+static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, struct goat3d_node *gnode)
 {
 	int i, count;
 	const char *name = goat3d_get_node_name(gnode);
@@ -115,14 +133,14 @@ static int read_room(struct room *room, struct goat3d *gscn, struct goat3d_node 
 			fprintf(stderr, "ignoring non-mesh node with \"col_\" prefix: %s\n", name);
 		} else {
 			gmesh = goat3d_get_node_object(gnode);
-			if(conv_mesh(&mesh, gscn, gmesh) != -1) {
+			if(conv_mesh(lvl, &mesh, gscn, gmesh) != -1) {
 				darr_push(room->colmesh, &mesh);
 			}
 		}
 	} else {
 		if(type == GOAT3D_NODE_MESH) {
 			gmesh = goat3d_get_node_object(gnode);
-			if(conv_mesh(&mesh, gscn, gmesh) != -1) {
+			if(conv_mesh(lvl, &mesh, gscn, gmesh) != -1) {
 				darr_push(room->meshes, &mesh);
 			}
 		}
@@ -130,12 +148,63 @@ static int read_room(struct room *room, struct goat3d *gscn, struct goat3d_node 
 
 	count = goat3d_get_node_child_count(gnode);
 	for(i=0; i<count; i++) {
-		read_room(room, gscn, goat3d_get_node_child(gnode, i));
+		read_room(lvl, room, gscn, goat3d_get_node_child(gnode, i));
 	}
 	return 0;
 }
 
-static int conv_mesh(struct mesh *mesh, struct goat3d *gscn, struct goat3d_mesh *gmesh)
+static int conv_mesh(struct level *lvl, struct mesh *mesh, struct goat3d *gscn, struct goat3d_mesh *gmesh)
 {
-	return -1;	/* TODO */
+	int nfaces;
+	void *data;
+	struct goat3d_material *gmtl;
+	const float *mattr;
+	const char *str;
+
+	mesh->name = strdup_nf(goat3d_get_mesh_name(gmesh));
+
+	mesh->vcount = goat3d_get_mesh_vertex_count(gmesh);
+	nfaces = goat3d_get_mesh_face_count(gmesh);
+	mesh->icount = nfaces * 3;
+
+	data = goat3d_get_mesh_attribs(gmesh, GOAT3D_MESH_ATTR_VERTEX);
+	mesh->varr = malloc_nf(mesh->vcount * sizeof *mesh->varr);
+	memcpy(mesh->varr, data, mesh->vcount * sizeof *mesh->varr);
+
+	if((data = goat3d_get_mesh_attribs(gmesh, GOAT3D_MESH_ATTR_NORMAL))) {
+		mesh->narr = malloc_nf(mesh->vcount * sizeof *mesh->narr);
+		memcpy(mesh->narr, data, mesh->vcount * sizeof *mesh->narr);
+	}
+
+	if((data = goat3d_get_mesh_attribs(gmesh, GOAT3D_MESH_ATTR_TEXCOORD))) {
+		mesh->uvarr = malloc_nf(mesh->vcount * sizeof *mesh->uvarr);
+		memcpy(mesh->uvarr, data, mesh->vcount * sizeof *mesh->uvarr);
+	}
+
+	data = goat3d_get_mesh_faces(gmesh);
+	mesh->idxarr = malloc_nf(mesh->icount * sizeof *mesh->idxarr);
+	memcpy(mesh->idxarr, data, mesh->icount * sizeof *mesh->idxarr);
+
+	if((gmtl = goat3d_get_mesh_mtl(gmesh))) {
+		if((mattr = goat3d_get_mtl_attrib(gmtl, GOAT3D_MAT_ATTR_DIFFUSE))) {
+			cgm_wcons(&mesh->mtl.kd, mattr[0], mattr[1], mattr[2], 1);
+		}
+		if((mattr = goat3d_get_mtl_attrib(gmtl, GOAT3D_MAT_ATTR_SPECULAR))) {
+			cgm_wcons(&mesh->mtl.ks, mattr[0], mattr[1], mattr[2], 1);
+		}
+		if((mattr = goat3d_get_mtl_attrib(gmtl, GOAT3D_MAT_ATTR_SHININESS))) {
+			mesh->mtl.shin = mattr[0];
+		}
+		if((mattr = goat3d_get_mtl_attrib(gmtl, GOAT3D_MAT_ATTR_ALPHA))) {
+			mesh->mtl.kd.w = mattr[0];
+		}
+		if((str = goat3d_get_mtl_attrib_map(gmtl, GOAT3D_MAT_ATTR_DIFFUSE))) {
+			mesh->mtl.texmap = lvl_texture(lvl, str);
+		}
+		if((str = goat3d_get_mtl_attrib_map(gmtl, GOAT3D_MAT_ATTR_REFLECTION))) {
+			mesh->mtl.envmap = lvl_texture(lvl, str);
+		}
+	}
+
+	return 0;
 }

@@ -14,7 +14,8 @@ struct portal {
 };
 
 struct level {
-	struct room **rooms;	/* darr */
+	struct room **rooms;		/* darr */
+	struct texture **textures;	/* darr */
 };
 
 struct room *alloc_room(void);
@@ -24,5 +25,7 @@ void lvl_init(struct level *lvl);
 void lvl_destroy(struct level *lvl);
 
 int lvl_load(struct level *lvl, const char *fname);
+
+struct texture *lvl_texture(struct level *lvl, const char *fname);
 
 #endif	/* LEVEL_H_ */
