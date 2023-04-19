@@ -74,9 +74,9 @@ void game_shutdown(void)
 {
 	int i;
 
-	save_options(GAME_CFG_FILE);
-
 	putchar('\n');
+
+	save_options(GAME_CFG_FILE);
 
 	for(i=0; i<num_screens; i++) {
 		if(screens[i]->destroy) {
