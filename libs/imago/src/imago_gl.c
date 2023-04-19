@@ -92,6 +92,8 @@ static int load_glfunc(void);
 #ifndef GL_RGBA32F
 #define GL_RGBA32F				0x8814
 #define GL_RGB32F				0x8815
+#endif
+#ifndef GL_LUMINANCE32F
 #define GL_LUMINANCE32F			0x8818
 #endif
 
