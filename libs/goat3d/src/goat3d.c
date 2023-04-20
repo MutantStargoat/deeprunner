@@ -515,7 +515,7 @@ GOAT3DAPI int goat3d_set_mtl_attrib_map(struct goat3d_material *mtl, const char 
 GOAT3DAPI const char *goat3d_get_mtl_attrib_map(struct goat3d_material *mtl, const char *attrib)
 {
 	struct material_attrib *ma = g3dimpl_mtl_findattr(mtl, attrib);
-	return ma->map;
+	return ma ? ma->map : 0;
 }
 
 GOAT3DAPI const char *goat3d_get_mtl_attrib_name(struct goat3d_material *mtl, int idx)

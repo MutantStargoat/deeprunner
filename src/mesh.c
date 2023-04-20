@@ -27,6 +27,18 @@ void mesh_destroy(struct mesh *m)
 	}
 }
 
+void mesh_transform(struct mesh *m, const float *mat)
+{
+	int i;
+
+	for(i=0; i<m->vcount; i++) {
+		cgm_vmul_m4v3(m->varr + i, mat);
+		if(m->narr) {
+			cgm_vmul_m3v3(m->narr + i, mat);
+		}
+	}
+}
+
 void mesh_compile(struct mesh *m)
 {
 	if(!m || !m->vcount) return;

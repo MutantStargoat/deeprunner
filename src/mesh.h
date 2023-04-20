@@ -18,6 +18,8 @@ struct mesh {
 int mesh_init(struct mesh *m);
 void mesh_destroy(struct mesh *m);
 
+void mesh_transform(struct mesh *m, const float *mat);
+
 void mesh_compile(struct mesh *m);
 
 #endif	/* MESH_H_ */

@@ -125,6 +125,7 @@ static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, 
 	enum goat3d_node_type type = goat3d_get_node_type(gnode);
 	struct goat3d_mesh *gmesh;
 	struct mesh mesh;
+	float xform[16];
 
 	if(match_prefix(name, "portal_")) {
 		/* ignore portals at this stage, we'll connect them up later */
@@ -133,14 +134,20 @@ static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, 
 			fprintf(stderr, "ignoring non-mesh node with \"col_\" prefix: %s\n", name);
 		} else {
 			gmesh = goat3d_get_node_object(gnode);
+			mesh_init(&mesh);
 			if(conv_mesh(lvl, &mesh, gscn, gmesh) != -1) {
+				goat3d_get_node_matrix(gnode, xform);
+				mesh_transform(&mesh, xform);
 				darr_push(room->colmesh, &mesh);
 			}
 		}
 	} else {
 		if(type == GOAT3D_NODE_MESH) {
 			gmesh = goat3d_get_node_object(gnode);
+			mesh_init(&mesh);
 			if(conv_mesh(lvl, &mesh, gscn, gmesh) != -1) {
+				goat3d_get_node_matrix(gnode, xform);
+				mesh_transform(&mesh, xform);
 				darr_push(room->meshes, &mesh);
 			}
 		}
@@ -184,6 +191,8 @@ static int conv_mesh(struct level *lvl, struct mesh *mesh, struct goat3d *gscn, 
 	data = goat3d_get_mesh_faces(gmesh);
 	mesh->idxarr = malloc_nf(mesh->icount * sizeof *mesh->idxarr);
 	memcpy(mesh->idxarr, data, mesh->icount * sizeof *mesh->idxarr);
+
+	mtl_init(&mesh->mtl);
 
 	if((gmtl = goat3d_get_mesh_mtl(gmesh))) {
 		if((mattr = goat3d_get_mtl_attrib(gmtl, GOAT3D_MAT_ATTR_DIFFUSE))) {

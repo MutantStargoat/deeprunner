@@ -1,19 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <GL/gl.h>
-#include <GL/glu.h>
+#include "opengl.h"
 #include "imago2.h"
 #include "miniglut.h"
 #include "game.h"
 #include "util.h"
-#include "goat3d.h"
+#include "level.h"
 #include "input.h"
 #include "player.h"
 #include "cgmath/cgmath.h"
 #include "audio.h"
 #include "options.h"
 #include "player.h"
+#include "rendlvl.h"
 
 static int ginit(void);
 static void gdestroy(void);
@@ -46,8 +46,7 @@ static float view_mat[16], proj_mat[16];
 
 static struct player player;
 
-static struct goat3d *gscn;
-static int dlist;
+static struct level lvl;
 static unsigned int dbgtex;
 static unsigned int uitex;
 
@@ -58,58 +57,12 @@ static int dbg_atest, dbg_split, dbg_noui;
 
 static int ginit(void)
 {
-	int i, num, nfaces;
-	int *idxarr;
-	float *varr, *narr, *uvarr;
-	float xform[16];
+	int i;
 
-	if(!(gscn = goat3d_create()) || goat3d_load(gscn, "data/level1.g3d")) {
+	lvl_init(&lvl);
+	if(lvl_load(&lvl, "data/level1.lvl") == -1) {
 		return -1;
 	}
-
-	dlist = glGenLists(1);
-	glNewList(dlist, GL_COMPILE);
-	num = goat3d_get_node_count(gscn);
-	for(i=0; i<num; i++) {
-		struct goat3d_node *node = goat3d_get_node(gscn, i);
-		if(match_prefix(goat3d_get_node_name(node), "portal_")) {
-			continue;
-		}
-		if(goat3d_get_node_type(node) == GOAT3D_NODE_MESH) {
-			struct goat3d_mesh *mesh = goat3d_get_node_object(node);
-
-			goat3d_get_node_matrix(node, xform);
-			glPushMatrix();
-			glMultMatrixf(xform);
-
-			varr = goat3d_get_mesh_attribs(mesh, GOAT3D_MESH_ATTR_VERTEX);
-			narr = goat3d_get_mesh_attribs(mesh, GOAT3D_MESH_ATTR_NORMAL);
-			uvarr = goat3d_get_mesh_attribs(mesh, GOAT3D_MESH_ATTR_TEXCOORD);
-
-			glEnableClientState(GL_VERTEX_ARRAY);
-			glVertexPointer(3, GL_FLOAT, 0, varr);
-
-			if(narr) {
-				glEnableClientState(GL_NORMAL_ARRAY);
-				glNormalPointer(GL_FLOAT, 0, narr);
-			}
-			if(uvarr) {
-				glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-				glTexCoordPointer(2, GL_FLOAT, 0, uvarr);
-			}
-
-			nfaces = goat3d_get_mesh_face_count(mesh);
-			idxarr = goat3d_get_mesh_faces(mesh);
-			glDrawElements(GL_TRIANGLES, nfaces * 3, GL_UNSIGNED_INT, idxarr);
-
-			glDisableClientState(GL_VERTEX_ARRAY);
-			glDisableClientState(GL_NORMAL_ARRAY);
-			glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-
-			glPopMatrix();
-		}
-	}
-	glEndList();
 
 	{
 		int j;
@@ -142,7 +95,7 @@ static int ginit(void)
 
 static void gdestroy(void)
 {
-	goat3d_free(gscn);
+	lvl_destroy(&lvl);
 }
 
 static int gstart(void)
@@ -158,6 +111,10 @@ static int gstart(void)
 	glEnable(GL_LIGHT1);
 	set_light_color(2, 0.5, 0.6, 1, 0.3);
 	glEnable(GL_LIGHT2);
+
+	if(rendlvl_init(&lvl)) {
+		return -1;
+	}
 
 	init_player(&player);
 
@@ -178,6 +135,8 @@ static void gstop(void)
 		au_free_module(mod);
 		mod = 0;
 	}
+
+	rendlvl_destroy();
 }
 
 #define TSTEP	(1.0f / 30.0f)
@@ -197,6 +156,14 @@ static void gupdate(void)
 		}
 		if(inpstate & INP_LEFT_BIT) {
 			player.vel.x += KB_MOVE_SPEED;
+		}
+		if(inpstate & INP_LROLL_BIT) {
+			player.roll -= 0.1;
+			printf("roll: %f\n", player.roll);
+		}
+		if(inpstate & INP_RROLL_BIT) {
+			player.roll += 0.1;
+			printf("roll: %f\n", player.roll);
 		}
 	}
 
@@ -232,14 +199,9 @@ static void gdisplay(void)
 	set_light_dir(1, 5, 0, 3);
 	set_light_dir(2, -0.5, -2, -3);
 
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, dbgtex);
-
-	glCallList(dlist);
+	render_level();
 
 	draw_ui();
-
-	glDisable(GL_TEXTURE_2D);
 }
 
 #define UIW		256
@@ -265,6 +227,9 @@ static void draw_ui(void)
 		glEnable(GL_ALPHA_TEST);
 		glAlphaFunc(GL_GREATER, 0.008);
 	}
+
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, dbgtex);
 
 	if(dbg_split) {
 		glBindTexture(GL_TEXTURE_2D, uitex);

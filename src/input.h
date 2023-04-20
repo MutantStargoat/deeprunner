@@ -23,7 +23,7 @@ enum {
 #define INP_RROLL_BIT	(1 << INP_RROLL)
 
 #define INP_MOVE_BITS	\
-	(INP_FWD_BIT | INP_BACK_BIT | INP_LEFT_BIT | INP_RIGHT_BIT)
+	(INP_FWD_BIT | INP_BACK_BIT | INP_LEFT_BIT | INP_RIGHT_BIT | INP_LROLL_BIT | INP_RROLL_BIT)
 
 struct input_map {
 	int inp, key, mbn;

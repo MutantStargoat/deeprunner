@@ -48,8 +48,13 @@ void update_player_sball(struct player *p)
 void update_player(struct player *p)
 {
 	float rotmat[16];
+	cgm_quat rollquat;
 
 	cgm_vec3 fwd = {0, 0, 1}, right = {1, 0, 0}, up = {0, 1, 0};
+
+	cgm_qrotation(&rollquat, p->roll, 0, 0, 1);
+	cgm_qmul(&rollquat, &p->rot);
+	p->rot = rollquat;
 
 	cgm_mrotation_quat(rotmat, &p->rot);
 	cgm_vmul_v3m4(&fwd, rotmat);
@@ -61,6 +66,7 @@ void update_player(struct player *p)
 	p->pos.z += right.z * p->vel.x + up.z * p->vel.y + fwd.z * p->vel.z;
 
 	cgm_vcons(&p->vel, 0, 0, 0);
+	p->roll = 0;
 }
 
 void player_view_matrix(struct player *p, float *view_mat)
