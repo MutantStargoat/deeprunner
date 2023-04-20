@@ -159,11 +159,9 @@ static void gupdate(void)
 		}
 		if(inpstate & INP_LROLL_BIT) {
 			player.roll -= 0.1;
-			printf("roll: %f\n", player.roll);
 		}
 		if(inpstate & INP_RROLL_BIT) {
 			player.roll += 0.1;
-			printf("roll: %f\n", player.roll);
 		}
 	}
 

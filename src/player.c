@@ -52,9 +52,11 @@ void update_player(struct player *p)
 
 	cgm_vec3 fwd = {0, 0, 1}, right = {1, 0, 0}, up = {0, 1, 0};
 
-	cgm_qrotation(&rollquat, p->roll, 0, 0, 1);
-	cgm_qmul(&rollquat, &p->rot);
-	p->rot = rollquat;
+	if(p->roll != 0.0f) {
+		cgm_qrotation(&rollquat, p->roll, 0, 0, 1);
+		cgm_qmul(&rollquat, &p->rot);
+		p->rot = rollquat;
+	}
 
 	cgm_mrotation_quat(rotmat, &p->rot);
 	cgm_vmul_v3m4(&fwd, rotmat);
