@@ -39,6 +39,17 @@ void mesh_transform(struct mesh *m, const float *mat)
 	}
 }
 
+void mesh_calc_bounds(struct mesh *m)
+{
+	int i;
+
+	aabox_init(&m->aabb);
+
+	for(i=0; i<m->vcount; i++) {
+		aabox_union_point(&m->aabb, m->varr + i);
+	}
+}
+
 void mesh_compile(struct mesh *m)
 {
 	if(!m || !m->vcount) return;

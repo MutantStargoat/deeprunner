@@ -6,12 +6,14 @@
 
 static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, struct goat3d_node *gnode);
 static int conv_mesh(struct level *lvl, struct mesh *mesh, struct goat3d *gscn, struct goat3d_mesh *gmesh);
+static void build_room_octree(struct octnode *octn, struct level *lvl);
 
 struct room *alloc_room(void)
 {
 	struct room *room = calloc_nf(1, sizeof *room);
 	room->meshes = darr_alloc(0, sizeof *room->meshes);
 	room->colmesh = darr_alloc(0, sizeof *room->colmesh);
+	aabox_init(&room->aabb);
 	return room;
 }
 
@@ -40,11 +42,24 @@ void free_room(struct room *room)
 void lvl_init(struct level *lvl)
 {
 	lvl->rooms = darr_alloc(0, sizeof *lvl->rooms);
+	lvl->textures = darr_alloc(0, sizeof *lvl->textures);
+	lvl->roomtree = 0;
 }
 
 void lvl_destroy(struct level *lvl)
 {
+	int i;
+	for(i=0; i<darr_size(lvl->rooms); i++) {
+		free_room(lvl->rooms[i]);
+	}
 	darr_free(lvl->rooms);
+
+	for(i=0; i<darr_size(lvl->textures); i++) {
+		tex_free(lvl->textures[i]);
+	}
+	darr_free(lvl->textures);
+
+	oct_free(lvl->roomtree);
 }
 
 int lvl_load(struct level *lvl, const char *fname)
@@ -55,6 +70,9 @@ int lvl_load(struct level *lvl, const char *fname)
 	struct goat3d *gscn;
 	struct goat3d_node *gnode;
 	struct room *room;
+	struct aabox aabb;
+
+	aabox_init(&aabb);
 
 	if(!(ts = ts_load(fname))) {
 		fprintf(stderr, "lvl_load: failed to load level file: %s\n", fname);
@@ -91,10 +109,22 @@ int lvl_load(struct level *lvl, const char *fname)
 			continue;
 		}
 
+		aabox_union(&aabb, &room->aabb);
+
 		darr_push(lvl->rooms, &room);
 	}
 
 	/* TODO read room nodes with portal links */
+
+	/* construct octree for mapping regions of space to rooms containing them */
+	printf("level %s bounds: %g,%g,%g -> %g,%g,%g\n", fname, aabb.vmin.x,
+			aabb.vmin.y, aabb.vmin.z, aabb.vmax.x, aabb.vmax.y, aabb.vmax.z);
+	if(!(lvl->roomtree = oct_create(&aabb))) {
+		ts_free_tree(ts);
+		return -1;
+	}
+
+	build_room_octree(lvl->roomtree, lvl);
 
 	ts_free_tree(ts);
 	return 0;
@@ -118,6 +148,16 @@ struct texture *lvl_texture(struct level *lvl, const char *fname)
 	return tex;
 }
 
+struct room *lvl_room_at(struct level *lvl, float x, float y, float z)
+{
+	struct octnode *octn;
+
+	if(!(octn = oct_find_leaf(lvl->roomtree, x, y, z))) {
+		return 0;
+	}
+	return octn->data;
+}
+
 static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, struct goat3d_node *gnode)
 {
 	int i, count;
@@ -138,6 +178,8 @@ static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, 
 			if(conv_mesh(lvl, &mesh, gscn, gmesh) != -1) {
 				goat3d_get_node_matrix(gnode, xform);
 				mesh_transform(&mesh, xform);
+				mesh_calc_bounds(&mesh);
+				aabox_union(&room->aabb, &mesh.aabb);
 				darr_push(room->colmesh, &mesh);
 			}
 		}
@@ -148,6 +190,8 @@ static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, 
 			if(conv_mesh(lvl, &mesh, gscn, gmesh) != -1) {
 				goat3d_get_node_matrix(gnode, xform);
 				mesh_transform(&mesh, xform);
+				mesh_calc_bounds(&mesh);
+				aabox_union(&room->aabb, &mesh.aabb);
 				darr_push(room->meshes, &mesh);
 			}
 		}
@@ -216,4 +260,19 @@ static int conv_mesh(struct level *lvl, struct mesh *mesh, struct goat3d *gscn, 
 	}
 
 	return 0;
+}
+
+static void build_room_octree(struct octnode *octn, struct level *lvl)
+{
+	int i, j, nrooms, nmeshes;
+	int num_cont = 0;
+	struct room *cont_room = 0;
+
+	/* find rooms intersecting with this node, by checking with the room
+	 * bounding box first, and then all vertices of the room's collision
+	 * geometry
+	 */
+	for(i=0; i<nrooms; i++) {
+
+	}
 }

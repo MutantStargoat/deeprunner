@@ -2,11 +2,13 @@
 #define LEVEL_H_
 
 #include "mesh.h"
+#include "octree.h"
 
 struct room {
 	char *name;
 	struct mesh *meshes;	/* darr */
 	struct mesh *colmesh;	/* darr */
+	struct aabox aabb;		/* axis-aligned bounding box of this room */
 };
 
 struct portal {
@@ -16,6 +18,7 @@ struct portal {
 struct level {
 	struct room **rooms;		/* darr */
 	struct texture **textures;	/* darr */
+	struct octnode *roomtree;	/* octree for finding rooms by point */
 };
 
 struct room *alloc_room(void);
@@ -27,5 +30,7 @@ void lvl_destroy(struct level *lvl);
 int lvl_load(struct level *lvl, const char *fname);
 
 struct texture *lvl_texture(struct level *lvl, const char *fname);
+
+struct room *lvl_room_at(struct level *lvl, float x, float y, float z);
 
 #endif	/* LEVEL_H_ */
