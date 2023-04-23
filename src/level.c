@@ -29,11 +29,16 @@ void free_room(struct room *room)
 	}
 	darr_free(room->meshes);
 
-	count = darr_size(room->colmesh);
-	for(i=0; i<count; i++) {
-		mesh_destroy(room->colmesh + i);
+	/* for rooms without collision meshes, colmesh just points to meshes,
+	 * so don't attempt to free twice
+	 */
+	if(room->colmesh != room->meshes) {
+		count = darr_size(room->colmesh);
+		for(i=0; i<count; i++) {
+			mesh_destroy(room->colmesh + i);
+		}
+		darr_free(room->colmesh);
 	}
-	darr_free(room->colmesh);
 
 	free(room->name);
 }
@@ -110,6 +115,16 @@ int lvl_load(struct level *lvl, const char *fname)
 		}
 
 		aabox_union(&aabb, &room->aabb);
+
+		/* if the room has no collision meshes, use the renderable meshes for
+		 * collisions and issue a warning
+		 */
+		if(darr_empty(room->colmesh)) {
+			fprintf(stderr, "lvl_load(%s): warning, room %s has no collision meshes, using render meshes instead!\n",
+					fname, room->name);
+			darr_free(room->colmesh);
+			room->colmesh = room->meshes;
+		}
 
 		darr_push(lvl->rooms, &room);
 	}
@@ -266,13 +281,20 @@ static void build_room_octree(struct octnode *octn, struct level *lvl)
 {
 	int i, j, nrooms, nmeshes;
 	int num_cont = 0;
-	struct room *cont_room = 0;
+	struct room *room, *cont_room = 0;
 
-	/* find rooms intersecting with this node, by checking with the room
-	 * bounding box first, and then all vertices of the room's collision
-	 * geometry
-	 */
 	for(i=0; i<nrooms; i++) {
+		room = lvl->rooms[i];
+		if(!aabox_aabox_test(&octn->aabb, &room->aabb)) {
+			continue;	/* skip, this room does not touch this node's box */
+		}
 
+		/* for boxes which pass the bounds test, try all the triangles of their
+		 * collision mesh
+		 */
+		nmeshes = darr_size(room->colmesh);
+		for(j=0; j<nmeshes; j++) {
+
+		}
 	}
 }
