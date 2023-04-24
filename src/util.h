@@ -23,4 +23,7 @@ char *strdup_nf_impl(const char *s, const char *file, int line);
 
 int match_prefix(const char *str, const char *prefix);
 
+void enable_fpexcept(void);
+void disable_fpexcept(void);
+
 #endif	/* UTIL_H_ */

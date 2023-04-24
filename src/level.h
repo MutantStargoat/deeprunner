@@ -9,6 +9,7 @@ struct room {
 	struct mesh *meshes;	/* darr */
 	struct mesh *colmesh;	/* darr */
 	struct aabox aabb;		/* axis-aligned bounding box of this room */
+	struct octnode *octree;	/* octree for collision poly intersections */
 };
 
 struct portal {
@@ -18,7 +19,6 @@ struct portal {
 struct level {
 	struct room **rooms;		/* darr */
 	struct texture **textures;	/* darr */
-	struct octnode *roomtree;	/* octree for finding rooms by point */
 };
 
 struct room *alloc_room(void);

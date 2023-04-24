@@ -7,6 +7,7 @@
 #include "input.h"
 #include "audio.h"
 #include "options.h"
+#include "util.h"
 
 static void draw_volume_bar(void);
 
@@ -33,6 +34,10 @@ int game_init(void)
 {
 	int i;
 	char *start_scr_name;
+
+#ifndef NDEBUG
+	enable_fpexcept();
+#endif
 
 	load_options(GAME_CFG_FILE);
 	game_resize(opt.xres, opt.yres);

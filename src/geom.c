@@ -3,19 +3,26 @@
 
 void tri_cons(struct triangle *tri, const cgm_vec3 *a, const cgm_vec3 *b, const cgm_vec3 *c)
 {
-	cgm_vec3 ab, ac;
-
 	tri->v[0] = *a;
 	tri->v[1] = *b;
 	tri->v[2] = *c;
 
-	ab = *b; cgm_vsub(&ab, a);
-	ac = *c; cgm_vsub(&ac, c);
+	tri_calc_normal(tri);
+
+	tri->data = 0;
+}
+
+void tri_calc_normal(struct triangle *tri)
+{
+	cgm_vec3 ab, ac;
+
+	ab = tri->v[1]; cgm_vsub(&ab, tri->v);
+	ac = tri->v[2]; cgm_vsub(&ac, tri->v);
 	cgm_vcross(&tri->norm, &ab, &ac);
 	cgm_vnormalize(&tri->norm);
 }
 
-int ray_triangle(const cgm_ray *ray, const struct triangle *tri, float tmax)
+int ray_triangle(const cgm_ray *ray, const struct triangle *tri, float tmax, struct trihit *hit)
 {
 	float t, ndotdir;
 	cgm_vec3 vdir, bc, pos;
@@ -38,22 +45,30 @@ int ray_triangle(const cgm_ray *ray, const struct triangle *tri, float tmax)
 	if(bc.y < 0.0f || bc.y > 1.0f) return 0;
 	if(bc.z < 0.0f || bc.z > 1.0f) return 0;
 
+	if(hit) {
+		hit->t = t;
+		cgm_raypos(&hit->pt, ray, t);
+		hit->tri = tri;
+	}
+
 	return 1;
 }
 
 #define SLABCHECK(dim)	\
 	do { \
-		invdir = 1.0f / ray->dir.dim;	\
-		t0 = (box->vmin.dim - ray->origin.dim) * invdir;	\
-		t1 = (box->vmax.dim - ray->origin.dim) * invdir;	\
-		if(invdir < 0.0f) {	\
-			tmp = t0;	\
-			t0 = t1;	\
-			t1 = tmp;	\
-		}	\
-		tmin = t0 > tmin ? t0 : tmin;	\
-		tmax = t1 < tmax ? t1 : tmax;	\
-		if(tmax < tmin) return 0; \
+		if(ray->dir.dim != 0.0f) { \
+			invdir = 1.0f / ray->dir.dim;	\
+			t0 = (box->vmin.dim - ray->origin.dim) * invdir;	\
+			t1 = (box->vmax.dim - ray->origin.dim) * invdir;	\
+			if(invdir < 0.0f) {	\
+				tmp = t0;	\
+				t0 = t1;	\
+				t1 = tmp;	\
+			}	\
+			tmin = t0 > tmin ? t0 : tmin;	\
+			tmax = t1 < tmax ? t1 : tmax;	\
+			if(tmax < tmin) return 0; \
+		} \
 	} while(0)
 
 
@@ -78,8 +93,8 @@ void aabox_init(struct aabox *box)
 int aabox_contains(const struct aabox *aabb, float x, float y, float z)
 {
 	if(x < aabb->vmin.x || x >= aabb->vmax.x) return 0;
-	if(y < aabb->vmin.y || y >= aabb->vmin.y) return 0;
-	if(z < aabb->vmin.z || z >= aabb->vmin.z) return 0;
+	if(y < aabb->vmin.y || y >= aabb->vmax.y) return 0;
+	if(z < aabb->vmin.z || z >= aabb->vmax.z) return 0;
 	return 1;
 }
 
@@ -111,6 +126,89 @@ int aabox_aabox_test(const struct aabox *a, const struct aabox *b)
 	return 1;
 }
 
+/* aabox/plane intersection test taken from "Realtime Collision Detection" by
+ * Christer Ericson. ch.5.2.3, p.164.
+ */
+int aabox_plane_test(const struct aabox *box, const struct plane *plane)
+{
+	cgm_vec3 c, e;
+	float r, s;
+
+	/* compute aabox center/extents */
+	c.x = (box->vmin.x + box->vmax.x) * 0.5f;
+	c.y = (box->vmin.y + box->vmax.y) * 0.5f;
+	c.z = (box->vmin.z + box->vmax.z) * 0.5f;
+	e = box->vmax; cgm_vsub(&e, &c);
+
+	/* compute the projection interval radius of box onto L(t) = c + norm * t */
+	r = e.x * fabs(plane->norm.x) + e.y * fabs(plane->norm.y) + e.z * fabs(plane->norm.z);
+	/* compute distance of box center from plane */
+	s = cgm_vdot(&plane->norm, &c) - plane->d;
+	/* intersects if distance s in [-r, r] */
+	return fabs(s) <= r;
+}
+
+static CGM_INLINE float fltmin(float a, float b) { return a < b ? a : b; }
+static CGM_INLINE float fltmax(float a, float b) { return a > b ? a : b; }
+#define fltmin3(a, b, c)	fltmin(fltmin(a, b), c)
+#define fltmax3(a, b, c)	fltmax(fltmax(a, b), c)
+
+/* aabox/triangle intersection test based on algorithm from
+ * "Realtime Collision Detection" by Christer Ericson. ch.5.2.9, p.171.
+ */
+int aabox_tri_test(const struct aabox *box, const struct triangle *tri)
+{
+	int i, j;
+	float p0, p1, p2, r, e0, e1, e2, minp, maxp;
+	cgm_vec3 c, v0, v1, v2, f[3];
+	cgm_vec3 ax;
+	struct plane plane;
+	static const cgm_vec3 bax[] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+
+	/* compute aabox center/extents */
+	c.x = (box->vmin.x + box->vmax.x) * 0.5f;
+	c.y = (box->vmin.y + box->vmax.y) * 0.5f;
+	c.z = (box->vmin.z + box->vmax.z) * 0.5f;
+	e0 = (box->vmax.x - box->vmin.x) * 0.5f;
+	e1 = (box->vmax.y - box->vmin.y) * 0.5f;
+	e2 = (box->vmax.z - box->vmin.z) * 0.5f;
+
+	/* translate triangle to the coordinate system of the bounding box */
+	v0 = tri->v[0]; cgm_vsub(&v0, &c);
+	v1 = tri->v[1]; cgm_vsub(&v1, &c);
+	v2 = tri->v[2]; cgm_vsub(&v2, &c);
+
+	/* compute edge vectors for triangle */
+	f[0] = v1; cgm_vsub(f, &v0);
+	f[1] = v2; cgm_vsub(f + 1, &v1);
+	f[2] = v0; cgm_vsub(f + 2, &v2);
+
+	/* test axes a00..a22 */
+	for(i=0; i<3; i++) {
+		for(j=0; j<3; j++) {
+			cgm_vcross(&ax, bax + i, f + j);
+			p0 = cgm_vdot(&v0, &ax);
+			p1 = cgm_vdot(&v1, &ax);
+			p2 = cgm_vdot(&v2, &ax);
+			r = e0 * cgm_vdot(f, &ax) + e1 * cgm_vdot(f + 1, &ax) + e2 * cgm_vdot(f + 2, &ax);
+
+			minp = fltmin3(p0, p1, p2);
+			maxp = fltmax3(p0, p1, p2);
+
+			if(minp > r || maxp < -r) return 0;		/* found separating axis */
+		}
+	}
+
+	if(fltmax3(v0.x, v1.x, v2.x) < -e0 || fltmin3(v0.x, v1.x, v2.x) > e0) return 0;
+	if(fltmax3(v0.y, v1.y, v2.y) < -e1 || fltmin3(v0.y, v1.y, v2.y) > e1) return 0;
+	if(fltmax3(v0.z, v1.z, v2.z) < -e2 || fltmin3(v0.z, v1.z, v2.z) > e2) return 0;
+
+	plane.norm = tri->norm;
+	plane.d = cgm_vdot(&tri->norm, &v0);
+	return aabox_plane_test(box, &plane);
+}
+
+#if 0
 /* XXX this is a rough triangle-aabox test which might miss some triangles
  * it should be fine for our use case though
  */
@@ -137,4 +235,5 @@ int aabox_tri_test(const struct aabox *box, const struct triangle *tri)
 
 	return 0;
 }
+#endif
 

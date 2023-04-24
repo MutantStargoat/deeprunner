@@ -50,6 +50,34 @@ void mesh_calc_bounds(struct mesh *m)
 	}
 }
 
+int mesh_num_triangles(struct mesh *m)
+{
+	return (m->idxarr ? m->icount : m->vcount) / 3;
+}
+
+void mesh_get_triangle(struct mesh *m, int idx, struct triangle *tri)
+{
+	unsigned int vidx[3];
+
+	idx *= 3;
+
+	if(m->idxarr) {
+		vidx[0] = m->idxarr[idx];
+		vidx[1] = m->idxarr[idx + 1];
+		vidx[2] = m->idxarr[idx + 2];
+	} else {
+		vidx[0] = idx;
+		vidx[1] = idx + 1;
+		vidx[2] = idx + 2;
+	}
+	tri->v[0] = m->varr[vidx[0]];
+	tri->v[1] = m->varr[vidx[1]];
+	tri->v[2] = m->varr[vidx[2]];
+
+	tri_calc_normal(tri);
+	tri->data = 0;
+}
+
 void mesh_compile(struct mesh *m)
 {
 	if(!m || !m->vcount) return;

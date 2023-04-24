@@ -1,3 +1,5 @@
+#include <assert.h>
+#include <float.h>
 #include "level.h"
 #include "goat3d.h"
 #include "darray.h"
@@ -6,7 +8,7 @@
 
 static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, struct goat3d_node *gnode);
 static int conv_mesh(struct level *lvl, struct mesh *mesh, struct goat3d *gscn, struct goat3d_mesh *gmesh);
-static void build_room_octree(struct octnode *octn, struct level *lvl);
+static void build_room_octree(struct room *room);
 
 struct room *alloc_room(void)
 {
@@ -32,7 +34,7 @@ void free_room(struct room *room)
 	/* for rooms without collision meshes, colmesh just points to meshes,
 	 * so don't attempt to free twice
 	 */
-	if(room->colmesh != room->meshes) {
+	if(room->colmesh && room->colmesh != room->meshes) {
 		count = darr_size(room->colmesh);
 		for(i=0; i<count; i++) {
 			mesh_destroy(room->colmesh + i);
@@ -41,6 +43,8 @@ void free_room(struct room *room)
 	}
 
 	free(room->name);
+
+	oct_free(room->octree);
 }
 
 
@@ -48,7 +52,6 @@ void lvl_init(struct level *lvl)
 {
 	lvl->rooms = darr_alloc(0, sizeof *lvl->rooms);
 	lvl->textures = darr_alloc(0, sizeof *lvl->textures);
-	lvl->roomtree = 0;
 }
 
 void lvl_destroy(struct level *lvl)
@@ -63,8 +66,6 @@ void lvl_destroy(struct level *lvl)
 		tex_free(lvl->textures[i]);
 	}
 	darr_free(lvl->textures);
-
-	oct_free(lvl->roomtree);
 }
 
 int lvl_load(struct level *lvl, const char *fname)
@@ -126,20 +127,17 @@ int lvl_load(struct level *lvl, const char *fname)
 			room->colmesh = room->meshes;
 		}
 
+		/* construct octree for ray-tests with this room's collision mesh
+		 * this also destroys the colmesh array if it's not the same as the
+		 * renderable meshes array, because it's not needed any more. The octree
+		 * replaces it completely.
+		 */
+		build_room_octree(room);
+
 		darr_push(lvl->rooms, &room);
 	}
 
 	/* TODO read room nodes with portal links */
-
-	/* construct octree for mapping regions of space to rooms containing them */
-	printf("level %s bounds: %g,%g,%g -> %g,%g,%g\n", fname, aabb.vmin.x,
-			aabb.vmin.y, aabb.vmin.z, aabb.vmax.x, aabb.vmax.y, aabb.vmax.z);
-	if(!(lvl->roomtree = oct_create(&aabb))) {
-		ts_free_tree(ts);
-		return -1;
-	}
-
-	build_room_octree(lvl->roomtree, lvl);
 
 	ts_free_tree(ts);
 	return 0;
@@ -165,12 +163,47 @@ struct texture *lvl_texture(struct level *lvl, const char *fname)
 
 struct room *lvl_room_at(struct level *lvl, float x, float y, float z)
 {
-	struct octnode *octn;
+	/* XXX hack until we get the portals in, use 6 rays, and keep the best
+	 * in case one or two happens to go through a portal
+	 */
+	int i, j, num_rooms;
+	cgm_ray ray;
+	struct room *room;
+	int *roomhits, maxhits = 0;
+	static const cgm_vec3 rdir[] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {-1, 0, 0},
+		{0, -1, 0}, {0, 0, -1}};
 
-	if(!(octn = oct_find_leaf(lvl->roomtree, x, y, z))) {
-		return 0;
+
+	cgm_vcons(&ray.origin, x, y, z);
+
+	num_rooms = darr_size(lvl->rooms);
+	roomhits = alloca(num_rooms * sizeof *roomhits);
+	memset(roomhits, 0, num_rooms * sizeof *roomhits);
+
+	for(i=0; i<num_rooms; i++) {
+		room = lvl->rooms[i];
+
+		if(!aabox_contains(&room->aabb, x, y, z)) {
+			continue;
+		}
+
+		for(j=0; j<6; j++) {
+			ray.dir = rdir[j];
+			if(oct_raytest(room->octree, &ray, FLT_MAX, 0)) {
+				roomhits[i]++;
+				if(roomhits[i] > maxhits) maxhits = roomhits[i];
+			}
+		}
 	}
-	return octn->data;
+
+	if(maxhits) {
+		for(i=0; i<num_rooms; i++) {
+			if(roomhits[i] == maxhits) {
+				return lvl->rooms[i];
+			}
+		}
+	}
+	return 0;
 }
 
 static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, struct goat3d_node *gnode)
@@ -277,24 +310,40 @@ static int conv_mesh(struct level *lvl, struct mesh *mesh, struct goat3d *gscn, 
 	return 0;
 }
 
-static void build_room_octree(struct octnode *octn, struct level *lvl)
+#define MAX_OCT_DEPTH	8
+#define MAX_OCT_TRIS	16
+
+static void build_room_octree(struct room *room)
 {
-	int i, j, nrooms, nmeshes;
-	int num_cont = 0;
-	struct room *room, *cont_room = 0;
+	int i, j, num_meshes, num_tris;
+	struct triangle tri;
 
-	for(i=0; i<nrooms; i++) {
-		room = lvl->rooms[i];
-		if(!aabox_aabox_test(&octn->aabb, &room->aabb)) {
-			continue;	/* skip, this room does not touch this node's box */
+	if(!room->colmesh) return;
+
+	room->octree = oct_create();
+
+	num_meshes = darr_size(room->colmesh);
+	for(i=0; i<num_meshes; i++) {
+		num_tris = mesh_num_triangles(room->colmesh + i);
+		for(j=0; j<num_tris; j++) {
+			mesh_get_triangle(room->colmesh + i, j, &tri);
+			assert(!isnan(tri.v[0].x) && !isnan(tri.v[0].y) && !isnan(tri.v[0].z));
+			assert(!isnan(tri.v[1].x) && !isnan(tri.v[1].y) && !isnan(tri.v[1].z));
+			assert(!isnan(tri.v[2].x) && !isnan(tri.v[2].y) && !isnan(tri.v[2].z));
+			tri.data = room;
+			oct_addtri(room->octree, &tri);
 		}
+	}
 
-		/* for boxes which pass the bounds test, try all the triangles of their
-		 * collision mesh
-		 */
-		nmeshes = darr_size(room->colmesh);
-		for(j=0; j<nmeshes; j++) {
+	oct_build(room->octree, MAX_OCT_DEPTH, MAX_OCT_TRIS);
 
+	if(room->colmesh != room->meshes) {
+		/* we don't need the collision meshes any more */
+		num_meshes = darr_size(room->colmesh);
+		for(i=0; i<num_meshes; i++) {
+			mesh_destroy(room->colmesh + i);
 		}
+		darr_free(room->colmesh);
+		room->colmesh = 0;
 	}
 }

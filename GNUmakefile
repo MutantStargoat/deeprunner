@@ -5,7 +5,7 @@ bin = game
 
 warn = -pedantic -Wall
 dbg = -g
-opt = -O3
+#opt = -O3
 def = -DMINIGLUT_USE_LIBC -DMIKMOD_STATIC
 inc = -Ilibs -Ilibs/imago/src -Ilibs/treestor/include -Ilibs/goat3d/include \
 	  -Ilibs/mikmod/include

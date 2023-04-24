@@ -23,6 +23,9 @@ void mesh_destroy(struct mesh *m);
 void mesh_transform(struct mesh *m, const float *mat);
 void mesh_calc_bounds(struct mesh *m);
 
+int mesh_num_triangles(struct mesh *m);
+void mesh_get_triangle(struct mesh *m, int idx, struct triangle *tri);
+
 void mesh_compile(struct mesh *m);
 
 #endif	/* MESH_H_ */
