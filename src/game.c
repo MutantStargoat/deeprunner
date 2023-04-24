@@ -23,7 +23,7 @@ long time_msec;
 struct game_screen *cur_scr;
 
 /* available screens */
-extern struct game_screen scr_menu, scr_game;
+extern struct game_screen scr_menu, scr_game, scr_debug;
 #define MAX_SCREENS	4
 static struct game_screen *screens[MAX_SCREENS];
 static int num_screens;
@@ -52,6 +52,7 @@ int game_init(void)
 	/* initialize screens */
 	screens[num_screens++] = &scr_menu;
 	screens[num_screens++] = &scr_game;
+	screens[num_screens++] = &scr_debug;
 
 	start_scr_name = getenv("START_SCREEN");
 
@@ -59,12 +60,6 @@ int game_init(void)
 		if(screens[i]->init() == -1) {
 			return -1;
 		}
-		if(screens[i]->name && start_scr_name && strcmp(screens[i]->name, start_scr_name) == 0) {
-			game_chscr(screens[i]);
-		}
-	}
-	if(!cur_scr) {
-		game_chscr(&scr_game);	/* TODO: scr_menu */
 	}
 
 	init_input();
@@ -72,6 +67,17 @@ int game_init(void)
 	glClearColor(0.1, 0.1, 0.1, 1);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
+
+	for(i=0; i<num_screens; i++) {
+		if(screens[i]->name && start_scr_name && strcmp(screens[i]->name, start_scr_name) == 0) {
+			game_chscr(screens[i]);
+			break;
+		}
+	}
+	if(!cur_scr) {
+		game_chscr(&scr_debug);	/* TODO: scr_menu */
+	}
+
 	return 0;
 }
 
@@ -125,10 +131,6 @@ void game_reshape(int x, int y)
 	win_height = y;
 	win_aspect = (float)x / (float)y;
 	glViewport(0, 0, x, y);
-
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluPerspective(50, win_aspect, 0.5, 500);
 
 	if(cur_scr && cur_scr->reshape) {
 		cur_scr->reshape(x, y);
