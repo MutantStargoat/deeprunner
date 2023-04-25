@@ -53,6 +53,9 @@ static unsigned int uitex;
 static struct au_module *mod;
 
 static int dbg_atest, dbg_split, dbg_noui;
+int dbg_freezevis;
+static cgm_vec3 vispos;
+static cgm_quat visrot;
 
 
 static int ginit(void)
@@ -197,7 +200,30 @@ static void gdisplay(void)
 	set_light_dir(1, 5, 0, 3);
 	set_light_dir(2, -0.5, -2, -3);
 
+	if(!dbg_freezevis) {
+		vispos = player.pos;
+		visrot = player.rot;
+	}
+
+	rendlvl_setup(&vispos, &visrot);
 	render_level();
+
+	if(dbg_freezevis) {
+		glPushAttrib(GL_ENABLE_BIT);
+		glDisable(GL_LIGHTING);
+
+		glBegin(GL_LINES);
+		glColor3f(0, 1, 0);
+		glVertex3f(vispos.x - 100, vispos.y, vispos.z);
+		glVertex3f(vispos.x + 100, vispos.y, vispos.z);
+		glVertex3f(vispos.x, vispos.y - 100, vispos.z);
+		glVertex3f(vispos.x, vispos.y + 100, vispos.z);
+		glVertex3f(vispos.x, vispos.y, vispos.z - 100);
+		glVertex3f(vispos.x, vispos.y, vispos.z + 100);
+		glEnd();
+
+		glPopAttrib();
+	}
 
 	draw_ui();
 }
@@ -322,6 +348,14 @@ static void gkeyb(int key, int press)
 			dbg_atest ^= 1;
 			printf("dbg_atest: %d\n", dbg_atest);
 			break;
+
+		case '\t':
+			dbg_freezevis ^= 1;
+			if(!dbg_freezevis) {
+				player.pos = vispos;
+				player.rot = visrot;
+			}
+
 		}
 	}
 }

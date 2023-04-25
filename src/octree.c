@@ -89,10 +89,9 @@ void oct_build(struct octnode *tree, int maxdepth, int maxnodetris)
 				}
 			}
 
-			//printf("subnode[%d]: added %d / %d tris\n", i, darr_size(node->tris), ntris);
-			if(darr_size(node->tris) != ntris) {
+			/*if(darr_size(node->tris) != ntris) {
 				printf("subnode[%d]: added %d / %d tris\n", i, darr_size(node->tris), ntris);
-			}
+			}*/
 
 			if(darr_empty(node->tris)) {
 				/* no triangles intersect this node, drop it */
@@ -141,7 +140,7 @@ int oct_raytest(const struct octnode *tree, const cgm_ray *ray, float tmax, stru
 	}
 
 	if(hit0.tri) {
-		*hitptr = hit0;
+		if(hitptr) *hitptr = hit0;
 		return 1;
 	}
 	return 0;

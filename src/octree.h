@@ -17,7 +17,7 @@ void oct_build(struct octnode *tree, int maxdepth, int maxnodetris);
 
 int oct_raytest(const struct octnode *tree, const cgm_ray *ray, float tmax, struct trihit *hit);
 
-#define oct_isleaf(n)	((n)->child[0] == 0)
+#define oct_isleaf(n)	((n)->tris)
 struct octnode *oct_find_leaf(struct octnode *tree, float x, float y, float z);
 
 #endif	/* OCTREE_H_ */

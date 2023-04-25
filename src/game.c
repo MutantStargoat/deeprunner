@@ -75,7 +75,7 @@ int game_init(void)
 		}
 	}
 	if(!cur_scr) {
-		game_chscr(&scr_debug);	/* TODO: scr_menu */
+		game_chscr(&scr_game);	/* TODO: scr_menu */
 	}
 
 	return 0;

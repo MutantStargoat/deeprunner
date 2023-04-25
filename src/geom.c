@@ -178,6 +178,13 @@ int aabox_tri_test(const struct aabox *box, const struct triangle *tri)
 	v1 = tri->v[1]; cgm_vsub(&v1, &c);
 	v2 = tri->v[2]; cgm_vsub(&v2, &c);
 
+	/* my own addition: this seems to fail sometimes when the triangle is
+	 * entirely inside the aabox. let's add a hack to catch that...
+	 */
+	if(fabs(v0.x) <= e0 && fabs(v0.y) <= e1 && fabs(v0.z) <= e2) return 1;
+	if(fabs(v1.x) <= e0 && fabs(v1.y) <= e1 && fabs(v1.z) <= e2) return 1;
+	if(fabs(v2.x) <= e0 && fabs(v2.y) <= e1 && fabs(v2.z) <= e2) return 1;
+
 	/* compute edge vectors for triangle */
 	f[0] = v1; cgm_vsub(f, &v0);
 	f[1] = v2; cgm_vsub(f + 1, &v1);
@@ -190,7 +197,8 @@ int aabox_tri_test(const struct aabox *box, const struct triangle *tri)
 			p0 = cgm_vdot(&v0, &ax);
 			p1 = cgm_vdot(&v1, &ax);
 			p2 = cgm_vdot(&v2, &ax);
-			r = e0 * cgm_vdot(f, &ax) + e1 * cgm_vdot(f + 1, &ax) + e2 * cgm_vdot(f + 2, &ax);
+			r = e0 * fabs(cgm_vdot(f, &ax)) + e1 * fabs(cgm_vdot(f + 1, &ax)) +
+				e2 * fabs(cgm_vdot(f + 2, &ax));
 
 			minp = fltmin3(p0, p1, p2);
 			maxp = fltmax3(p0, p1, p2);
@@ -203,8 +211,10 @@ int aabox_tri_test(const struct aabox *box, const struct triangle *tri)
 	if(fltmax3(v0.y, v1.y, v2.y) < -e1 || fltmin3(v0.y, v1.y, v2.y) > e1) return 0;
 	if(fltmax3(v0.z, v1.z, v2.z) < -e2 || fltmin3(v0.z, v1.z, v2.z) > e2) return 0;
 
-	plane.norm = tri->norm;
-	plane.d = cgm_vdot(&tri->norm, &v0);
+	/*plane.norm = tri->norm;*/
+	cgm_vcross(&plane.norm, f, f + 1);
+	/*plane.d = cgm_vdot(&tri->norm, &v0);*/
+	plane.d = cgm_vdot(&plane.norm, &v0);
 	return aabox_plane_test(box, &plane);
 }
 

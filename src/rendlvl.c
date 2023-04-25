@@ -3,6 +3,8 @@
 #include "darray.h"
 
 static struct level *lvl;
+static struct room *cur_room;
+static int dbg_cur_room;
 
 int rendlvl_init(struct level *level)
 {
@@ -29,6 +31,11 @@ void rendlvl_destroy(void)
 {
 }
 
+void rendlvl_setup(const cgm_vec3 *ppos, const cgm_quat *prot)
+{
+	cur_room = lvl_room_at(lvl, ppos->x, ppos->y, ppos->z);
+}
+
 void render_level(void)
 {
 	int i, j, nrooms, nmeshes;
@@ -37,6 +44,8 @@ void render_level(void)
 	nrooms = darr_size(lvl->rooms);
 	for(i=0; i<nrooms; i++) {
 		room = lvl->rooms[i];
+
+		dbg_cur_room = room == cur_room;
 
 		nmeshes = darr_size(room->meshes);
 		for(j=0; j<nmeshes; j++) {
@@ -48,11 +57,16 @@ void render_level(void)
 void render_level_mesh(struct mesh *mesh)
 {
 	int pass, more;
+	static const float red[] = {1, 0.2, 0.2, 1};
 
 	/* TODO handle multipass logic here */
 	pass = 0;
 	for(;;) {
 		more = mtl_apply(&mesh->mtl, pass++);
+
+		if(dbg_cur_room) {
+			glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, red);
+		}
 
 		glCallList(mesh->dlist);
 
