@@ -1,10 +1,13 @@
 #ifndef PLAYER_H_
 #define PLAYER_H_
 
+#include "level.h"
 #include "cgmath/cgmath.h"
 
 struct player {
-	cgm_vec3 pos;
+	struct level *lvl;
+
+	cgm_vec3 pos, prevpos;
 	cgm_quat rot;
 
 	cgm_vec3 vel;

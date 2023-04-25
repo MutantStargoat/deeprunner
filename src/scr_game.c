@@ -120,6 +120,7 @@ static int gstart(void)
 	}
 
 	init_player(&player);
+	player.lvl = &lvl;
 
 	if(opt.music) {
 		if(!(mod = au_load_module("data/sc-fuse.it"))) {

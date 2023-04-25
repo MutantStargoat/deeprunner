@@ -44,13 +44,18 @@ void update_player_sball(struct player *p)
 	cgm_vcons(&p->sball_mov, 0, 0, 0);
 }
 
+#define COLDIST		0.25
+
 /* this is called in the timestep update at a constant rate */
 void update_player(struct player *p)
 {
 	float rotmat[16];
 	cgm_quat rollquat;
-
 	cgm_vec3 fwd = {0, 0, 1}, right = {1, 0, 0}, up = {0, 1, 0};
+	float len;
+	struct room *room;
+	cgm_ray ray;
+	struct trihit hit;
 
 	if(p->roll != 0.0f) {
 		cgm_qrotation(&rollquat, p->roll, 0, 0, 1);
@@ -63,12 +68,30 @@ void update_player(struct player *p)
 	cgm_vmul_v3m4(&right, rotmat);
 	cgm_vmul_v3m4(&up, rotmat);
 
+	p->prevpos = p->pos;
+
 	p->pos.x += right.x * p->vel.x + up.x * p->vel.y + fwd.x * p->vel.z;
 	p->pos.y += right.y * p->vel.x + up.y * p->vel.y + fwd.y * p->vel.z;
 	p->pos.z += right.z * p->vel.x + up.z * p->vel.y + fwd.z * p->vel.z;
 
 	cgm_vcons(&p->vel, 0, 0, 0);
 	p->roll = 0;
+
+	/* collision detection */
+
+	ray.dir = p->pos; cgm_vsub(&ray.dir, &p->prevpos);
+	if((len = cgm_vlength(&ray.dir)) == 0.0f) {
+		return;
+	}
+	if(!(room = lvl_room_at(p->lvl, p->prevpos.x, p->prevpos.y, p->prevpos.z))) {
+		return;
+	}
+
+	ray.origin = p->prevpos;
+	cgm_vscale(&ray.dir, 1.0f / len);
+	if(oct_raytest(room->octree, &ray, len + COLDIST, &hit)) {
+		p->pos = p->prevpos;	/* TODO */
+	}
 }
 
 void player_view_matrix(struct player *p, float *view_mat)
