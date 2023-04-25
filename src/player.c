@@ -75,7 +75,7 @@ void player_view_matrix(struct player *p, float *view_mat)
 {
 	float rotmat[16];
 
-	cgm_mtranslation(view_mat, p->pos.x, p->pos.y, p->pos.z);
+	cgm_mtranslation(view_mat, -p->pos.x, -p->pos.y, -p->pos.z);
 	cgm_qnormalize(&p->rot);
 	cgm_mrotation_quat(rotmat, &p->rot);
 	cgm_mmul(view_mat, rotmat);

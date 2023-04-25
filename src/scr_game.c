@@ -149,16 +149,16 @@ static void gupdate(void)
 {
 	if(inpstate & INP_MOVE_BITS) {
 		if(inpstate & INP_FWD_BIT) {
-			player.vel.z += KB_MOVE_SPEED;
-		}
-		if(inpstate & INP_BACK_BIT) {
 			player.vel.z -= KB_MOVE_SPEED;
 		}
+		if(inpstate & INP_BACK_BIT) {
+			player.vel.z += KB_MOVE_SPEED;
+		}
 		if(inpstate & INP_RIGHT_BIT) {
-			player.vel.x -= KB_MOVE_SPEED;
+			player.vel.x += KB_MOVE_SPEED;
 		}
 		if(inpstate & INP_LEFT_BIT) {
-			player.vel.x += KB_MOVE_SPEED;
+			player.vel.x -= KB_MOVE_SPEED;
 		}
 		if(inpstate & INP_LROLL_BIT) {
 			player.roll -= 0.1;
@@ -388,7 +388,7 @@ static void gmotion(int x, int y)
 
 static void gsball_motion(int x, int y, int z)
 {
-	cgm_vcons(&player.sball_mov, -x, -y, z);
+	cgm_vcons(&player.sball_mov, x, y, -z);
 }
 
 static void gsball_rotate(int x, int y, int z)
