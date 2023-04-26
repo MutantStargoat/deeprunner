@@ -34,7 +34,7 @@ int ray_triangle(const cgm_ray *ray, const struct triangle *tri, float tmax, str
 	vdir = tri->v[0];
 	cgm_vsub(&vdir, &ray->origin);
 
-	if((t = cgm_vdot(&tri->norm, &vdir) / ndotdir) <= 1e-6 || t > tmax) {
+	if((t = cgm_vdot(&tri->norm, &vdir) / ndotdir) <= 0.0f || t > tmax) {
 		return 0;
 	}
 

@@ -31,6 +31,10 @@ int lvl_load(struct level *lvl, const char *fname);
 
 struct texture *lvl_texture(struct level *lvl, const char *fname);
 
-struct room *lvl_room_at(struct level *lvl, float x, float y, float z);
+struct room *lvl_room_at(const struct level *lvl, float x, float y, float z);
+
+enum lvl_colresp { COL_NONE, COL_STOP, COL_SLIDE };
+int lvl_collision(const struct level *lvl, const struct room *room, const cgm_vec3 *ppos,
+		cgm_vec3 *npos, enum lvl_colresp resp);
 
 #endif	/* LEVEL_H_ */

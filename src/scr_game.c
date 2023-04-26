@@ -1,3 +1,5 @@
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -53,10 +55,14 @@ static unsigned int uitex;
 static struct au_module *mod;
 
 static int dbg_atest, dbg_split, dbg_noui;
+#ifdef DBG_FREEZEVIS
 int dbg_freezevis;
+#endif
+#ifdef DBG_SHOW_COLPOLY
+const struct triangle *dbg_hitpoly;
+#endif
 static cgm_vec3 vispos;
 static cgm_quat visrot;
-
 
 static int ginit(void)
 {
@@ -106,6 +112,8 @@ static int gstart(void)
 	float amb[] = {0.25, 0.25, 0.25, 1};
 
 	glLightModelfv(GL_LIGHT_MODEL_AMBIENT, amb);
+
+	glDepthFunc(GL_LEQUAL);
 
 	glEnable(GL_LIGHTING);
 	set_light_color(0, 1, 1, 1, 0.8);
@@ -209,10 +217,27 @@ static void gdisplay(void)
 	rendlvl_setup(&vispos, &visrot);
 	render_level();
 
-	if(dbg_freezevis) {
-		glPushAttrib(GL_ENABLE_BIT);
-		glDisable(GL_LIGHTING);
+	glPushAttrib(GL_ENABLE_BIT);
+	glDisable(GL_LIGHTING);
 
+#ifdef DBG_SHOW_COLPOLY
+	if(dbg_hitpoly) {
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_ONE, GL_ONE);
+
+		glBegin(GL_TRIANGLES);
+		glColor3f(0.1, 0.1, 0.4);
+		glVertex3fv(&dbg_hitpoly->v[0].x);
+		glVertex3fv(&dbg_hitpoly->v[1].x);
+		glVertex3fv(&dbg_hitpoly->v[2].x);
+		glEnd();
+
+		glDisable(GL_BLEND);
+	}
+#endif
+
+#ifdef DBG_FREEZEVIS
+	if(dbg_freezevis) {
 		glBegin(GL_LINES);
 		glColor3f(0, 1, 0);
 		glVertex3f(vispos.x - 100, vispos.y, vispos.z);
@@ -222,11 +247,15 @@ static void gdisplay(void)
 		glVertex3f(vispos.x, vispos.y, vispos.z - 100);
 		glVertex3f(vispos.x, vispos.y, vispos.z + 100);
 		glEnd();
-
-		glPopAttrib();
 	}
+#endif
 
-	draw_ui();
+	glPopAttrib();
+
+#ifdef DBG_FREEZEVIS
+	if(!dbg_freezevis)
+#endif
+		draw_ui();
 }
 
 #define UIW		256

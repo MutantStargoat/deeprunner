@@ -1,5 +1,9 @@
+#include "config.h"
+
+#include <float.h>
 #include "player.h"
 #include "options.h"
+#include "geom.h"
 
 #define MOUSE_SPEED		(opt.mouse_speed * 0.0002)
 #define SBALL_RSPEED	(opt.sball_speed * 0.00002)
@@ -44,7 +48,12 @@ void update_player_sball(struct player *p)
 	cgm_vcons(&p->sball_mov, 0, 0, 0);
 }
 
-#define COLDIST		0.25
+#ifdef DBG_SHOW_COLPOLY
+extern const struct triangle *dbg_hitpoly;
+#endif
+#ifdef DBG_FREEZEVIS
+extern int dbg_freezevis;
+#endif
 
 /* this is called in the timestep update at a constant rate */
 void update_player(struct player *p)
@@ -52,10 +61,7 @@ void update_player(struct player *p)
 	float rotmat[16];
 	cgm_quat rollquat;
 	cgm_vec3 fwd = {0, 0, 1}, right = {1, 0, 0}, up = {0, 1, 0};
-	float len;
 	struct room *room;
-	cgm_ray ray;
-	struct trihit hit;
 
 	if(p->roll != 0.0f) {
 		cgm_qrotation(&rollquat, p->roll, 0, 0, 1);
@@ -78,19 +84,23 @@ void update_player(struct player *p)
 	p->roll = 0;
 
 	/* collision detection */
+#ifdef DBG_FREEZEVIS
+	if(dbg_freezevis) return;
+#endif
 
-	ray.dir = p->pos; cgm_vsub(&ray.dir, &p->prevpos);
-	if((len = cgm_vlength(&ray.dir)) == 0.0f) {
-		return;
-	}
 	if(!(room = lvl_room_at(p->lvl, p->prevpos.x, p->prevpos.y, p->prevpos.z))) {
 		return;
 	}
 
-	ray.origin = p->prevpos;
-	cgm_vscale(&ray.dir, 1.0f / len);
-	if(oct_raytest(room->octree, &ray, len + COLDIST, &hit)) {
-		p->pos = p->prevpos;	/* TODO */
+	if(lvl_collision(p->lvl, room, &p->prevpos, &p->pos, COL_SLIDE)) {
+#ifdef DBG_SHOW_COLPOLY
+		const struct triangle *hitpoly = dbg_hitpoly;
+#endif
+		if(!lvl_collision(p->lvl, room, &p->prevpos, &p->pos, COL_SLIDE)) {
+#ifdef DBG_SHOW_COLPOLY
+			dbg_hitpoly = hitpoly;
+#endif
+		}
 	}
 }
 

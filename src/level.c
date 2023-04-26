@@ -1,3 +1,5 @@
+#include "config.h"
+
 #include <assert.h>
 #include <float.h>
 #include "level.h"
@@ -161,7 +163,7 @@ struct texture *lvl_texture(struct level *lvl, const char *fname)
 	return tex;
 }
 
-struct room *lvl_room_at(struct level *lvl, float x, float y, float z)
+struct room *lvl_room_at(const struct level *lvl, float x, float y, float z)
 {
 	/* XXX hack until we get the portals in, use 6 rays, and keep the best
 	 * in case one or two happens to go through a portal
@@ -203,6 +205,64 @@ struct room *lvl_room_at(struct level *lvl, float x, float y, float z)
 			}
 		}
 	}
+	return 0;
+}
+
+#ifdef DBG_SHOW_COLPOLY
+extern const struct triangle *dbg_hitpoly;
+#endif
+
+int lvl_collision(const struct level *lvl, const struct room *room, const cgm_vec3 *ppos,
+		cgm_vec3 *npos, enum lvl_colresp resp)
+{
+	cgm_ray ray;
+	struct trihit hit;
+	float nproj;
+	const struct triangle *tri;
+	float rlen, hit_dist;
+
+	if(!room) {
+		if(!(room = lvl_room_at(lvl, ppos->x, ppos->y, ppos->z))) {
+			return 0;
+		}
+	}
+
+	ray.origin = *ppos;
+	cgm_vcons(&ray.dir, npos->x - ppos->x, npos->y - ppos->y, npos->z - ppos->z);
+
+	rlen = cgm_vlength(&ray.dir);
+
+	if(oct_raytest(room->octree, &ray, FLT_MAX, &hit)) {
+#ifdef DBG_SHOW_COLPOLY
+		dbg_hitpoly = hit.tri;
+#endif
+		hit_dist = hit.t * rlen;
+		if(hit_dist - COL_RADIUS > rlen) {
+			return 0;
+		}
+
+		switch(resp) {
+		case COL_STOP:
+			*npos = *ppos;
+			break;
+
+		case COL_SLIDE:
+			tri = hit.tri;
+			nproj = -cgm_vdot(&tri->norm, &ray.dir);
+			cgm_vadd_scaled(npos, &tri->norm, nproj);
+			break;
+
+		default:
+			break;
+		}
+		return 1;
+	}
+#ifdef DBG_SHOW_COLPOLY
+	else {
+		dbg_hitpoly = 0;
+	}
+#endif
+
 	return 0;
 }
 
@@ -335,7 +395,9 @@ static void build_room_octree(struct room *room)
 		}
 	}
 
+#ifndef DBG_NO_OCTREE
 	oct_build(room->octree, MAX_OCT_DEPTH, MAX_OCT_TRIS);
+#endif
 
 	if(room->colmesh != room->meshes) {
 		/* we don't need the collision meshes any more */
