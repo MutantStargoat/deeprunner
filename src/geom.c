@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <float.h>
 #include "geom.h"
 
@@ -20,6 +21,107 @@ void tri_calc_normal(struct triangle *tri)
 	ac = tri->v[2]; cgm_vsub(&ac, tri->v);
 	cgm_vcross(&tri->norm, &ab, &ac);
 	cgm_vnormalize(&tri->norm);
+}
+
+float tri_plane_dist(const struct triangle *tri, const cgm_vec3 *pt)
+{
+	float d = cgm_vdot(tri->v, &tri->norm);
+	return cgm_vdot(&tri->norm, pt) - d;
+}
+
+/* Taken from "Realtime Collision Detection" by Christer Ericson.
+ * ch.5.1.5 p.141
+ */
+void tri_proj_pt(cgm_vec3 *res, const struct triangle *tri, const cgm_vec3 *pt)
+{
+	cgm_vec3 ab, ac, ap, bp, cp;
+	float d1, d2, d3, d4, d5, d6, d43, d56, vc, vb, va, v, w, denom;
+
+	/* check if pt is in vertex region outside v[0] */
+	ab = tri->v[1]; cgm_vsub(&ab, tri->v);
+	ac = tri->v[2]; cgm_vsub(&ac, tri->v);
+	ap = *pt; cgm_vsub(&ap, tri->v);
+	d1 = cgm_vdot(&ab, &ap);
+	d2 = cgm_vdot(&ac, &ap);
+	if(d1 <= 0.0f && d2 <= 0.0f) {
+		*res = tri->v[0];	/* bary (1, 0, 0) */
+		return;
+	}
+
+	/* check if pt is in vertex region outside v[1] */
+	bp = *pt; cgm_vsub(&bp, tri->v + 1);
+	d3 = cgm_vdot(&ab, &bp);
+	d4 = cgm_vdot(&ac, &bp);
+	if(d3 >= 0.0f && d4 <= d3) {
+		*res = tri->v[1];	/* bary (0, 1, 0) */
+		return;
+	}
+
+	/* check if pt is in edge region of e01 -> return proj of pt to e01 */
+	vc = d1 * d4 - d3 * d2;
+	if(vc <= 0.0f && d1 >= 0.0f && d3 <= 0.0f) {
+		v = d1 / (d1 - d3);
+		res->x = tri->v[0].x + ab.x * v;
+		res->y = tri->v[0].y + ab.y * v;
+		res->z = tri->v[0].z + ab.z * v;
+		return;	/* bary (1-v, v, 0) */
+	}
+
+	/* check if pt is in vertex region outside v[2] */
+	cp = *pt; cgm_vsub(&cp, tri->v + 2);
+	d5 = cgm_vdot(&ab, &cp);
+	d6 = cgm_vdot(&ac, &cp);
+	if(d6 >= 0.0f && d5 <= d6) {
+		*res = tri->v[2];	/* bary (0, 0, 1) */
+		return;
+	}
+
+	/* check if pt is in edge region of e02 -> return proj of pt to e02 */
+	vb = d5 * d2 - d1 * d6;
+	if(vb <= 0.0f && d2 >= 0.0f && d6 <= 0.0f) {
+		w = d2 / (d2 - d6);
+		res->x = tri->v[0].x + ac.x * w;
+		res->y = tri->v[0].y + ac.y * w;
+		res->z = tri->v[0].z + ac.z * w;
+		return;	/* bary (1-w, 0, w) */
+	}
+
+	/* check if pt is in edge region of e12 -> return proj of pt to e12 */
+	va = d3 * d6 - d5 * d4;
+	d43 = d4 - d3;
+	d56 = d5 - d6;
+	if(va <= 0.0f && d43 >= 0.0f && d56 >= 0.0f) {
+		w = d43 / (d43 + d56);
+		res->x = tri->v[1].x + (tri->v[2].x - tri->v[1].x) * w;
+		res->y = tri->v[1].y + (tri->v[2].y - tri->v[1].y) * w;
+		res->z = tri->v[1].z + (tri->v[2].z - tri->v[1].z) * w;
+		return;	/* bary (0, 1-w, w) */
+	}
+
+	/* pt inside face region, compute proj through barycentric coords (u,v,w) */
+	denom = 1.0f / (va + vb + vc);
+	v = vb * denom;
+	w = vc * denom;
+	res->x = tri->v[0].x + ab.x * v + ac.x * w;
+	res->y = tri->v[0].y + ab.y * v + ac.y * w;
+	res->z = tri->v[0].z + ab.z * v + ac.z * w;
+}
+
+int tri_sphere_test(const struct triangle *tri, const cgm_vec3 *cent, float rad, float *distret)
+{
+	cgm_vec3 cproj;
+	float dx, dy, dz, dsq;
+
+	tri_proj_pt(&cproj, tri, cent);
+	dx = cproj.x - cent->x;
+	dy = cproj.y - cent->y;
+	dz = cproj.z - cent->z;
+	dsq = dx * dx + dy * dy + dz * dz;
+	if(dsq <= rad * rad) {
+		if(distret) *distret = dsq;
+		return 1;
+	}
+	return 0;
 }
 
 int ray_triangle(const cgm_ray *ray, const struct triangle *tri, float tmax, struct trihit *hit)
@@ -218,32 +320,30 @@ int aabox_tri_test(const struct aabox *box, const struct triangle *tri)
 	return aabox_plane_test(box, &plane);
 }
 
-#if 0
-/* XXX this is a rough triangle-aabox test which might miss some triangles
- * it should be fine for our use case though
- */
-int aabox_tri_test(const struct aabox *box, const struct triangle *tri)
+float aabox_sph_distsq(const struct aabox *box, const cgm_vec3 *pt, float rad)
 {
-	int i;
-	cgm_ray ray;
+	float dmin, dmax, dsq = 0.0f;
 
-	for(i=0; i<3; i++) {
-		if(aabox_contains(box, tri->v[i].x, tri->v[i].y, tri->v[i].z)) {
-			return 1;
-		}
-	}
+	dmin = box->vmin.x - pt->x;
+	dmax = pt->x - box->vmax.x;
+	if(dmin > 0) dsq += dmin * dmin;
+	if(dmax > 0) dsq += dmax * dmax;
 
-	for(i=0; i<3; i++) {
-		ray.origin = tri->v[i];
-		ray.dir = tri->v[(i + 1) % 3];
-		cgm_vsub(&ray.dir, &ray.origin);
+	dmin = box->vmin.y - pt->y;
+	dmax = pt->y - box->vmax.y;
+	if(dmin > 0) dsq += dmin * dmin;
+	if(dmax > 0) dsq += dmax * dmax;
 
-		if(ray_aabox_any(&ray, box, 1.0f)) {
-			return 1;
-		}
-	}
+	dmin = box->vmin.z - pt->z;
+	dmax = pt->z - box->vmax.z;
+	if(dmin > 0) dsq += dmin * dmin;
+	if(dmax > 0) dsq += dmax * dmax;
 
-	return 0;
+	return dsq;
 }
-#endif
 
+int aabox_sph_test(const struct aabox *box, const cgm_vec3 *pt, float rad)
+{
+	float dsq = aabox_sph_distsq(box, pt, rad);
+	return dsq <= rad * rad;
+}

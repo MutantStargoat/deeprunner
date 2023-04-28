@@ -208,61 +208,65 @@ struct room *lvl_room_at(const struct level *lvl, float x, float y, float z)
 	return 0;
 }
 
+
 #ifdef DBG_SHOW_COLPOLY
 extern const struct triangle *dbg_hitpoly;
 #endif
 
-int lvl_collision(const struct level *lvl, const struct room *room, const cgm_vec3 *ppos,
-		cgm_vec3 *npos, enum lvl_colresp resp)
+int lvl_collision(const struct level *lvl, const struct room *room, const cgm_vec3 *pos,
+		const cgm_vec3 *vel, struct collision *col)
 {
 	cgm_ray ray;
 	struct trihit hit;
-	float nproj;
-	const struct triangle *tri;
-	float rlen, hit_dist;
 
 	if(!room) {
-		if(!(room = lvl_room_at(lvl, ppos->x, ppos->y, ppos->z))) {
+		if(!(room = lvl_room_at(lvl, pos->x, pos->y, pos->z))) {
 			return 0;
 		}
 	}
 
-	ray.origin = *ppos;
-	cgm_vcons(&ray.dir, npos->x - ppos->x, npos->y - ppos->y, npos->z - ppos->z);
+	ray.origin = *pos;
+	ray.dir = *vel;
 
-	rlen = cgm_vlength(&ray.dir);
-
-	if(oct_raytest(room->octree, &ray, FLT_MAX, &hit)) {
+	if(oct_raytest(room->octree, &ray, 1.0f, &hit)) {
 #ifdef DBG_SHOW_COLPOLY
 		dbg_hitpoly = hit.tri;
 #endif
-		hit_dist = hit.t * rlen;
-		if(hit_dist - COL_RADIUS > rlen) {
-			return 0;
-		}
-
-		switch(resp) {
-		case COL_STOP:
-			*npos = *ppos;
-			break;
-
-		case COL_SLIDE:
-			tri = hit.tri;
-			nproj = -cgm_vdot(&tri->norm, &ray.dir);
-			cgm_vadd_scaled(npos, &tri->norm, nproj);
-			break;
-
-		default:
-			break;
-		}
+		cgm_raypos(&col->pos, &ray, hit.t * 0.95);
+		col->norm = hit.tri->norm;
+		col->depth = -tri_plane_dist(hit.tri, pos);
 		return 1;
 	}
+
+	return 0;
+}
+
+
 #ifdef DBG_SHOW_COLPOLY
-	else {
-		dbg_hitpoly = 0;
-	}
+extern const struct triangle *dbg_hitpoly;
 #endif
 
+int lvl_collision_rad(const struct level *lvl, const struct room *room, const cgm_vec3 *pos,
+		const cgm_vec3 *vel, float rad, struct collision *col)
+{
+	cgm_vec3 sphcent;
+	struct trihit hit;
+
+	if(!room) {
+		if(!(room = lvl_room_at(lvl, pos->x, pos->y, pos->z))) {
+			return 0;
+		}
+	}
+
+	sphcent = *pos; cgm_vadd(&sphcent, vel);
+
+	if(oct_sphtest(room->octree, &sphcent, rad, &hit)) {
+#ifdef DBG_SHOW_COLPOLY
+		dbg_hitpoly = hit.tri;
+#endif
+		col->norm = hit.tri->norm;
+		return 1;
+	}
 	return 0;
 }
 

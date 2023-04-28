@@ -33,8 +33,16 @@ struct texture *lvl_texture(struct level *lvl, const char *fname);
 
 struct room *lvl_room_at(const struct level *lvl, float x, float y, float z);
 
-enum lvl_colresp { COL_NONE, COL_STOP, COL_SLIDE };
-int lvl_collision(const struct level *lvl, const struct room *room, const cgm_vec3 *ppos,
-		cgm_vec3 *npos, enum lvl_colresp resp);
+struct collision {
+	cgm_vec3 pos;
+	cgm_vec3 norm;
+	float depth;
+};
+
+int lvl_collision(const struct level *lvl, const struct room *room, const cgm_vec3 *pos,
+		const cgm_vec3 *vel, struct collision *col);
+
+int lvl_collision_rad(const struct level *lvl, const struct room *room, const cgm_vec3 *pos,
+		const cgm_vec3 *vel, float rad, struct collision *col);
 
 #endif	/* LEVEL_H_ */

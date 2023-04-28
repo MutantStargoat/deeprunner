@@ -61,6 +61,9 @@ int dbg_freezevis;
 #ifdef DBG_SHOW_COLPOLY
 const struct triangle *dbg_hitpoly;
 #endif
+#ifdef DBG_SHOW_MAX_COL_ITER
+int dbg_max_col_iter;
+#endif
 static cgm_vec3 vispos;
 static cgm_quat visrot;
 
@@ -219,6 +222,7 @@ static void gdisplay(void)
 
 	glPushAttrib(GL_ENABLE_BIT);
 	glDisable(GL_LIGHTING);
+	glDisable(GL_TEXTURE_2D);
 
 #ifdef DBG_SHOW_COLPOLY
 	if(dbg_hitpoly) {
@@ -247,6 +251,12 @@ static void gdisplay(void)
 		glVertex3f(vispos.x, vispos.y, vispos.z - 100);
 		glVertex3f(vispos.x, vispos.y, vispos.z + 100);
 		glEnd();
+
+		glPushMatrix();
+		glColor3f(0.2, 0.2, 0.2);
+		glTranslatef(vispos.x, vispos.y, vispos.z);
+		glutSolidSphere(COL_RADIUS, 10, 5);
+		glPopMatrix();
 	}
 #endif
 

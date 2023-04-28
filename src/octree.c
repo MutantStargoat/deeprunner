@@ -146,6 +146,42 @@ int oct_raytest(const struct octnode *tree, const cgm_ray *ray, float tmax, stru
 	return 0;
 }
 
+int oct_sphtest(const struct octnode *tree, const cgm_vec3 *pt, float rad, struct trihit *hitptr)
+{
+	int i, count;
+	struct trihit hit, hit0 = {FLT_MAX};
+	float dist;
+
+	if(!tree || !aabox_sph_test(&tree->aabb, pt, rad)) {
+		return 0;
+	}
+
+	if(oct_isleaf(tree)) {
+		/* leaf node, find nearest intersection of the sphere with the polygons */
+		count = darr_size(tree->tris);
+		for(i=0; i<count; i++) {
+			if(tri_sphere_test(tree->tris + i, pt, rad, &dist) && dist < hit0.t) {
+				hit0.t = dist;
+				hit0.tri = tree->tris + i;
+			}
+		}
+	} else {
+		/* recurse and find nearest intersection among the child nodes */
+		for(i=0; i<8; i++) {
+			if(!tree->child[i]) continue;
+			if(oct_sphtest(tree->child[i], pt, rad, &hit) && hit.t < hit0.t) {
+				hit0 = hit;
+			}
+		}
+	}
+
+	if(hit0.tri) {
+		if(hitptr) *hitptr = hit0;
+		return 1;
+	}
+	return 0;
+}
+
 struct octnode *oct_find_leaf(struct octnode *tree, float x, float y, float z)
 {
 	int i;
