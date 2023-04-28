@@ -1,6 +1,10 @@
 #ifndef OPTIONS_H_
 #define OPTIONS_H_
 
+struct gfxoptions {
+	int blendui;
+};
+
 struct options {
 	int xres, yres;
 	int vsync;
@@ -10,6 +14,8 @@ struct options {
 
 	int inv_mouse_y;
 	int mouse_speed, sball_speed;
+
+	struct gfxoptions gfx;
 };
 
 extern struct options opt;

@@ -14,6 +14,7 @@
 #define DEF_MOUSE_SPEED	50
 #define DEF_SBALL_SPEED	50
 
+
 struct options opt = {
 	DEF_XRES, DEF_YRES,
 	DEF_VSYNC,
@@ -21,22 +22,38 @@ struct options opt = {
 	DEF_VOL, DEF_VOL, DEF_VOL,
 	DEF_MUS,
 	DEF_INVMOUSEY,
-	DEF_MOUSE_SPEED, DEF_SBALL_SPEED
+	DEF_MOUSE_SPEED, DEF_SBALL_SPEED,
 };
+
+static struct gfxoptions gfxdef_ultra = {
+	1		/* blendui */
+};
+static struct gfxoptions gfxdef_vpro = {
+	1		/* blendui */
+};
+static struct gfxoptions gfxdef_o2 = {
+	0		/* blendui */
+};
+static struct gfxoptions gfxdefopt;
+
+static void detect_defaults(void);
+
 
 int load_options(const char *fname)
 {
 	struct ts_node *cfg;
+
+	detect_defaults();
 
 	if(!(cfg = ts_load(fname))) {
 		return -1;
 	}
 	printf("loaded config: %s\n", fname);
 
-	opt.xres = ts_lookup_int(cfg, "options.gfx.xres", DEF_XRES);
-	opt.yres = ts_lookup_int(cfg, "options.gfx.yres", DEF_YRES);
-	opt.vsync = ts_lookup_int(cfg, "options.gfx.vsync", DEF_VSYNC);
-	opt.fullscreen = ts_lookup_int(cfg, "options.gfx.fullscreen", DEF_FULLSCR);
+	opt.xres = ts_lookup_int(cfg, "options.video.xres", DEF_XRES);
+	opt.yres = ts_lookup_int(cfg, "options.video.yres", DEF_YRES);
+	opt.vsync = ts_lookup_int(cfg, "options.video.vsync", DEF_VSYNC);
+	opt.fullscreen = ts_lookup_int(cfg, "options.video.fullscreen", DEF_FULLSCR);
 
 	opt.vol_master = ts_lookup_int(cfg, "options.audio.volmaster", DEF_VOL);
 	opt.vol_mus = ts_lookup_int(cfg, "options.audio.volmusic", DEF_VOL);
@@ -46,6 +63,8 @@ int load_options(const char *fname)
 	opt.inv_mouse_y = ts_lookup_int(cfg, "options.ctl.invmousey", DEF_INVMOUSEY);
 	opt.mouse_speed = ts_lookup_int(cfg, "options.ctl.mousespeed", DEF_MOUSE_SPEED);
 	opt.sball_speed = ts_lookup_int(cfg, "options.ctl.sballspeed", DEF_SBALL_SPEED);
+
+	opt.gfx.blendui = ts_lookup_int(cfg, "options.gfx.blendui", gfxdefopt.blendui);
 
 	ts_free_tree(cfg);
 	return 0;
@@ -69,11 +88,15 @@ int save_options(const char *fname)
 		fprintf(stderr, "failed to save options (%s): %s\n", fname, strerror(errno));
 	}
 	fprintf(fp, "options {\n");
-	fprintf(fp, "\tgfx {\n");
+	fprintf(fp, "\tvideo {\n");
 	WROPT(2, "xres = %d", opt.xres, DEF_XRES);
 	WROPT(2, "yres = %d", opt.yres, DEF_YRES);
 	WROPT(2, "vsync = %d", opt.vsync, DEF_VSYNC);
 	WROPT(2, "fullscreen = %d", opt.fullscreen, DEF_FULLSCR);
+	fprintf(fp, "\t}\n");
+
+	fprintf(fp, "\tgfx {\n");
+	WROPT(2, "blendui = %d", opt.gfx.blendui, gfxdefopt.blendui);
 	fprintf(fp, "\t}\n");
 
 	fprintf(fp, "\taudio {\n");
@@ -95,3 +118,58 @@ int save_options(const char *fname)
 	fclose(fp);
 	return 0;
 }
+
+#if defined(__unix__) || defined(unix)
+#include <sys/utsname.h>
+
+#ifdef __sgi
+static const char *ipnames[] = {
+	0, "IRIS 1000", "IRIS 2x00/3x00", 0, "IRIS 4D",		/* 0-4 */
+	"IRIS 4D", "IRIS 4D", "IRIS 4D", 0, "IRIS 4D/210",	/* 5-9 */
+	0, 0, "Indigo R3000", 0, 0,							/* 10-14 */
+	0, 0, "IRIS Crimson", 0, "Onyx/Challenge",			/* 15-19 */
+	"Indigo R4000", "POWER Onyx/Challenge", "Indy/Indigo2 (teal)", 0, 0, /* 20-24 */
+	"Onyx/Challenge R10k", "Power Indigo2", "Onyx2/Origin2000", "Indigo2 (purple)", 0, /* 25-29 */
+	"Octane", 0, "O2", 0, 0, /* 30-34*/
+	"Fuel/Tezro/Onyx3k/Origin3k", 0, 0, 0	/* 35-39 */
+};
+#endif
+
+static void detect_defaults(void)
+{
+#ifdef __sgi
+	int ip = 0;
+#endif
+	struct utsname uts;
+
+	if(uname(&uts) == -1) {
+		printf("uname failed: assume O2\n");
+		gfxdefopt = gfxdef_o2;	/* on failure assume the worst */
+		return;
+	}
+
+#ifdef __sgi
+	sscanf(uts.machine, "IP%d", &ip);
+	printf("Running on IP%d machine", ip);
+	if(ip < sizeof ipnames / sizeof *ipnames && ipnames[ip]) {
+		printf(" (SGI %s)\n", ipnames[ip]);
+	} else {
+		putchar('\n');
+	}
+	gfxdefopt = ip <= 32 ? gfxdef_o2 : gfxdef_vpro;
+#else
+	/* TODO: improve detection, for now assume non-IRIX means modern PC */
+	printf("Running on %s\n", uts.sysname);
+	gfxdefopt = gfxdef_ultra;
+#endif
+}
+
+#elif defined(WIN32) || defined(__WIN32)
+static void detect_defaults(void)
+{
+	/* TODO: improve detection, for now assume windows hosts are modern PCs */
+	printf("Running on windows\n");
+	gfxdefopt = gfxdef_ultra;
+}
+
+#endif	/* unix/windows */

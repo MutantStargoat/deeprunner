@@ -27,6 +27,9 @@ struct texture *tex_image(struct img_pixmap *img)
 	}
 	tex->img = img;
 
+	tex->tex_width = nextpow2(img->width);
+	tex->tex_height = nextpow2(img->height);
+
 	glGenTextures(1, &tex->texid);
 	glBindTexture(GL_TEXTURE_2D, tex->texid);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
@@ -170,4 +173,17 @@ struct img_pixmap *iman_get(const char *name)
 	img_convert(img, img_has_alpha(img) ? IMG_FMT_RGBA32 : IMG_FMT_RGB24);
 	iman_add(img);
 	return img;
+}
+
+int nextpow2(int x)
+{
+	if(x <= 0) return 0;
+
+	x--;
+	x |= x >> 1;
+	x |= x >> 2;
+	x |= x >> 4;
+	x |= x >> 8;
+	x |= x >> 16;
+	return x + 1;
 }

@@ -54,7 +54,6 @@ static unsigned int uitex;
 
 static struct au_module *mod;
 
-static int dbg_atest, dbg_split, dbg_noui;
 #ifdef DBG_FREEZEVIS
 int dbg_freezevis;
 #endif
@@ -272,8 +271,6 @@ static void gdisplay(void)
 #define UIH		128
 static void draw_ui(void)
 {
-	if(dbg_noui) return;
-
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	glMatrixMode(GL_PROJECTION);
@@ -285,48 +282,29 @@ static void draw_ui(void)
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 	glDisable(GL_LIGHTING);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	if(dbg_atest) {
-		glEnable(GL_ALPHA_TEST);
-		glAlphaFunc(GL_GREATER, 0.008);
+	glEnable(GL_ALPHA_TEST);
+	if(opt.gfx.blendui) {
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glAlphaFunc(GL_GREATER, 0.01);
+	} else {
+		glAlphaFunc(GL_GREATER, 0.25);
 	}
 
 	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, dbgtex);
+	glBindTexture(GL_TEXTURE_2D, uitex);
 
-	if(dbg_split) {
-		glBindTexture(GL_TEXTURE_2D, uitex);
-		glBegin(GL_QUADS);
-		glColor3f(1, 1, 1);
-		glTexCoord2f(0, 0.5); glVertex2f(0, 480 - 64);
-		glTexCoord2f(0.5, 0.5); glVertex2f(128, 480 - 64);
-		glTexCoord2f(0.5, 0); glVertex2f(128, 480);
-		glTexCoord2f(0, 0); glVertex2f(0, 480);
-
-		glTexCoord2f(0.5, 0.5); glVertex2f(128, 480 - 64);
-		glTexCoord2f(1, 0.5); glVertex2f(256, 480 - 64);
-		glTexCoord2f(1, 0); glVertex2f(256, 480);
-		glTexCoord2f(0.5, 0); glVertex2f(128, 480);
-
-		glTexCoord2f(0, 0.75); glVertex2f(0, 480 - 96);
-		glTexCoord2f(0.5, 0.75); glVertex2f(128, 480 - 96);
-		glTexCoord2f(0.5, 0.5); glVertex2f(128, 480 - 64);
-		glTexCoord2f(0, 0.5); glVertex2f(0, 480 - 64);
-		glEnd();
-
-	} else {
-		glBindTexture(GL_TEXTURE_2D, uitex);
-		glBegin(GL_QUADS);
-		glColor3f(1, 1, 1);
-		glTexCoord2f(0, 1); glVertex2f(0, 480 - UIH);
-		glTexCoord2f(1, 1); glVertex2f(UIW, 480 - UIH);
-		glTexCoord2f(1, 0); glVertex2f(UIW, 480);
-		glTexCoord2f(0, 0); glVertex2f(0, 480);
-		glEnd();
-	}
+	glBegin(GL_QUADS);
+	glColor3f(1, 1, 1);
+	glTexCoord2f(0, 1); glVertex2f(0, 480 - UIH);
+	glTexCoord2f(1, 1); glVertex2f(UIW, 480 - UIH);
+	glTexCoord2f(1, 0); glVertex2f(UIW, 480);
+	glTexCoord2f(0, 0); glVertex2f(0, 480);
+	glEnd();
 
 	glDisable(GL_TEXTURE_2D);
+
+	/* crosshair */
 	glBegin(GL_LINES);
 	glColor3f(0.5, 0.8, 0.5);
 	glVertex2f(320 - 6, 240);
@@ -372,21 +350,6 @@ static void gkeyb(int key, int press)
 			if(!fullscr) {
 				game_grabmouse(-1);	/* toggle */
 			}
-			break;
-
-		case '0':
-			dbg_noui ^= 1;
-			printf("dbg_noui: %d\n", dbg_noui);
-			break;
-
-		case '1':
-			dbg_split ^= 1;
-			printf("dbg_split: %d\n", dbg_split);
-			break;
-
-		case '2':
-			dbg_atest ^= 1;
-			printf("dbg_atest: %d\n", dbg_atest);
 			break;
 
 		case '\t':

@@ -6,6 +6,8 @@
 
 struct texture {
 	unsigned int texid;
+	int tex_width, tex_height;
+	float texmat[16];
 	struct img_pixmap *img;	/* no ownership */
 };
 
@@ -31,5 +33,7 @@ void iman_clear(void);
 int iman_add(struct img_pixmap *img);
 struct img_pixmap *iman_find(const char *name);
 struct img_pixmap *iman_get(const char *name);
+
+int nextpow2(int x);
 
 #endif	/* MTLTEX_H_ */
