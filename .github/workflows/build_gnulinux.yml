@@ -1,0 +1,33 @@
+name: GNU/Linux build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install libgl-dev libglu1-mesa-dev libasound2-dev
+
+    - name: prepare datafiles
+      run: |
+        svn export svn://mutantstargoat.com/datadirs/deeprunner data
+
+    - name: build game
+      run: |
+        make
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: game-gnulinux
+        path: |
+          data/
+          game
