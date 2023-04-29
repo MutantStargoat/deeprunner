@@ -113,7 +113,9 @@ static int gstart(void)
 {
 	float amb[] = {0.25, 0.25, 0.25, 1};
 
-	greshape(win_width, win_height);
+	if(win_height) {
+		greshape(win_width, win_height);
+	}
 
 	glLightModelfv(GL_LIGHT_MODEL_AMBIENT, amb);
 
