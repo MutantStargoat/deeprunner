@@ -18,6 +18,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "imago2.h"
 #include <GL/gl.h>
 
+#ifndef GL_GENERATE_MIPMAP_SGIS
+#define GL_GENERATE_MIPMAP_SGIS	0x8191
+#endif
+
 #if 0
 /* to avoid dependency to OpenGL, I'll define all the relevant GL macros manually */
 #define GL_UNPACK_ALIGNMENT		0x0cf5

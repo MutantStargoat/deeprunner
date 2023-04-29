@@ -13,7 +13,17 @@ libs = libs/unix/imago.a libs/unix/goat3d.a libs/unix/treestor.a \
 	   libs/unix/mikmod.a
 
 CFLAGS = $(warn) $(dbg) $(opt) $(inc) $(def) -MMD
-LDFLAGS = $(libs) -lGL -lGLU -lX11 -lasound -lm
+LDFLAGS = $(ldsys_pre) $(libs) $(ldsys)
+
+sys := $(shell uname -s | sed 's/MINGW.*/mingw/')
+ifeq ($(sys), mingw)
+	bin = game.exe
+
+	ldsys_pre = -static-libgcc -lmingw32 -mconsole
+	ldsys = -lopengl32 -lglu32 -lgdi32 -lwinmm -ldsound
+else
+	ldsys = -lGL -lGLU -lX11 -lasound -lm
+endif
 
 $(bin): $(obj) libs
 	$(CC) -o $@ $(obj) $(LDFLAGS)
@@ -42,3 +52,15 @@ clean-libs:
 .PHONY: data
 data:
 	tools/procdata
+
+.PHONY: crosswin
+crosswin:
+	$(MAKE) CC=i686-w64-mingw32-gcc sys=mingw
+
+.PHONY: crosswin-clean
+crosswin-clean:
+	$(MAKE) CC=i686-w64-mingw32-gcc sys=mingw clean
+
+.PHONY: crosswin-cleandep
+crosswin-cleandep:
+	$(MAKE) CC=i686-w64-mingw32-gcc sys=mingw cleandep
