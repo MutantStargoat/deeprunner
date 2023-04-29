@@ -16,6 +16,7 @@
 #include "options.h"
 #include "player.h"
 #include "rendlvl.h"
+#include "gfxutil.h"
 
 static int ginit(void);
 static void gdestroy(void);
@@ -50,7 +51,8 @@ static struct player player;
 
 static struct level lvl;
 static unsigned int dbgtex;
-static unsigned int uitex;
+static struct texture *uitex;
+static struct mesh adidome;
 
 static struct au_module *mod;
 
@@ -96,11 +98,18 @@ static int ginit(void)
 		free(pix);
 	}
 
-	if((uitex = img_gltexture_load("data/uibars.png"))) {
-		glBindTexture(GL_TEXTURE_2D, uitex);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	}
+	uitex = lvl_texture(&lvl, "data/uibars.png");
+
+	gen_geosphere(&adidome, 8, 1, 1);
+	adidome.dlist = glGenLists(1);
+	glNewList(adidome.dlist, GL_COMPILE);
+	glColor3f(0.153, 0.153, 0.467);
+	mesh_draw(&adidome);
+	glRotatef(180, 1, 0, 0);
+	glColor3f(0.467, 0.467, 0.745);
+	mesh_draw(&adidome);
+	glEndList();
+
 	return 0;
 }
 
@@ -275,18 +284,11 @@ static void gdisplay(void)
 #define UIH		128
 static void draw_ui(void)
 {
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	glMatrixMode(GL_PROJECTION);
-	glPushMatrix();
-	glLoadIdentity();
-	glOrtho(0, win_aspect * 480, 0, 480, -1, 1);
+	int i, j;
+	float xform[16], *ptr;
 
-	glPushAttrib(GL_ENABLE_BIT);
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_CULL_FACE);
-	glDisable(GL_LIGHTING);
-	glEnable(GL_ALPHA_TEST);
+	begin2d(480);
+
 	if(opt.gfx.blendui) {
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -295,18 +297,24 @@ static void draw_ui(void)
 		glAlphaFunc(GL_GREATER, 0.25);
 	}
 
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, uitex);
+	blit_tex(0, 0, uitex, 1);
 
-	glBegin(GL_QUADS);
-	glColor3f(1, 1, 1);
-	glTexCoord2f(0, 1); glVertex2f(0, 480 - UIH);
-	glTexCoord2f(1, 1); glVertex2f(UIW, 480 - UIH);
-	glTexCoord2f(1, 0); glVertex2f(UIW, 480);
-	glTexCoord2f(0, 0); glVertex2f(0, 480);
-	glEnd();
+	/* draw ADI */
+	glEnable(GL_CULL_FACE);
+	glPushMatrix();
+	glTranslatef(41, 36, 0);
+	ptr = player.rotmat;
+	for(i=0; i<4; i++) {
+		for(j=0; j<4; j++) {
+			xform[(j << 2) + i] = *ptr++;
+		}
+	}
+	glMultMatrixf(xform);
 
 	glDisable(GL_TEXTURE_2D);
+	glCallList(adidome.dlist);
+
+	glPopMatrix();
 
 	/* crosshair */
 	glBegin(GL_LINES);
@@ -321,9 +329,7 @@ static void draw_ui(void)
 	glVertex2f(320, 240 + 2);
 	glEnd();
 
-	glPopAttrib();
-	glPopMatrix();
-	glMatrixMode(GL_MODELVIEW);
+	end2d();
 }
 
 static void greshape(int x, int y)

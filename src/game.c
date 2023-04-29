@@ -8,6 +8,7 @@
 #include "audio.h"
 #include "options.h"
 #include "util.h"
+#include "mtltex.h"
 
 static void draw_volume_bar(void);
 
@@ -41,6 +42,10 @@ int game_init(void)
 
 	load_options(GAME_CFG_FILE);
 	game_resize(opt.xres, opt.yres);
+
+	if(iman_init() == -1) {
+		return -1;
+	}
 
 	if(au_init() == -1) {
 		return -1;
@@ -94,6 +99,8 @@ void game_shutdown(void)
 			screens[i]->destroy();
 		}
 	}
+
+	iman_destroy();
 }
 
 void game_display(void)

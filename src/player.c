@@ -62,9 +62,9 @@ extern int dbg_max_col_iter;
 void update_player(struct player *p)
 {
 	int iter;
-	float rotmat[16];
 	cgm_quat rollquat;
-	cgm_vec3 fwd = {0, 0, 1}, right = {1, 0, 0}, up = {0, 1, 0};
+	/*cgm_vec3 fwd = {0, 0, 1}, right = {1, 0, 0}, up = {0, 1, 0};*/
+	cgm_vec3 fwd, right, up;
 	cgm_vec3 vel;
 	struct room *room;
 	struct collision col;
@@ -76,10 +76,13 @@ void update_player(struct player *p)
 		p->rot = rollquat;
 	}
 
-	cgm_mrotation_quat(rotmat, &p->rot);
-	cgm_vmul_v3m4(&fwd, rotmat);
-	cgm_vmul_v3m4(&right, rotmat);
-	cgm_vmul_v3m4(&up, rotmat);
+	cgm_mrotation_quat(p->rotmat, &p->rot);
+	/*cgm_vmul_v3m4(&fwd, p->rotmat);
+	cgm_vmul_v3m4(&right, p->rotmat);
+	cgm_vmul_v3m4(&up, p->rotmat);*/
+	cgm_vcons(&right, p->rotmat[0], p->rotmat[4], p->rotmat[8]);
+	cgm_vcons(&up, p->rotmat[1], p->rotmat[5], p->rotmat[9]);
+	cgm_vcons(&fwd, p->rotmat[2], p->rotmat[6], p->rotmat[10]);
 
 	p->prevpos = p->pos;
 

@@ -13,6 +13,8 @@ struct player {
 	cgm_vec3 vel;
 	float roll;
 
+	float rotmat[16];
+
 	cgm_vec2 mouse_input;
 	cgm_vec3 sball_mov, sball_rot;
 };

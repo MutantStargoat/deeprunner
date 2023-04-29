@@ -7,7 +7,8 @@
 struct texture {
 	unsigned int texid;
 	int tex_width, tex_height;
-	float texmat[16];
+	int use_matrix;
+	float matrix[16];
 	struct img_pixmap *img;	/* no ownership */
 };
 

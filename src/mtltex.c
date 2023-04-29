@@ -32,10 +32,27 @@ struct texture *tex_image(struct img_pixmap *img)
 
 	glGenTextures(1, &tex->texid);
 	glBindTexture(GL_TEXTURE_2D, tex->texid);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	gluBuild2DMipmaps(GL_TEXTURE_2D, alpha ? 4 : 3, img->width, img->height,
-			alpha ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE, img->pixels);
+
+	if(tex->tex_width != img->width || tex->tex_height != img->height) {
+		cgm_mscaling(tex->matrix, (float)img->width / (float)tex->tex_width,
+				(float)img->height / (float)tex->tex_height, 1);
+		tex->use_matrix = 1;
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexImage2D(GL_TEXTURE_2D, 0, alpha ? 4 : 3, tex->tex_width, tex->tex_height, 0,
+				GL_RGB, GL_UNSIGNED_BYTE, 0);
+
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, img->width, img->height,
+				alpha ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE, img->pixels);
+	} else {
+		cgm_midentity(tex->matrix);
+		tex->use_matrix = 0;
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		gluBuild2DMipmaps(GL_TEXTURE_2D, alpha ? 4 : 3, img->width, img->height,
+				alpha ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE, img->pixels);
+	}
 	return tex;
 }
 
