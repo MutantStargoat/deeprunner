@@ -1263,20 +1263,32 @@ void glutPositionWindow(int x, int y)
 	SetWindowPos(win, HWND_NOTOPMOST, x, y, rect.right - rect.left, rect.bottom - rect.top, flags);
 }
 
+static void calc_win_rect(RECT *rect, int x, int y, int w, int h)
+{
+	rect->left = x;
+	rect->top = y;
+	rect->right = x + w;
+	rect->bottom = y + h;
+	AdjustWindowRect(rect, WS_OVERLAPPEDWINDOW, 0);
+}
+
 void glutReshapeWindow(int xsz, int ysz)
 {
 	RECT rect;
 	unsigned int flags = SWP_SHOWWINDOW;
 
 	if(fullscreen) {
-		rect.left = prev_win_x;
-		rect.top = prev_win_y;
+		calc_win_rect(&rect, prev_win_x, prev_win_y, xsz, ysz);
 		SetWindowLong(win, GWL_STYLE, WS_OVERLAPPEDWINDOW);
 		fullscreen = 0;
 		flags |= SWP_FRAMECHANGED;
 	} else {
 		GetWindowRect(win, &rect);
+		calc_win_rect(&rect, rect.left, rect.top, xsz, ysz);
 	}
+
+	xsz = rect.right - rect.left;
+	ysz = rect.bottom - rect.top;
 	SetWindowPos(win, HWND_NOTOPMOST, rect.left, rect.top, xsz, ysz, flags);
 }
 
@@ -1568,7 +1580,6 @@ fail:
 	return -1;
 }
 
-
 static void create_window(const char *title)
 {
 	RECT rect;
@@ -1576,12 +1587,7 @@ static void create_window(const char *title)
 	char palbuf[sizeof(LOGPALETTE) + 255 * sizeof(PALETTEENTRY)];
 	LOGPALETTE *logpal;
 
-
-	rect.left = init_x;
-	rect.top = init_y;
-	rect.right = init_x + init_width;
-	rect.bottom = init_y + init_height;
-	AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, 0);
+	calc_win_rect(&rect, init_x, init_y, init_width, init_height);
 	width = rect.right - rect.left;
 	height = rect.bottom - rect.top;
 
