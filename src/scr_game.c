@@ -303,11 +303,18 @@ static void gdisplay(void)
 		draw_ui();
 }
 
-#define UIW		256
-#define UIH		128
+static const cgm_vec3 barcover[] = {
+	{68,35, 0}, {48,13, 0},
+	{84,35, 0.125}, {69,13, 0.125},
+	{105,35, 0.25}, {95,23, 0.25},
+	{129,35, 0.5}, {125,28, 0.5},
+	{191,35, 1}, {186,28, 1}
+};
+
 static void draw_ui(void)
 {
 	int i, j;
+	float yoffs, yscale;
 	float xform[16], *ptr;
 
 	begin2d(480);
@@ -323,11 +330,31 @@ static void draw_ui(void)
 
 	blit_tex(0, 0, uitex, 1);
 
+	glDisable(GL_BLEND);
+	glEnable(GL_ALPHA_TEST);
+	glDisable(GL_TEXTURE_2D);
+
+	glAlphaFunc(GL_GREATER, (float)player.sp / MAX_SP);
+
+	yoffs = 0.0f;
+	yscale = 1.0f;
+	for(j=0; j<2; j++) {
+		glBegin(GL_QUAD_STRIP);
+		for(i=0; i<sizeof barcover / sizeof barcover[0]; i++) {
+			glColor4f(0.075, 0.075, 0.149, barcover[i].z);
+			glVertex2f(barcover[i].x, barcover[i].y * yscale + yoffs);
+		}
+		glEnd();
+		yoffs = 71;
+		yscale = -1;
+		glAlphaFunc(GL_GREATER, (float)player.hp / MAX_HP);
+	}
+	glDisable(GL_ALPHA_TEST);
+
 	dtx_use_font(font_hp, font_hp_size);
 	glPushMatrix();
 	glTranslatef(162, 26, 0);
 	glScalef(0.4, -0.4, 0.4);
-	/*glScalef(1, -1, 1);*/
 	glColor3f(0.008, 0.396, 0.678);
 	dtx_printf("%d", player.sp * 100 / MAX_SP);
 
@@ -406,6 +433,22 @@ static void gkeyb(int key, int press)
 				player.rot = visrot;
 			}
 
+		case ';':
+			player.hp -= 8;
+			if(player.hp < 0) player.hp = 0;
+			break;
+		case '\'':
+			player.hp += 8;
+			if(player.hp > MAX_HP) player.hp = MAX_HP;
+			break;
+		case '[':
+			player.sp -= 8;
+			if(player.sp < 0) player.sp = 0;
+			break;
+		case ']':
+			player.sp += 8;
+			if(player.sp > MAX_SP) player.sp = MAX_SP;
+			break;
 		}
 	}
 }
