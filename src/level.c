@@ -146,8 +146,8 @@ int lvl_load(struct level *lvl, const char *fname)
 		 * collisions and issue a warning
 		 */
 		if(darr_empty(room->colmesh)) {
-			fprintf(stderr, "lvl_load(%s): room %s: no collision meshes, using render meshes!\n",
-					fname, room->name);
+			/*fprintf(stderr, "lvl_load(%s): room %s: no collision meshes, using render meshes!\n",
+					fname, room->name);*/
 			darr_free(room->colmesh);
 			room->colmesh = room->meshes;
 		}
