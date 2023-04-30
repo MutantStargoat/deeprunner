@@ -10,6 +10,7 @@
 
 static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, struct goat3d_node *gnode);
 static int conv_mesh(struct level *lvl, struct mesh *mesh, struct goat3d *gscn, struct goat3d_mesh *gmesh);
+static void apply_objmod(struct level *lvl, struct mesh *mesh, struct ts_node *tsn);
 static void build_room_octree(struct room *room);
 
 struct room *alloc_room(void)
@@ -78,13 +79,14 @@ void lvl_destroy(struct level *lvl)
 int lvl_load(struct level *lvl, const char *fname)
 {
 	int i, count;
-	struct ts_node *ts;
+	struct ts_node *ts, *tsnode;
 	const char *scnfile, *str;
 	float *vec;
 	struct goat3d *gscn;
 	struct goat3d_node *gnode;
 	struct room *room;
 	struct aabox aabb;
+	struct mesh *mesh;
 
 	aabox_init(&aabb);
 
@@ -160,9 +162,47 @@ int lvl_load(struct level *lvl, const char *fname)
 		darr_push(lvl->rooms, &room);
 	}
 
+	/* look for named object modifications */
+	tsnode = ts->child_list;
+	while(tsnode) {
+		if(strcmp(tsnode->name, "object") == 0) {
+			if(!(str = ts_get_attr_str(tsnode, "name", 0))) {
+				fprintf(stderr, "skipping object mod without an object name\n");
+				tsnode = tsnode->next;
+				continue;
+			}
+			if(!(mesh = lvl_find_mesh(lvl, str))) {
+				fprintf(stderr, "skipping object mod, \"%s\" not found\n", str);
+				tsnode = tsnode->next;
+				continue;
+			}
+			apply_objmod(lvl, mesh, tsnode);
+		}
+		tsnode = tsnode->next;
+	}
+
+
 	/* TODO read room nodes with portal links */
 
 	ts_free_tree(ts);
+	return 0;
+}
+
+struct mesh *lvl_find_mesh(const struct level *lvl, const char *name)
+{
+	int i, j, nrooms, nmeshes;
+
+	nrooms = darr_size(lvl->rooms);
+	for(i=0; i<nrooms; i++) {
+		nmeshes = darr_size(lvl->rooms[i]->meshes);
+		for(j=0; j<nmeshes; j++) {
+			struct mesh *m = lvl->rooms[i]->meshes + j;
+			if(m->name && strcmp(m->name, name) == 0) {
+				return m;
+			}
+		}
+	}
+
 	return 0;
 }
 
@@ -329,6 +369,9 @@ static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, 
 			gmesh = goat3d_get_node_object(gnode);
 			mesh_init(&mesh);
 			if(conv_mesh(lvl, &mesh, gscn, gmesh) != -1) {
+				free(mesh.name);
+				mesh.name = strdup_nf(name);
+
 				goat3d_get_matrix(gnode, xform);
 				mesh_transform(&mesh, xform);
 				mesh_calc_bounds(&mesh);
@@ -341,6 +384,9 @@ static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, 
 			gmesh = goat3d_get_node_object(gnode);
 			mesh_init(&mesh);
 			if(conv_mesh(lvl, &mesh, gscn, gmesh) != -1) {
+				free(mesh.name);
+				mesh.name = strdup_nf(name);
+
 				goat3d_get_matrix(gnode, xform);
 				mesh_transform(&mesh, xform);
 				mesh_calc_bounds(&mesh);
@@ -418,6 +464,26 @@ static int conv_mesh(struct level *lvl, struct mesh *mesh, struct goat3d *gscn, 
 	}
 
 	return 0;
+}
+
+static void apply_objmod(struct level *lvl, struct mesh *mesh, struct ts_node *tsn)
+{
+	float *vec;
+
+	if((vec = ts_lookup_vec(tsn, "object.uvanim.velocity", 0))) {
+		mesh->mtl.uvanim = 1;
+		mesh->mtl.texvel.x = vec[0];
+		mesh->mtl.texvel.y = vec[1];
+	}
+	if((vec = ts_lookup_vec(tsn, "object.uvanim.offset", 0))) {
+		mesh->mtl.uvanim = 1;
+		mesh->mtl.uvoffs.x = vec[0];
+		mesh->mtl.uvoffs.y = vec[1];
+	}
+
+	if(ts_lookup_int(tsn, "object.mtlattr.emissive", 0)) {
+		mesh->mtl.emissive = 1;
+	}
 }
 
 #define MAX_OCT_DEPTH	8

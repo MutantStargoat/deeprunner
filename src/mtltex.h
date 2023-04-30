@@ -15,7 +15,12 @@ struct texture {
 struct material {
 	cgm_vec4 kd, ks;
 	float shin;
+	int emissive;
 	struct texture *texmap, *envmap;
+
+	int uvanim;
+	cgm_vec2 uvoffs;
+	cgm_vec2 texvel;
 };
 
 /* texture */

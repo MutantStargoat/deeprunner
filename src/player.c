@@ -69,7 +69,6 @@ void update_player(struct player *p)
 	/*cgm_vec3 fwd = {0, 0, 1}, right = {1, 0, 0}, up = {0, 1, 0};*/
 	cgm_vec3 fwd, right, up;
 	cgm_vec3 vel;
-	struct room *room;
 	struct collision col;
 	float vnlen;
 
@@ -104,14 +103,14 @@ void update_player(struct player *p)
 	}
 #endif
 
-	if(!(room = lvl_room_at(p->lvl, p->pos.x, p->pos.y, p->pos.z))) {
+	if(!(p->room = lvl_room_at(p->lvl, p->pos.x, p->pos.y, p->pos.z))) {
 		cgm_vadd(&p->pos, &vel);
 		return;
 	}
 
 	iter = 0;
 	while(cgm_vlength_sq(&vel) > 1e-5 && iter++ < 16 &&
-			lvl_collision_rad(p->lvl, room, &p->pos, &vel, COL_RADIUS, &col)) {
+			lvl_collision_rad(p->lvl, p->room, &p->pos, &vel, COL_RADIUS, &col)) {
 		vnlen = -cgm_vdot(&vel, &col.norm);
 		cgm_vadd_scaled(&vel, &col.norm, vnlen);	/* vel += norm * vnlen */
 	}

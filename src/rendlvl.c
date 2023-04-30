@@ -37,9 +37,27 @@ void rendlvl_destroy(void)
 {
 }
 
-void rendlvl_setup(const cgm_vec3 *ppos, const cgm_quat *prot)
+void rendlvl_setup(struct room *room, const cgm_vec3 *ppos, const cgm_quat *prot)
 {
-	cur_room = lvl_room_at(lvl, ppos->x, ppos->y, ppos->z);
+	if(!room) {
+		room = lvl_room_at(lvl, ppos->x, ppos->y, ppos->z);
+	}
+	cur_room = room;
+}
+
+static void update_room(struct room *room)
+{
+	int i, nmeshes;
+
+	nmeshes = darr_size(room->meshes);
+	for(i=0; i<nmeshes; i++) {
+		struct mesh *m = room->meshes + i;
+
+		if(m->mtl.uvanim) {
+			m->mtl.uvoffs.x += m->mtl.texvel.x;
+			m->mtl.uvoffs.y += m->mtl.texvel.y;
+		}
+	}
 }
 
 static void render_room(struct room *room)
@@ -50,6 +68,23 @@ static void render_room(struct room *room)
 	for(i=0; i<nmeshes; i++) {
 		render_level_mesh(room->meshes + i);
 	}
+}
+
+void rendlvl_update(void)
+{
+#ifdef DBG_ONLY_CUR_ROOM
+	update_room(cur_room);
+#else
+	int i, nrooms;
+	struct room *room;
+
+	nrooms = darr_size(lvl->rooms);
+	for(i=0; i<nrooms; i++) {
+		room = lvl->rooms[i];
+
+		update_room(room);
+	}
+#endif
 }
 
 void render_level(void)

@@ -9,6 +9,7 @@
 
 struct player {
 	struct level *lvl;
+	struct room *room;	/* current room the player is in */
 
 	int hp, sp;	/* health and shields */
 

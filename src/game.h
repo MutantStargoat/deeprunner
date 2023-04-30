@@ -3,6 +3,8 @@
 
 #define GAME_CFG_FILE	"game.cfg"
 
+#define TSTEP	(1.0f / 30.0f)
+
 enum {
 	GKEY_ESC	= 27,
 	GKEY_DEL	= 127,

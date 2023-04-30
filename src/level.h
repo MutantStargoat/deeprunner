@@ -36,6 +36,8 @@ void lvl_destroy(struct level *lvl);
 
 int lvl_load(struct level *lvl, const char *fname);
 
+struct mesh *lvl_find_mesh(const struct level *lvl, const char *name);
+
 struct texture *lvl_texture(struct level *lvl, const char *fname);
 
 struct room *lvl_room_at(const struct level *lvl, float x, float y, float z);

@@ -190,7 +190,6 @@ static void gstop(void)
 	rendlvl_destroy();
 }
 
-#define TSTEP	(1.0f / 30.0f)
 #define KB_MOVE_SPEED	0.2
 
 static void gupdate(void)
@@ -217,14 +216,15 @@ static void gupdate(void)
 	}
 
 	update_player_sball(&player);
-
 	update_player(&player);
+
+	rendlvl_update();
 }
 
 static void gdisplay(void)
 {
 	static long prev_msec;
-	static float tm_acc;
+	static float tm_acc = TSTEP;
 	long msec;
 
 	msec = glutGet(GLUT_ELAPSED_TIME);
@@ -248,12 +248,17 @@ static void gdisplay(void)
 	set_light_dir(1, 5, 0, 3);
 	set_light_dir(2, -0.5, -2, -3);
 
+#ifdef DBG_FREEZEVIS
 	if(!dbg_freezevis) {
+#endif
 		vispos = player.pos;
 		visrot = player.rot;
+		rendlvl_setup(player.room, 0, 0);
+#ifdef DBG_FREEZEVIS
+	} else {
+		rendlvl_setup(0, &vispos, &visrot);
 	}
-
-	rendlvl_setup(&vispos, &visrot);
+#endif
 	render_level();
 
 	glPushAttrib(GL_ENABLE_BIT);

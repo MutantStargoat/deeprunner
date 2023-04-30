@@ -22,6 +22,8 @@ struct texture *tex_image(struct img_pixmap *img)
 {
 	struct texture *tex;
 	int alpha = img_has_alpha(img);
+	int fmt, pixsz;
+	void *zerobuf;
 
 	if(!(tex = malloc(sizeof *tex))) {
 		fprintf(stderr, "failed to allocate texture\n");
@@ -32,6 +34,14 @@ struct texture *tex_image(struct img_pixmap *img)
 	tex->tex_width = nextpow2(img->width);
 	tex->tex_height = nextpow2(img->height);
 
+	if(alpha) {
+		fmt = GL_RGBA;
+		pixsz = 4;
+	} else {
+		fmt = GL_RGB;
+		pixsz = 3;
+	}
+
 	glGenTextures(1, &tex->texid);
 	glBindTexture(GL_TEXTURE_2D, tex->texid);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -41,19 +51,22 @@ struct texture *tex_image(struct img_pixmap *img)
 				(float)img->height / (float)tex->tex_height, 1);
 		tex->use_matrix = 1;
 
+		zerobuf = alloca(tex->tex_width * tex->tex_height * pixsz);
+		memset(zerobuf, 0, tex->tex_width * tex->tex_height * pixsz);
+
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexImage2D(GL_TEXTURE_2D, 0, alpha ? 4 : 3, tex->tex_width, tex->tex_height, 0,
-				GL_RGB, GL_UNSIGNED_BYTE, 0);
+		glTexImage2D(GL_TEXTURE_2D, 0, fmt, tex->tex_width, tex->tex_height, 0,
+				fmt, GL_UNSIGNED_BYTE, zerobuf);
 
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, img->width, img->height,
-				alpha ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE, img->pixels);
+				fmt, GL_UNSIGNED_BYTE, img->pixels);
 	} else {
 		cgm_midentity(tex->matrix);
 		tex->use_matrix = 0;
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-		gluBuild2DMipmaps(GL_TEXTURE_2D, alpha ? 4 : 3, img->width, img->height,
-				alpha ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE, img->pixels);
+		gluBuild2DMipmaps(GL_TEXTURE_2D, fmt, img->width, img->height, fmt,
+				GL_UNSIGNED_BYTE, img->pixels);
 	}
 
 #ifdef DBG_NO_IMAN
@@ -73,10 +86,10 @@ void tex_free(struct texture *tex)
 
 void mtl_init(struct material *mtl)
 {
+	memset(mtl, 0, sizeof *mtl);
 	cgm_wcons(&mtl->kd, 1, 1, 1, 1);
 	cgm_wcons(&mtl->ks, 0, 0, 0, 1);
 	mtl->shin = 50.0f;
-	mtl->texmap = mtl->envmap = 0;
 }
 
 static int last_envmap;
@@ -112,11 +125,24 @@ int mtl_apply(struct material *mtl, int pass)
 		glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, &mtl->kd.x);
 		glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, &mtl->ks.x);
 		glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, mtl->shin);
+		if(mtl->emissive) {
+			glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, &mtl->kd.x);
+		} else {
+			glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, black);
+		}
 
 		if(mtl->texmap) {
 			stop_envmap();
 			glBindTexture(GL_TEXTURE_2D, mtl->texmap->texid);
 			glEnable(GL_TEXTURE_2D);
+
+			glMatrixMode(GL_TEXTURE);
+			glLoadIdentity();
+			if(mtl->uvanim) {
+				glTranslatef(mtl->uvoffs.x, mtl->uvoffs.y, 0);
+			}
+			glMatrixMode(GL_MODELVIEW);
+
 			if(mtl->envmap) return 1;
 		} else if(mtl->envmap) {
 			setup_envmap(mtl->envmap->texid);
@@ -126,6 +152,11 @@ int mtl_apply(struct material *mtl, int pass)
 		break;
 
 	case 1:
+		if(mtl->uvanim) {
+			glMatrixMode(GL_TEXTURE);
+			glLoadIdentity();
+			glMatrixMode(GL_MODELVIEW);
+		}
 		glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, black);
 		glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, white);
 		glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, mtl->shin);
