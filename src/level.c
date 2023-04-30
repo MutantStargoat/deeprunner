@@ -55,6 +55,7 @@ void lvl_init(struct level *lvl)
 	memset(lvl, 0, sizeof *lvl);
 	lvl->rooms = darr_alloc(0, sizeof *lvl->rooms);
 	lvl->textures = darr_alloc(0, sizeof *lvl->textures);
+	cgm_qcons(&lvl->startrot, 0, 0, 0, 1);
 }
 
 void lvl_destroy(struct level *lvl)
@@ -79,6 +80,7 @@ int lvl_load(struct level *lvl, const char *fname)
 	int i, count;
 	struct ts_node *ts;
 	const char *scnfile, *str;
+	float *vec;
 	struct goat3d *gscn;
 	struct goat3d_node *gnode;
 	struct room *room;
@@ -100,6 +102,16 @@ int lvl_load(struct level *lvl, const char *fname)
 	if((str = ts_lookup_str(ts, "level.datapath", 0))) {
 		printf("  texture path: %s\n", str);
 		lvl->datapath = strdup_nf(str);
+	}
+
+	if((vec = ts_lookup_vec(ts, "level.startpos", 0))) {
+		printf("  start position: %g %g %g\n", vec[0], vec[1], vec[2]);
+		cgm_vcons(&lvl->startpos, vec[0], vec[1], vec[2]);
+	}
+	if((vec = ts_lookup_vec(ts, "level.startrot", 0))) {
+		printf("  start rotation: %g %g %g %g\n", vec[0], vec[1], vec[2], vec[3]);
+		cgm_qcons(&lvl->startrot, vec[0], vec[1], vec[2], vec[3]);
+		cgm_qnormalize(&lvl->startrot);
 	}
 
 	if(!(gscn = goat3d_create()) || goat3d_load(gscn, scnfile)) {
@@ -317,7 +329,7 @@ static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, 
 			gmesh = goat3d_get_node_object(gnode);
 			mesh_init(&mesh);
 			if(conv_mesh(lvl, &mesh, gscn, gmesh) != -1) {
-				goat3d_get_node_matrix(gnode, xform);
+				goat3d_get_matrix(gnode, xform);
 				mesh_transform(&mesh, xform);
 				mesh_calc_bounds(&mesh);
 				aabox_union(&room->aabb, &mesh.aabb);
@@ -329,7 +341,7 @@ static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, 
 			gmesh = goat3d_get_node_object(gnode);
 			mesh_init(&mesh);
 			if(conv_mesh(lvl, &mesh, gscn, gmesh) != -1) {
-				goat3d_get_node_matrix(gnode, xform);
+				goat3d_get_matrix(gnode, xform);
 				mesh_transform(&mesh, xform);
 				mesh_calc_bounds(&mesh);
 				aabox_union(&room->aabb, &mesh.aabb);

@@ -57,7 +57,6 @@ struct texture *tex_image(struct img_pixmap *img)
 	}
 
 #ifdef DBG_NO_IMAN
-	printf("FREE PIXELS! (%dx%d)\n", img->width, img->height);
 	free(img->pixels);
 	img->pixels = 0;
 #endif

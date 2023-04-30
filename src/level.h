@@ -20,6 +20,9 @@ struct level {
 	struct room **rooms;		/* darr */
 	struct texture **textures;	/* darr */
 
+	cgm_vec3 startpos;
+	cgm_quat startrot;
+
 	char *datapath;
 	char *pathbuf;
 	int pathbuf_sz;

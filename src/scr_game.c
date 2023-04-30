@@ -165,7 +165,8 @@ static int gstart(void)
 	}
 
 	init_player(&player);
-	player.pos.y -= 1;
+	player.pos = lvl.startpos;
+	player.rot = lvl.startrot;
 	player.lvl = &lvl;
 
 	if(opt.music) {
