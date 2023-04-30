@@ -52,6 +52,7 @@ void free_room(struct room *room)
 
 void lvl_init(struct level *lvl)
 {
+	memset(lvl, 0, sizeof *lvl);
 	lvl->rooms = darr_alloc(0, sizeof *lvl->rooms);
 	lvl->textures = darr_alloc(0, sizeof *lvl->textures);
 }
@@ -68,13 +69,16 @@ void lvl_destroy(struct level *lvl)
 		tex_free(lvl->textures[i]);
 	}
 	darr_free(lvl->textures);
+
+	free(lvl->datapath);
+	free(lvl->pathbuf);
 }
 
 int lvl_load(struct level *lvl, const char *fname)
 {
 	int i, count;
 	struct ts_node *ts;
-	const char *scnfile;
+	const char *scnfile, *str;
 	struct goat3d *gscn;
 	struct goat3d_node *gnode;
 	struct room *room;
@@ -91,6 +95,11 @@ int lvl_load(struct level *lvl, const char *fname)
 		fprintf(stderr, "lvl_load(%s): no scene attribute\n", fname);
 		ts_free_tree(ts);
 		return -1;
+	}
+	printf("lvl_load(%s): scene: %s\n", fname, scnfile);
+	if((str = ts_lookup_str(ts, "level.datapath", 0))) {
+		printf("  texture path: %s\n", str);
+		lvl->datapath = strdup_nf(str);
 	}
 
 	if(!(gscn = goat3d_create()) || goat3d_load(gscn, scnfile)) {
@@ -145,6 +154,26 @@ int lvl_load(struct level *lvl, const char *fname)
 	return 0;
 }
 
+static const char *find_datafile(struct level *lvl, const char *fname)
+{
+	int len;
+	FILE *fp;
+
+	if(!lvl->datapath) return fname;
+
+	len = strlen(lvl->datapath) + strlen(fname) + 1;
+	if(lvl->pathbuf_sz < len + 1) {
+		lvl->pathbuf = realloc_nf(lvl->pathbuf, len + 1);
+	}
+	sprintf(lvl->pathbuf, "%s/%s", lvl->datapath, fname);
+
+	if((fp = fopen(lvl->pathbuf, "rb"))) {
+		fclose(fp);
+		return lvl->pathbuf;
+	}
+	return fname;
+}
+
 struct texture *lvl_texture(struct level *lvl, const char *fname)
 {
 	struct texture *tex;
@@ -156,7 +185,7 @@ struct texture *lvl_texture(struct level *lvl, const char *fname)
 		}
 	}
 
-	if(!(tex = tex_load(fname))) {
+	if(!(tex = tex_load(find_datafile(lvl, fname)))) {
 		return 0;
 	}
 	darr_push(lvl->textures, &tex);
@@ -318,8 +347,9 @@ static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, 
 
 static int conv_mesh(struct level *lvl, struct mesh *mesh, struct goat3d *gscn, struct goat3d_mesh *gmesh)
 {
-	int nfaces;
+	int i, nfaces;
 	void *data;
+	cgm_vec2 *uvdata;
 	struct goat3d_material *gmtl;
 	const float *mattr;
 	const char *str;
@@ -340,8 +370,12 @@ static int conv_mesh(struct level *lvl, struct mesh *mesh, struct goat3d *gscn, 
 	}
 
 	if((data = goat3d_get_mesh_attribs(gmesh, GOAT3D_MESH_ATTR_TEXCOORD))) {
+		uvdata = data;
 		mesh->uvarr = malloc_nf(mesh->vcount * sizeof *mesh->uvarr);
-		memcpy(mesh->uvarr, data, mesh->vcount * sizeof *mesh->uvarr);
+		for(i=0; i<mesh->vcount; i++) {
+			mesh->uvarr[i].x = uvdata[i].x;
+			mesh->uvarr[i].y = 1.0f - uvdata[i].y;
+		}
 	}
 
 	data = goat3d_get_mesh_faces(gmesh);

@@ -4,11 +4,17 @@ DeepRunner
 A 3D 6DoF underground maze shooter for the Silicon Graphics O2 workstation, and
 other computer systems old and new.
 
+Supported platforms:
+  - SGI IRIX
+  - GNU/Linux
+  - FreeBSD
+  - MS Windows
+
 Status: project just started.
 
-Data files are in a separate subversion repo. Grab them with:
-
-    svn co svn://mutantstargoat.com/datadirs/deeprunner data
+Website: http://nuclear.mutantstargoat.com/sw/games/deeprunner
+Game page on itch.io: https://nuclear.itch.io/deeprunner
+Source code repo: https://github.com/MutantStargoat/deeprunner
 
 Controls
 --------
@@ -41,3 +47,22 @@ This program is free software. Feel free to use, modify and/or redistribute it
 under the terms of the GNU General Public License v3, or at your option any
 later version published by the Free Software Foundation. See COPYING for
 details.
+
+Build instructions
+------------------
+Data files are in a separate subversion repo. Grab them with:
+
+    svn co svn://mutantstargoat.com/datadirs/deeprunner data
+
+### UNIX build
+
+Just type `make`.
+
+On IRIX you can use any compiler and make utility, system make and MIPSPro are
+supported as well as GCC and GNU make.
+
+### Windows build
+
+Install msys2, start a mingw32 shell, and type `make`. The windows version can
+also be cross-compiled with `make crosswin`.
+

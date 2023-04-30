@@ -19,6 +19,10 @@ struct portal {
 struct level {
 	struct room **rooms;		/* darr */
 	struct texture **textures;	/* darr */
+
+	char *datapath;
+	char *pathbuf;
+	int pathbuf_sz;
 };
 
 struct room *alloc_room(void);

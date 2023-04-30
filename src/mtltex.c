@@ -1,3 +1,5 @@
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -53,12 +55,21 @@ struct texture *tex_image(struct img_pixmap *img)
 		gluBuild2DMipmaps(GL_TEXTURE_2D, alpha ? 4 : 3, img->width, img->height,
 				alpha ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE, img->pixels);
 	}
+
+#ifdef DBG_NO_IMAN
+	printf("FREE PIXELS! (%dx%d)\n", img->width, img->height);
+	free(img->pixels);
+	img->pixels = 0;
+#endif
 	return tex;
 }
 
 void tex_free(struct texture *tex)
 {
 	glDeleteTextures(1, &tex->texid);
+#ifdef DBG_NO_IMAN
+	img_free(tex->img);
+#endif
 }
 
 void mtl_init(struct material *mtl)
@@ -188,7 +199,9 @@ struct img_pixmap *iman_get(const char *name)
 		return 0;
 	}
 	img_convert(img, img_has_alpha(img) ? IMG_FMT_RGBA32 : IMG_FMT_RGB24);
+#ifndef DBG_NO_IMAN
 	iman_add(img);
+#endif
 	return img;
 }
 

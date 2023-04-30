@@ -36,6 +36,7 @@ void mesh_transform(struct mesh *m, const float *mat)
 		cgm_vmul_m4v3(m->varr + i, mat);
 		if(m->narr) {
 			cgm_vmul_m3v3(m->narr + i, mat);
+			cgm_vnormalize(m->narr + i);
 		}
 	}
 }

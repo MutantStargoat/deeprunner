@@ -1,0 +1,9 @@
+#!/bin/sh
+
+outfile=/tmp/game.massif.out
+
+[ ! -f ./game ] && cd ..
+
+rm -f $outfile
+valgrind --tool=massif --massif-out-file=$outfile ./game
+ms_print $outfile | gview -

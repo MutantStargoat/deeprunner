@@ -153,11 +153,11 @@ static int gstart(void)
 	glDepthFunc(GL_LEQUAL);
 
 	glEnable(GL_LIGHTING);
-	set_light_color(0, 1, 1, 1, 0.8);
+	set_light_color(0, 1, 1, 1, 1);
 	glEnable(GL_LIGHT0);
-	set_light_color(1, 1, 0.6, 0.5, 0.2);
+	set_light_color(1, 1, 1, 1, 0.6);
 	glEnable(GL_LIGHT1);
-	set_light_color(2, 0.5, 0.6, 1, 0.3);
+	set_light_color(2, 1, 1, 1, 0.5);
 	glEnable(GL_LIGHT2);
 
 	if(rendlvl_init(&lvl)) {

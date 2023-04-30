@@ -9,5 +9,6 @@
 #undef DBG_SHOW_CUR_ROOM
 #undef DBG_ONLY_CUR_ROOM
 #undef DBG_SHOW_MAX_COL_ITER
+#define DBG_NO_IMAN
 
 #endif	/* CONFIG_H_ */
