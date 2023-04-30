@@ -12,9 +12,9 @@ Supported platforms:
 
 Status: project just started.
 
-Website: http://nuclear.mutantstargoat.com/sw/games/deeprunner
-Game page on itch.io: https://nuclear.itch.io/deeprunner
-Source code repo: https://github.com/MutantStargoat/deeprunner
+ - Website: http://nuclear.mutantstargoat.com/sw/games/deeprunne
+ - Game page on itch.io: https://nuclear.itch.io/deeprunne
+ - Source code repo: https://github.com/MutantStargoat/deeprunner
 
 Controls
 --------
