@@ -1,6 +1,14 @@
 #!/bin/sh
 
+genglyphmap()
+{
+	echo "generate glyphmap: $1 -> $2"
+	font2glyphmap -size $3 -padding 5 -range $4 -o $2 $1
+}
+
 [ ! -e data/level1.g3d -o data/src/level1.gltf -nt data/level1.g3d ] && \
 	ass2goat data/src/level1.gltf && mv data/src/level1.goat3d data/level1.g3d
+
+genglyphmap data/src/impact.ttf data/hpfont.gmp 42 48-58
 
 exit 0

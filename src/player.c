@@ -13,6 +13,9 @@ void init_player(struct player *p)
 {
 	cgm_vcons(&p->pos, 0, 0, 0);
 	cgm_qcons(&p->rot, 0, 0, 0, 1);
+
+	p->hp = MAX_HP;
+	p->sp = MAX_SP;
 }
 
 void update_player_mouse(struct player *p)

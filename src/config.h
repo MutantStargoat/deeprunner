@@ -4,7 +4,7 @@
 #define COL_RADIUS	0.25f
 
 #define DBG_NO_OCTREE
-#define DBG_SHOW_COLPOLY
+#undef DBG_SHOW_COLPOLY
 #define DBG_FREEZEVIS
 #undef DBG_SHOW_CUR_ROOM
 #undef DBG_ONLY_CUR_ROOM

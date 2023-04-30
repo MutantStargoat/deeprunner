@@ -17,6 +17,7 @@
 #include "player.h"
 #include "rendlvl.h"
 #include "gfxutil.h"
+#include "drawtext.h"
 
 static int ginit(void);
 static void gdestroy(void);
@@ -53,6 +54,10 @@ static struct level lvl;
 static unsigned int dbgtex;
 static struct texture *uitex;
 static struct mesh adidome;
+
+static struct dtx_font *font_hp;
+static int font_hp_size;
+static struct texture *font_hp_tex;
 
 static struct au_module *mod;
 
@@ -98,7 +103,24 @@ static int ginit(void)
 		free(pix);
 	}
 
-	uitex = lvl_texture(&lvl, "data/uibars.png");
+	if(!(uitex = tex_load("data/uibars.png"))) {
+		return -1;
+	}
+
+	if(!(font_hp = dtx_open_font_glyphmap("data/hpfont.gmp"))) {
+		fprintf(stderr, "failed to open glyphmap: data/impact14.gmp\n");
+		return -1;
+	}
+	font_hp_size = dtx_get_glyphmap_ptsize(dtx_get_glyphmap(font_hp, 0));
+	if(!opt.gfx.blendui) {
+		dtx_set(DTX_GL_BLEND, 0);
+		dtx_set(DTX_GL_ALPHATEST, 128);
+	}
+
+	if((font_hp_tex = tex_load("data/hpfont-rgb.png"))) {
+		dtxhack_replace_texture(dtx_get_glyphmap(font_hp, 0), font_hp_tex->texid);
+		printf("replacement texture: %d\n", font_hp_tex->texid);
+	}
 
 	gen_geosphere(&adidome, 8, 1, 1);
 	adidome.dlist = glGenLists(1);
@@ -143,6 +165,7 @@ static int gstart(void)
 	}
 
 	init_player(&player);
+	player.pos.y -= 1;
 	player.lvl = &lvl;
 
 	if(opt.music) {
@@ -298,6 +321,19 @@ static void draw_ui(void)
 	}
 
 	blit_tex(0, 0, uitex, 1);
+
+	dtx_use_font(font_hp, font_hp_size);
+	glPushMatrix();
+	glTranslatef(162, 26, 0);
+	glScalef(0.4, -0.4, 0.4);
+	/*glScalef(1, -1, 1);*/
+	glColor3f(0.008, 0.396, 0.678);
+	dtx_printf("%d", player.sp * 100 / MAX_SP);
+
+	glTranslatef(0, -85, 0);
+	glColor3f(0.725, 0.075, 0.173);
+	dtx_printf("%d", player.hp * 100 / MAX_HP);
+	glPopMatrix();
 
 	/* draw ADI */
 	glEnable(GL_CULL_FACE);

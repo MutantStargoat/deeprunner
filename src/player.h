@@ -4,8 +4,13 @@
 #include "level.h"
 #include "cgmath/cgmath.h"
 
+#define MAX_HP	256
+#define MAX_SP	256
+
 struct player {
 	struct level *lvl;
+
+	int hp, sp;	/* health and shields */
 
 	cgm_vec3 pos, prevpos;
 	cgm_quat rot;

@@ -1,8 +1,8 @@
 .PHONY: all
-all: make-imago make-treestor make-goat3d make-mikmod
+all: make-imago make-treestor make-goat3d make-drawtext make-mikmod
 
 .PHONY: clean
-clean: clean-imago clean-treestor clean-goat3d clean-mikmod
+clean: clean-imago clean-treestor clean-goat3d clean-drawtext clean-mikmod
 
 .PHONY: imago
 imago: make-imago
@@ -36,6 +36,17 @@ make-goat3d:
 .PHONY: clean-goat3d
 clean-goat3d:
 	cd goat3d; $(MAKE) clean
+
+.PHONY: drawtext
+drawtext: make-drawtext
+
+.PHONY: make-drawtext
+make-drawtext:
+	cd drawtext; $(MAKE)
+
+.PHONY: clean-drawtext
+clean-drawtext:
+	cd drawtext; $(MAKE) clean
 
 .PHONY: mikmod
 mikmod: make-mikmod
