@@ -46,10 +46,39 @@ void blit_tex(float x, float y, struct texture *tex, float alpha)
 
 	glBegin(GL_QUADS);
 	glColor4f(1, 1, 1, alpha);
-	glTexCoord2f(0, 1); glVertex2f(x, ysz);
-	glTexCoord2f(1, 1); glVertex2f(x + xsz, ysz);
-	glTexCoord2f(1, 0); glVertex2f(x + xsz, 0);
-	glTexCoord2f(0, 0); glVertex2f(x, 0);
+	glTexCoord2f(0, 1); glVertex2f(x, y + ysz);
+	glTexCoord2f(1, 1); glVertex2f(x + xsz, y + ysz);
+	glTexCoord2f(1, 0); glVertex2f(x + xsz, y);
+	glTexCoord2f(0, 0); glVertex2f(x, y);
+	glEnd();
+
+	if(tex->use_matrix) {
+		glLoadIdentity();
+		glMatrixMode(GL_MODELVIEW);
+	}
+}
+
+void blit_tex_rect(float x, float y, float xsz, float ysz, struct texture *tex,
+		float alpha, float u, float v, float usz, float vsz)
+{
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, tex->texid);
+
+	if(tex->use_matrix) {
+		glMatrixMode(GL_TEXTURE);
+		glLoadMatrixf(tex->matrix);
+	}
+
+	glBegin(GL_QUADS);
+	glColor4f(1, 1, 1, alpha);
+	glTexCoord2f(u, v + vsz);
+	glVertex2f(x, y + ysz);
+	glTexCoord2f(u + usz, v + vsz);
+	glVertex2f(x + xsz, y + ysz);
+	glTexCoord2f(u + usz, v);
+	glVertex2f(x + xsz, y);
+	glTexCoord2f(u, v);
+	glVertex2f(x, y);
 	glEnd();
 
 	if(tex->use_matrix) {

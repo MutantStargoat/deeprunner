@@ -1,11 +1,17 @@
 #ifndef GFXUTIL_H_
 #define GFXUTIL_H_
 
+struct rect {
+	float x, y, width, height;
+};
+
 struct texture;
 
 void begin2d(int virt_height);
 void end2d(void);
 
 void blit_tex(float x, float y, struct texture *tex, float alpha);
+void blit_tex_rect(float x, float y, float xsz, float ysz, struct texture *tex,
+		float alpha, float u, float v, float usz, float vsz);
 
 #endif	/* GFXUTIL_H_ */
