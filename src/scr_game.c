@@ -426,6 +426,10 @@ static void gkeyb(int key, int press)
 
 	if(press) {
 		switch(key) {
+		case 27:
+			game_chscr(&scr_menu);
+			break;
+
 		case '`':
 			if(!fullscr) {
 				game_grabmouse(-1);	/* toggle */

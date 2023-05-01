@@ -3,6 +3,8 @@
 
 #define COL_RADIUS	0.25f
 
+#define DBG_ESCQUIT
+
 #define DBG_NO_OCTREE
 #undef DBG_SHOW_COLPOLY
 #define DBG_FREEZEVIS

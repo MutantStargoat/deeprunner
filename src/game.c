@@ -1,3 +1,5 @@
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -147,17 +149,20 @@ void game_keyboard(int key, int press)
 {
 	if(press) {
 		switch(key) {
+#ifdef DBG_ESCQUIT
 		case 27:
 			game_quit();
 			return;
+#endif
 
 		case '\n':
 		case '\r':
 			if(modkeys & GKEY_MOD_ALT) {
 		case GKEY_F11:
 				game_fullscreen(-1);
+				return;
 			}
-			return;
+			break;
 
 		case '-':
 			opt.vol_master = au_volume(AU_VOLDN | 31);

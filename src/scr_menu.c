@@ -168,17 +168,25 @@ static void menu_keyb(int key, int press)
 	if(!press) return;
 
 	switch(key) {
+	case 27:
+		game_quit();
+		break;
+
 	case GKEY_UP:
+	case 'w':
 		if(sel) sel--;
 		break;
 
 	case GKEY_DOWN:
+	case 's':
 		if(sel < NUM_MENU_ITEMS - 1) {
 			sel++;
 		}
 		break;
 
 	case '\n':
+	case 'e':
+		printf("sel: %d\n", sel);
 		act_item(sel);
 		break;
 	}
