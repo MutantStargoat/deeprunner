@@ -50,6 +50,7 @@ extern int fullscr;
 
 extern long time_msec;
 extern struct game_screen *cur_scr;
+extern struct game_screen scr_menu, scr_game, scr_debug;
 
 
 int game_init(void);

@@ -24,8 +24,7 @@ long time_msec;
 struct game_screen *cur_scr;
 
 /* available screens */
-extern struct game_screen scr_menu, scr_game, scr_debug;
-#define MAX_SCREENS	4
+#define MAX_SCREENS	8
 static struct game_screen *screens[MAX_SCREENS];
 static int num_screens;
 static long last_vol_chg = -16384;

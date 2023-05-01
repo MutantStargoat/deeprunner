@@ -49,7 +49,7 @@ void blit_tex(float x, float y, struct texture *tex, float alpha)
 	glTexCoord2f(0, 1); glVertex2f(x, ysz);
 	glTexCoord2f(1, 1); glVertex2f(x + xsz, ysz);
 	glTexCoord2f(1, 0); glVertex2f(x + xsz, 0);
-	glTexCoord2f(0, 0); glVertex2f(0, 0);
+	glTexCoord2f(0, 0); glVertex2f(x, 0);
 	glEnd();
 
 	if(tex->use_matrix) {
