@@ -32,14 +32,16 @@ static struct texture *gamelogo;
 static struct texture *startex;
 static struct dtx_font *font;
 static int font_sz;
-static float font_height;
+static float font_height, font_baseline;
 
-static int sel;
+static int sel, hover = -1;
 
 enum { START, OPTIONS, HIGHSCORES, CREDITS, QUIT, NUM_MENU_ITEMS };
 static const char *menustr[] = {
 	"START", "OPTIONS", "HIGH SCORES", "CREDITS", "QUIT" };
 static struct rect itemrect[NUM_MENU_ITEMS];
+
+static float xoffs;
 
 
 static int menu_init(void)
@@ -59,13 +61,14 @@ static int menu_init(void)
 	}
 	font_sz = dtx_get_glyphmap_ptsize(dtx_get_glyphmap(font, 0));
 	dtx_use_font(font, font_sz);
-	font_height = dtx_line_height();
+	font_height = dtx_line_height() * FONT_SCALE;
+	font_baseline = font_height * 0.2;
 
 	for(i=0; i<NUM_MENU_ITEMS; i++) {
 		itemrect[i].width = dtx_string_width(menustr[i]) * FONT_SCALE;
 		itemrect[i].height = font_height;
-		itemrect[i].x = 640 - itemrect[i].width / 2;
-		itemrect[i].y = i > 0 ? itemrect[i - 1].y + 25 : 360;
+		itemrect[i].x = 320 - itemrect[i].width / 2;
+		itemrect[i].y = i > 0 ? itemrect[i - 1].y + font_height : 360 - font_height + font_baseline;
 	}
 
 	return 0;
@@ -94,16 +97,12 @@ static void menu_stop(void)
 static void menu_display(void)
 {
 	int i;
-	float x, y, vwidth, strwidth;
-	float alpha;
+	float x, y, alpha;
 	float tsec = (float)time_msec / 1000.0f;
-
-	vwidth = win_aspect * 480;
-	x = (vwidth - 640) / 2.0f;
 
 	begin2d(480);
 
-	blit_tex_rect(x, 0, 640, 480 * 0.9, gamelogo, 1, 0, 0, 1, 0.9);
+	blit_tex_rect(xoffs, 0, 640, 480 * 0.9, gamelogo, 1, 0, 0, 1, 0.9);
 
 	glEnable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, startex->texid);
@@ -111,11 +110,8 @@ static void menu_display(void)
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_ONE, GL_ONE);
 
-	x += 316;
-	y = 310;
-
 	glPushMatrix();
-	glTranslatef(x, y, 0);
+	glTranslatef(xoffs + 316, 310, 0);
 	glRotatef(tsec * 10.0f, 0, 0, 1);
 	alpha = (sin(tsec) + 0.5) * 0.2;
 
@@ -129,7 +125,6 @@ static void menu_display(void)
 
 	glPopMatrix();
 
-	y = 360;
 	dtx_use_font(font, font_sz);
 
 	glMatrixMode(GL_MODELVIEW);
@@ -141,10 +136,10 @@ static void menu_display(void)
 		} else {
 			glColor3f(0.133, 0.161, 0.271);
 		}
-		strwidth = dtx_string_width(menustr[i]) * 0.7;
-		x = (vwidth - strwidth) / 2;
+		x = xoffs + itemrect[i].x;
+		y = itemrect[i].y + itemrect[i].height - font_baseline;
 		glTranslatef(x, y, 0);
-		glScalef(0.7, -0.7, 0.7);
+		glScalef(FONT_SCALE, -FONT_SCALE, FONT_SCALE);
 		dtx_printf(menustr[i]);
 		glPopMatrix();
 
@@ -152,19 +147,9 @@ static void menu_display(void)
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_ONE, GL_ONE);
 			blit_tex_rect(x - 25, y - 16, 16, 16, gamelogo, 1, 0.00469, 0.9604, 0.025, 0.033333);
-			blit_tex_rect(x + strwidth + 25 - 16, y - 16, 16, 16, gamelogo, 1, 0.00469, 0.9604, 0.025, 0.033333);
+			blit_tex_rect(x + itemrect[i].width + 25 - 16, y - 16, 16, 16, gamelogo, 1, 0.00469, 0.9604, 0.025, 0.033333);
 		}
-		y += 25;
-
-		glDisable(GL_TEXTURE_2D);
-		glDisable(GL_BLEND);
-		glBegin(GL_LINE_LOOP);
-		glColor3f(0, 1, 0);
-		glVertex2f(itemrect[i].x, itemrect[i].y);
-		glVertex2f(itemrect[i].x + itemrect[i].width, itemrect[i].y);
-		glVertex2f(itemrect[i].x + itemrect[i].width, itemrect[i].y + itemrect[i].height);
-		glVertex2f(itemrect[i].x, itemrect[i].y + itemrect[i].height);
-		glEnd();
+		y += font_height;
 	}
 
 	end2d();
@@ -172,6 +157,10 @@ static void menu_display(void)
 
 static void menu_reshape(int x, int y)
 {
+	float vwidth;
+
+	vwidth = win_aspect * 480;
+	xoffs = (vwidth - 640) / 2.0f;
 }
 
 static void menu_keyb(int key, int press)
@@ -197,10 +186,26 @@ static void menu_keyb(int key, int press)
 
 static void menu_mouse(int bn, int press, int x, int y)
 {
+	if(bn == 0 && !press && hover != -1) {
+		act_item(hover);
+	}
 }
 
 static void menu_motion(int x, int y)
 {
+	int i;
+	float vx = x * win_aspect * 480.0f / win_width - xoffs;
+	float vy = y * 480.0f / win_height;
+
+	hover = -1;
+	for(i=0; i<NUM_MENU_ITEMS; i++) {
+		if(vx < itemrect[i].x) continue;
+		if(vx >= itemrect[i].x + itemrect[i].width) continue;
+		if(vy < itemrect[i].y) continue;
+		if(vy >= itemrect[i].y + itemrect[i].height) continue;
+		sel = hover = i;
+		break;
+	}
 }
 
 
