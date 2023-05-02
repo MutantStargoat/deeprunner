@@ -4,16 +4,25 @@
 #include "mesh.h"
 #include "octree.h"
 
+struct portal;
+
 struct room {
 	char *name;
 	struct mesh *meshes;	/* darr */
 	struct mesh *colmesh;	/* darr */
 	struct aabox aabb;		/* axis-aligned bounding box of this room */
 	struct octnode *octree;	/* octree for collision poly intersections */
+
+	struct portal *portals;	/* darr */
+
+	unsigned int vis_frm, rendered;
 };
 
 struct portal {
-	struct room *room[2];
+	char *name;
+	struct room *room, *link;
+	cgm_vec3 pos;
+	float rad;
 };
 
 struct level {

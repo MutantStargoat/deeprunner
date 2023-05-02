@@ -10,7 +10,9 @@
 #define DBG_FREEZEVIS
 #undef DBG_SHOW_CUR_ROOM
 #undef DBG_ONLY_CUR_ROOM
+#undef DBG_ALL_ROOMS
 #undef DBG_SHOW_MAX_COL_ITER
 #define DBG_NO_IMAN
+#define DBG_SHOW_PORTALS
 
 #endif	/* CONFIG_H_ */

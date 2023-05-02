@@ -253,10 +253,10 @@ static void gdisplay(void)
 #endif
 		vispos = player.pos;
 		visrot = player.rot;
-		rendlvl_setup(player.room, 0, 0);
+		rendlvl_setup(player.room, 0, view_mat);
 #ifdef DBG_FREEZEVIS
 	} else {
-		rendlvl_setup(0, &vispos, &visrot);
+		rendlvl_setup(0, &vispos, view_mat);
 	}
 #endif
 	render_level();
@@ -404,7 +404,7 @@ static void draw_ui(void)
 
 static void greshape(int x, int y)
 {
-	cgm_mperspective(proj_mat, cgm_deg_to_rad(60), win_aspect, 0.1, 100);
+	cgm_mperspective(proj_mat, cgm_deg_to_rad(60), win_aspect, 0.1, 500);
 	glMatrixMode(GL_PROJECTION);
 	glLoadMatrixf(proj_mat);
 }
@@ -458,6 +458,10 @@ static void gkeyb(int key, int press)
 		case ']':
 			player.sp += 8;
 			if(player.sp > MAX_SP) player.sp = MAX_SP;
+			break;
+
+		case GKEY_F1:
+			printf("player: %g %g %g\n", player.pos.x, player.pos.y, player.pos.z);
 			break;
 		}
 	}

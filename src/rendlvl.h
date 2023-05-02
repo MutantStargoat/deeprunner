@@ -6,7 +6,7 @@
 int rendlvl_init(struct level *lvl);
 void rendlvl_destroy(void);
 
-void rendlvl_setup(struct room *room, const cgm_vec3 *ppos, const cgm_quat *prot);
+void rendlvl_setup(struct room *room, const cgm_vec3 *ppos, float *view_matrix);
 
 void rendlvl_update(void);
 

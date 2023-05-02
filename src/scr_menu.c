@@ -29,7 +29,7 @@ struct game_screen scr_menu = {
 };
 
 static struct texture *gamelogo;
-static struct texture *startex;
+static struct texture *startex;/*, *blurmenu;*/
 static struct dtx_font *font;
 static int font_sz;
 static float font_height, font_baseline;
@@ -54,6 +54,11 @@ static int menu_init(void)
 	if(!(startex = tex_load("data/blspstar.png"))) {
 		return -1;
 	}
+	/*
+	if(!(blurmenu = tex_load("data/blurmenu.png"))) {
+		return -1;
+	}
+	*/
 
 	if(!(font = dtx_open_font_glyphmap("data/menufont.gmp"))) {
 		fprintf(stderr, "failed to open menu font\n");
@@ -113,7 +118,7 @@ static void menu_display(void)
 	glPushMatrix();
 	glTranslatef(xoffs + 316, 310, 0);
 	glRotatef(tsec * 10.0f, 0, 0, 1);
-	alpha = (sin(tsec) + 0.5) * 0.2;
+	alpha = (sin(tsec) + 0.6) * 0.2;
 
 	glBegin(GL_QUADS);
 	glColor3f(alpha, alpha, alpha);
@@ -138,6 +143,7 @@ static void menu_display(void)
 		}
 		x = xoffs + itemrect[i].x;
 		y = itemrect[i].y + itemrect[i].height - font_baseline;
+
 		glTranslatef(x, y, 0);
 		glScalef(FONT_SCALE, -FONT_SCALE, FONT_SCALE);
 		dtx_printf(menustr[i]);

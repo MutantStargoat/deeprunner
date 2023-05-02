@@ -347,3 +347,20 @@ int aabox_sph_test(const struct aabox *box, const cgm_vec3 *pt, float rad)
 	float dsq = aabox_sph_distsq(box, pt, rad);
 	return dsq <= rad * rad;
 }
+
+int sph_sph_test(const cgm_vec3 *apos, float arad, const cgm_vec3 *bpos, float brad)
+{
+	float radsum = arad + brad;
+	cgm_vec3 dir = *bpos;
+	cgm_vsub(&dir, apos);
+
+	if(cgm_vlength_sq(&dir) < radsum * radsum) {
+		return 1;
+	}
+	return 0;
+}
+
+float plane_point_sdist(const cgm_vec4 *plane, const cgm_vec3 *pt)
+{
+	return pt->x * plane->x + pt->y * plane->y + pt->z * plane->z - plane->w;
+}

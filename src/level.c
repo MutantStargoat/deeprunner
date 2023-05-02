@@ -11,6 +11,7 @@
 static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, struct goat3d_node *gnode);
 static int conv_mesh(struct level *lvl, struct mesh *mesh, struct goat3d *gscn, struct goat3d_mesh *gmesh);
 static void apply_objmod(struct level *lvl, struct mesh *mesh, struct ts_node *tsn);
+static struct room *find_portal_link(struct level *lvl, struct portal *portal);
 static void build_room_octree(struct room *room);
 
 struct room *alloc_room(void)
@@ -18,6 +19,7 @@ struct room *alloc_room(void)
 	struct room *room = calloc_nf(1, sizeof *room);
 	room->meshes = darr_alloc(0, sizeof *room->meshes);
 	room->colmesh = darr_alloc(0, sizeof *room->colmesh);
+	room->portals = darr_alloc(0, sizeof *room->portals);
 	aabox_init(&room->aabb);
 	return room;
 }
@@ -44,6 +46,8 @@ void free_room(struct room *room)
 		}
 		darr_free(room->colmesh);
 	}
+
+	darr_free(room->portals);
 
 	free(room->name);
 
@@ -78,7 +82,7 @@ void lvl_destroy(struct level *lvl)
 
 int lvl_load(struct level *lvl, const char *fname)
 {
-	int i, count;
+	int i, j, count, numport;
 	struct ts_node *ts, *tsnode;
 	const char *scnfile, *str;
 	float *vec;
@@ -181,8 +185,19 @@ int lvl_load(struct level *lvl, const char *fname)
 		tsnode = tsnode->next;
 	}
 
+	/* link up rooms through their portals */
+	count = darr_size(lvl->rooms);
+	for(i=0; i<count; i++) {
+		room = lvl->rooms[i];
 
-	/* TODO read room nodes with portal links */
+		numport = darr_size(room->portals);
+		for(j=0; j<numport; j++) {
+			if(!(room->portals[j].link = find_portal_link(lvl, room->portals + j))) {
+				fprintf(stderr, "warning: unlinked portal \"%s\" (room: \"%s\")\n",
+						room->portals[j].name, room->name);
+			}
+		}
+	}
 
 	ts_free_tree(ts);
 	return 0;
@@ -351,17 +366,61 @@ int lvl_collision_rad(const struct level *lvl, const struct room *room, const cg
 	return 0;
 }
 
+static void make_portal(struct portal *portal, struct goat3d_node *gnode)
+{
+	int i, vcount;
+	struct goat3d_mesh *gmesh;
+	cgm_vec3 *varr, v;
+	float xform[16];
+	float dsq, max_dsq;
+
+	gmesh = goat3d_get_node_object(gnode);
+	goat3d_get_matrix(gnode, xform);
+
+	vcount = goat3d_get_mesh_vertex_count(gmesh);
+	varr = (cgm_vec3*)goat3d_get_mesh_attribs(gmesh, GOAT3D_MESH_ATTR_VERTEX);
+
+	cgm_vcons(&portal->pos, 0, 0, 0);
+	for(i=0; i<vcount; i++) {
+		v = varr[i];
+		cgm_vmul_m4v3(&v, xform);
+		cgm_vadd(&portal->pos, &v);
+	}
+	cgm_vscale(&portal->pos, 1.0f / vcount);
+
+	max_dsq = 0;
+	for(i=0; i<vcount; i++) {
+		v = varr[i];
+		cgm_vmul_m4v3(&v, xform);
+		cgm_vsub(&v, &portal->pos);
+		if((dsq = cgm_vlength_sq(&v)) > max_dsq) {
+			max_dsq = dsq;
+		}
+	}
+	portal->rad = sqrt(max_dsq);
+}
+
 static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, struct goat3d_node *gnode)
 {
 	int i, count;
 	const char *name = goat3d_get_node_name(gnode);
 	enum goat3d_node_type type = goat3d_get_node_type(gnode);
 	struct goat3d_mesh *gmesh;
+	struct portal portal;
 	struct mesh mesh;
 	float xform[16];
 
 	if(match_prefix(name, "portal_")) {
-		/* ignore portals at this stage, we'll connect them up later */
+		if(type != GOAT3D_NODE_MESH) {
+			fprintf(stderr, "ignoring non-mesh node with \"portal_\" prefix: %s\n", name);
+		} else {
+			/* initially just create the portals and leave them unlinked */
+			make_portal(&portal, gnode);
+			portal.room = room;
+			portal.link = 0;
+			portal.name = strdup_nf(name);
+			darr_push(room->portals, &portal);
+		}
 	} else if(match_prefix(name, "col_")) {
 		if(type != GOAT3D_NODE_MESH) {
 			fprintf(stderr, "ignoring non-mesh node with \"col_\" prefix: %s\n", name);
@@ -485,6 +544,29 @@ static void apply_objmod(struct level *lvl, struct mesh *mesh, struct ts_node *t
 		mesh->mtl.emissive = 1;
 	}
 }
+
+static struct room *find_portal_link(struct level *lvl, struct portal *portal)
+{
+	int i, j, nrooms, nport;
+	struct room *room;
+	struct portal *portb;
+
+	nrooms = darr_size(lvl->rooms);
+	for(i=0; i<nrooms; i++) {
+		room = lvl->rooms[i];
+		nport = darr_size(room->portals);
+		for(j=0; j<nport; j++) {
+			portb = room->portals + j;
+			if(portb == portal) continue;
+			if(sph_sph_test(&portal->pos, portal->rad, &portb->pos, portb->rad)) {
+				return room;
+			}
+		}
+	}
+	return 0;
+}
+
+
 
 #define MAX_OCT_DEPTH	8
 #define MAX_OCT_TRIS	16

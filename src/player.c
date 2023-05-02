@@ -125,6 +125,8 @@ void update_player(struct player *p)
 	if(iter < 16) {
 		cgm_vadd(&p->pos, &vel);
 	}
+
+	//printf("player %f %f %f\n", p->pos.x, p->pos.y, p->pos.z);
 }
 
 void player_view_matrix(struct player *p, float *view_mat)
