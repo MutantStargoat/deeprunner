@@ -174,7 +174,7 @@ static int gstart(void)
 	player.lvl = &lvl;
 
 	if(opt.music) {
-		if(!(mod = au_load_module("data/sc-fuse.it"))) {
+		if(!(mod = au_load_module("data/ingame.it"))) {
 			fprintf(stderr, "failed to open music\n");
 		} else {
 			au_play_module(mod);
