@@ -204,6 +204,8 @@ static CGM_INLINE void cgm_mget_rotation(const float *m, cgm_quat *res);
 static CGM_INLINE void cgm_mget_scaling(const float *m, cgm_vec3 *res);
 static CGM_INLINE void cgm_mget_frustum_plane(const float *m, int p, cgm_vec4 *res);
 
+static CGM_INLINE void cgm_normalize_plane(cgm_vec4 *p);
+
 static CGM_INLINE void cgm_mlookat(float *m, const cgm_vec3 *pos, const cgm_vec3 *targ,
 		const cgm_vec3 *up);
 static CGM_INLINE void cgm_minv_lookat(float *m, const cgm_vec3 *pos, const cgm_vec3 *targ,

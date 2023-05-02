@@ -47,7 +47,7 @@ void rendlvl_destroy(void)
 {
 }
 
-void rendlvl_setup(struct room *room, const cgm_vec3 *ppos, float *view_matrix)
+void rendlvl_setup(struct room *room, const cgm_vec3 *ppos, float *vp_matrix)
 {
 	int i;
 
@@ -57,7 +57,8 @@ void rendlvl_setup(struct room *room, const cgm_vec3 *ppos, float *view_matrix)
 	cur_room = room;
 
 	for(i=0; i<6; i++) {
-		cgm_mget_frustum_plane(view_matrix, i, frust + i);
+		cgm_mget_frustum_plane(vp_matrix, i, frust + i);
+		cgm_normalize_plane(frust + i);
 	}
 }
 
@@ -219,7 +220,7 @@ static int portal_frustum_test(struct portal *portal)
 	int i;
 
 	for(i=0; i<6; i++) {
-		if(plane_point_sdist(frust + i, &portal->pos) > portal->rad) {
+		if(plane_point_sdist(frust + i, &portal->pos) < -portal->rad) {
 			return 0;
 		}
 	}

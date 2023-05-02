@@ -362,5 +362,5 @@ int sph_sph_test(const cgm_vec3 *apos, float arad, const cgm_vec3 *bpos, float b
 
 float plane_point_sdist(const cgm_vec4 *plane, const cgm_vec3 *pt)
 {
-	return pt->x * plane->x + pt->y * plane->y + pt->z * plane->z - plane->w;
+	return pt->x * plane->x + pt->y * plane->y + pt->z * plane->z + plane->w;
 }

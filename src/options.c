@@ -27,15 +27,15 @@ struct options opt = {
 
 static struct gfxoptions gfxdef_ultra = {
 	1,		/* blendui */
-	100		/* draw distance */
+	80		/* draw distance */
 };
 static struct gfxoptions gfxdef_vpro = {
 	1,		/* blendui */
-	100		/* draw distance */
+	80		/* draw distance */
 };
 static struct gfxoptions gfxdef_o2 = {
 	0,		/* blendui */
-	100		/* draw distance */
+	80		/* draw distance */
 };
 static struct gfxoptions gfxdefopt;
 

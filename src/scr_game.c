@@ -198,6 +198,8 @@ static void gstop(void)
 
 static void gupdate(void)
 {
+	float viewproj[16];
+
 	if(inpstate & INP_MOVE_BITS) {
 		if(inpstate & INP_FWD_BIT) {
 			player.vel.z -= KB_MOVE_SPEED;
@@ -222,6 +224,23 @@ static void gupdate(void)
 	update_player_sball(&player);
 	update_player(&player);
 
+	player_view_matrix(&player, view_mat);
+
+	cgm_mcopy(viewproj, view_mat);
+	cgm_mmul(viewproj, proj_mat);
+
+#ifdef DBG_FREEZEVIS
+	if(!dbg_freezevis) {
+#endif
+		vispos = player.pos;
+		visrot = player.rot;
+		rendlvl_setup(player.room, 0, viewproj);
+#ifdef DBG_FREEZEVIS
+	} else {
+		rendlvl_setup(0, &vispos, viewproj);
+	}
+#endif
+
 	rendlvl_update();
 }
 
@@ -244,7 +263,6 @@ static void gdisplay(void)
 		tm_acc -= TSTEP;
 	}
 
-	player_view_matrix(&player, view_mat);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadMatrixf(view_mat);
 
@@ -254,18 +272,8 @@ static void gdisplay(void)
 
 	glEnable(GL_FOG);
 
-#ifdef DBG_FREEZEVIS
-	if(!dbg_freezevis) {
-#endif
-		vispos = player.pos;
-		visrot = player.rot;
-		rendlvl_setup(player.room, 0, view_mat);
-#ifdef DBG_FREEZEVIS
-	} else {
-		rendlvl_setup(0, &vispos, view_mat);
-	}
-#endif
 	render_level();
+	/* TODO: render non-static meshes */
 
 	glDisable(GL_FOG);
 
@@ -460,6 +468,8 @@ static void gkeyb(int key, int press)
 				player.pos = vispos;
 				player.rot = visrot;
 			}
+			greshape(win_width, win_height);	/* to change the far clip */
+			break;
 
 		case ';':
 			player.hp -= 8;
