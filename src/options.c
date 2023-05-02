@@ -26,13 +26,16 @@ struct options opt = {
 };
 
 static struct gfxoptions gfxdef_ultra = {
-	1		/* blendui */
+	1,		/* blendui */
+	100		/* draw distance */
 };
 static struct gfxoptions gfxdef_vpro = {
-	1		/* blendui */
+	1,		/* blendui */
+	100		/* draw distance */
 };
 static struct gfxoptions gfxdef_o2 = {
-	0		/* blendui */
+	0,		/* blendui */
+	100		/* draw distance */
 };
 static struct gfxoptions gfxdefopt;
 
@@ -65,6 +68,7 @@ int load_options(const char *fname)
 	opt.sball_speed = ts_lookup_int(cfg, "options.ctl.sballspeed", DEF_SBALL_SPEED);
 
 	opt.gfx.blendui = ts_lookup_int(cfg, "options.gfx.blendui", gfxdefopt.blendui);
+	opt.gfx.drawdist = ts_lookup_num(cfg, "options.gfx.drawdist", gfxdefopt.drawdist);
 
 	ts_free_tree(cfg);
 	return 0;
@@ -97,6 +101,7 @@ int save_options(const char *fname)
 
 	fprintf(fp, "\tgfx {\n");
 	WROPT(2, "blendui = %d", opt.gfx.blendui, gfxdefopt.blendui);
+	WROPT(2, "drawdist = %f", opt.gfx.drawdist, gfxdefopt.drawdist);
 	fprintf(fp, "\t}\n");
 
 	fprintf(fp, "\taudio {\n");

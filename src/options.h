@@ -3,6 +3,7 @@
 
 struct gfxoptions {
 	int blendui;
+	float drawdist;
 };
 
 struct options {

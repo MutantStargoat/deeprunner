@@ -143,6 +143,7 @@ static void gdestroy(void)
 static int gstart(void)
 {
 	float amb[] = {0.25, 0.25, 0.25, 1};
+	float zero[] = {0, 0, 0, 1};
 
 	if(win_height) {
 		greshape(win_width, win_height);
@@ -159,6 +160,9 @@ static int gstart(void)
 	glEnable(GL_LIGHT1);
 	set_light_color(2, 1, 1, 1, 0.5);
 	glEnable(GL_LIGHT2);
+
+	glClearColor(0, 0, 0, 1);
+	glFogfv(GL_FOG_COLOR, zero);
 
 	if(rendlvl_init(&lvl)) {
 		return -1;
@@ -248,6 +252,8 @@ static void gdisplay(void)
 	set_light_dir(1, 5, 0, 3);
 	set_light_dir(2, -0.5, -2, -3);
 
+	glEnable(GL_FOG);
+
 #ifdef DBG_FREEZEVIS
 	if(!dbg_freezevis) {
 #endif
@@ -260,6 +266,8 @@ static void gdisplay(void)
 	}
 #endif
 	render_level();
+
+	glDisable(GL_FOG);
 
 	glPushAttrib(GL_ENABLE_BIT);
 	glDisable(GL_LIGHTING);
@@ -404,9 +412,19 @@ static void draw_ui(void)
 
 static void greshape(int x, int y)
 {
-	cgm_mperspective(proj_mat, cgm_deg_to_rad(60), win_aspect, 0.1, 500);
+	float zfar = opt.gfx.drawdist;
+#ifdef DBG_FREEZEVIS
+	if(dbg_freezevis) {
+		zfar = 500;
+	}
+#endif
+	cgm_mperspective(proj_mat, cgm_deg_to_rad(60), win_aspect, 0.1, zfar);
 	glMatrixMode(GL_PROJECTION);
 	glLoadMatrixf(proj_mat);
+
+	glFogi(GL_FOG_MODE, GL_LINEAR);
+	glFogf(GL_FOG_START, zfar * 0.75);
+	glFogf(GL_FOG_END, zfar);
 }
 
 static void gkeyb(int key, int press)
