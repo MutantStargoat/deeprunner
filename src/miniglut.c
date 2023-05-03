@@ -977,6 +977,12 @@ static void create_window(const char *title)
 	glXGetConfig(dpy, vi, GLX_SAMPLES_ARB, &ctx_info.samples);
 	glXGetConfig(dpy, vi, GLX_FRAMEBUFFER_SRGB_CAPABLE_ARB, &ctx_info.srgb);
 
+	printf("Selected visual: %d\n", (int)vi->visualid);
+	printf(" rgba%d%d%d%d ", ctx_info.rsize, ctx_info.gsize, ctx_info.bsize, ctx_info.asize);
+	printf(" zbuf %d stencil %d ", ctx_info.zsize, ctx_info.ssize);
+	printf(" %s-buf ", ctx_info.dblbuf ? "double" : "single");
+	printf(" %s\n", ctx_info.stereo ? "stereo" : "");
+
 	if(!(cmap = XCreateColormap(dpy, root, vi->visual, mode & GLUT_INDEX ? AllocAll : AllocNone))) {
 		XFree(vi);
 		glXDestroyContext(dpy, ctx);

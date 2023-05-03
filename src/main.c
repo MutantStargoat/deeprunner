@@ -146,13 +146,9 @@ void game_vsync(int vsync)
 {
 	vsync = vsync ? 1 : 0;
 	if(glx_swap_interval_ext) {
-		printf("using glXSwapIntervalEXT\n");
 		glx_swap_interval_ext(xdpy, xwin, vsync);
 	} else if(glx_swap_interval_sgi) {
-		printf("using glXSwapIntervalSGI\n");
 		glx_swap_interval_sgi(vsync);
-	} else {
-		printf("can't change vsync\n");
 	}
 }
 #endif
