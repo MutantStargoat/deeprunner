@@ -158,6 +158,10 @@ static int gstart(void)
 	}
 
 	glLightModelfv(GL_LIGHT_MODEL_AMBIENT, amb);
+	glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, 0);
+	glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, 0);
+
+	glHint(GL_FOG_HINT, GL_FASTEST);
 
 	glDepthFunc(GL_LEQUAL);
 
@@ -257,6 +261,8 @@ static void gdisplay(void)
 	static long prev_msec;
 	static float tm_acc = TSTEP;
 	long msec;
+
+	glClear(GL_DEPTH_BUFFER_BIT);
 
 	msec = glutGet(GLUT_ELAPSED_TIME);
 	tm_acc += (float)(msec - prev_msec) / 1000.0f;
@@ -563,9 +569,8 @@ static void gsball_rotate(int x, int y, int z)
 
 static void gsball_button(int bn, int press)
 {
-	if(press) {
-		init_player(&player);
-	}
+	printf("pos: %g %g %g\n", player.pos.x, player.pos.y, player.pos.z);
+	printf("rot: %g %g %g %g\n", player.rot.x, player.rot.y, player.rot.z, player.rot.w);
 }
 
 static void set_light_dir(int idx, float x, float y, float z)

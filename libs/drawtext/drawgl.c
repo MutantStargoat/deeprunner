@@ -75,7 +75,7 @@ static void add_glyph(struct glyph *g, float x, float y);
 #include <GL/glu.h>
 #endif
 
-#ifdef __unix__
+#if defined(__unix__) || defined(unix)
 #define GLX_GLXEXT_LEGACY	/* don't include glxext.h internally in glx.h */
 #include <GL/glx.h>
 #endif
@@ -100,6 +100,10 @@ static int use_blend = 1;
 static int use_atest;
 static float atest_thres;
 
+#ifndef APIENTRY
+#define APIENTRY
+#endif
+
 #ifndef GL_ES
 #ifndef GL_VERSION_1_5
 #define GL_ARRAY_BUFFER 0x8892
@@ -119,7 +123,7 @@ static PFNGLVERTEXATTRIBPOINTERPROC glVertexAttribPointer;
 
 #ifdef WIN32
 #define load_glfunc(s)	wglGetProcAddress(s)
-#elif defined(__unix__)
+#elif defined(__unix__) || defined(unix)
 #define load_glfunc(s)	glXGetProcAddress((unsigned char*)s)
 #endif
 

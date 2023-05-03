@@ -73,5 +73,6 @@ void game_quit(void);
 void game_resize(int x, int y);
 void game_fullscreen(int fs);
 void game_grabmouse(int grab);
+void game_vsync(int vsync);
 
 #endif	/* GAME_H_ */

@@ -94,7 +94,7 @@ struct dtx_font *dtx_open_font(const char *fname, int sz)
 	init_freetype();
 
 	if(!(fnt = calloc(1, sizeof *fnt))) {
-		fperror("failed to allocate font structure");
+		fperror("dtx_open_font: failed to allocate font structure");
 		return 0;
 	}
 
@@ -129,7 +129,7 @@ struct dtx_font *dtx_open_font_mem(void *ptr, int memsz, int fontsz)
 	init_freetype();
 
 	if(!(fnt = calloc(1, sizeof *fnt))) {
-		fperror("failed to allocate font structure");
+		fperror("dtx_open_font_mem: failed to allocate font structure");
 		return 0;
 	}
 
@@ -165,7 +165,7 @@ struct dtx_font *dtx_open_font_glyphmap(const char *fname)
 	struct dtx_glyphmap *gmap;
 
 	if(!(fnt = calloc(1, sizeof *fnt))) {
-		fperror("failed to allocate font structure");
+		fperror("dtx_open_font_glyphmap: failed to allocate font structure");
 		return 0;
 	}
 
@@ -190,7 +190,7 @@ struct dtx_font *dtx_open_font_glyphmap_mem(void *ptr, int memsz)
 	struct dtx_glyphmap *gmap;
 
 	if(!(fnt = calloc(1, sizeof *fnt))) {
-		fperror("failed to allocate font structure");
+		fperror("dtx_open_font_glyphmap_mem: failed to allocate font structure");
 		return 0;
 	}
 
@@ -228,14 +228,14 @@ void dtx_close_font(struct dtx_font *fnt)
 void dtx_prepare(struct dtx_font *fnt, int sz)
 {
 	if(!dtx_get_font_glyphmap_range(fnt, sz, 0, 256)) {
-		fprintf(stderr, "%s: failed (sz: %d, range: 0-255 [ascii])\n", __func__, sz);
+		fprintf(stderr, "dtx_prepare: failed (sz: %d, range: 0-255 [ascii])\n", sz);
 	}
 }
 
 void dtx_prepare_range(struct dtx_font *fnt, int sz, int cstart, int cend)
 {
 	if(!dtx_get_font_glyphmap_range(fnt, sz, cstart, cend)) {
-		fprintf(stderr, "%s: failed (sz: %d, range: %d-%d)\n", __func__, sz, cstart, cend);
+		fprintf(stderr, "dtx_prepare_range: failed (sz: %d, range: %d-%d)\n", sz, cstart, cend);
 	}
 }
 
@@ -244,12 +244,12 @@ int dtx_calc_font_distfield(struct dtx_font *fnt, int scale_numer, int scale_den
 	struct dtx_glyphmap *gm = fnt->gmaps;
 	while(gm) {
 		if(dtx_calc_glyphmap_distfield(gm) == -1) {
-			fprintf(stderr, "%s failed to create distfield glyphmap\n", __func__);
+			fprintf(stderr, "dtx_calc_glyphmap_distfield: failed to create distfield glyphmap\n");
 			return -1;
 		}
 
 		if(dtx_resize_glyphmap(gm, scale_numer, scale_denom, DTX_LINEAR) == -1) {
-			fprintf(stderr, "%s: failed to resize glyhphmap during distfield conversion\n", __func__);
+			fprintf(stderr, "dtx_calc_glyphmap_distfield: failed to resize glyhphmap during distfield conversion\n");
 		}
 		gm->tex_valid = 0;
 		gm = gm->next;
@@ -549,7 +549,7 @@ int dtx_calc_glyphmap_distfield(struct dtx_glyphmap *gmap)
 	}
 
 	if(!(new_pixels = malloc(num_pixels))) {
-		fprintf(stderr, "%s: failed to allocate %dx%d pixel buffer\n", __func__, gmap->xsz, gmap->ysz);
+		fprintf(stderr, "dtx_calc_glyphmap_distfield: failed to allocate %dx%d pixel buffer\n", gmap->xsz, gmap->ysz);
 		return -1;
 	}
 	dptr = new_pixels;
@@ -622,7 +622,7 @@ int dtx_resize_glyphmap(struct dtx_glyphmap *gmap, int snum, int sdenom, int fil
 	if(snum == sdenom) return 0;
 
 	if((count_bits(snum) | count_bits(sdenom)) != 1) {
-		fprintf(stderr, "%s: invalid scale fraction %d/%d (not power of 2)\n", __func__, snum, sdenom);
+		fprintf(stderr, "dtx_resize_glyphmap: invalid scale fraction %d/%d (not power of 2)\n", snum, sdenom);
 		return -1;
 	}
 
@@ -636,7 +636,7 @@ int dtx_resize_glyphmap(struct dtx_glyphmap *gmap, int snum, int sdenom, int fil
 	}
 
 	if(snum != 1 && sdenom != 1) {
-		fprintf(stderr, "%s: invalid scale fraction %d/%d (neither is 1)\n", __func__, snum, sdenom);
+		fprintf(stderr, "dtx_resize_glyphmap: invalid scale fraction %d/%d (neither is 1)\n", snum, sdenom);
 		return -1;
 	}
 
@@ -649,7 +649,7 @@ int dtx_resize_glyphmap(struct dtx_glyphmap *gmap, int snum, int sdenom, int fil
 
 	new_pixels = malloc(nxsz * nysz);
 	if(!new_pixels) {
-		fprintf(stderr, "%s: failed to allocate %dx%d pixel buffer\n", __func__, nxsz, nysz);
+		fprintf(stderr, "dtx_resize_glyphmap: failed to allocate %dx%d pixel buffer\n", nxsz, nysz);
 		return -1;
 	}
 
@@ -798,7 +798,7 @@ static struct dtx_glyphmap *load_glyphmap(struct io *io)
 	int greyscale = 0;
 
 	if(!(gmap = calloc(1, sizeof *gmap))) {
-		fperror("failed to allocate glyphmap");
+		fperror("load_glyphmap: failed to allocate glyphmap");
 		return 0;
 	}
 	gmap->ptsize = -1;
@@ -807,7 +807,7 @@ static struct dtx_glyphmap *load_glyphmap(struct io *io)
 	while(hdr_lines < 3) {
 		char *line = buf;
 		if(!io->readline(buf, sizeof buf, io)) {
-			fperror("unexpected end of file");
+			fperror("load_glyphmap: unexpected end of file");
 			goto err;
 		}
 
@@ -829,7 +829,7 @@ static struct dtx_glyphmap *load_glyphmap(struct io *io)
 			} else if((res = sscanf(line + 1, " %d: %fx%f+%f+%f o:%f,%f adv:%f\n",
 							&c, &xsz, &ysz, &x, &y, &orig_x, &orig_y, &adv)) == 8) {
 				if(!(g = malloc(sizeof *g))) {
-					fperror("failed to allocate glyph");
+					fperror("load_glyphmap: failed to allocate glyph");
 					goto err;
 				}
 				g->code = c;
@@ -853,7 +853,7 @@ static struct dtx_glyphmap *load_glyphmap(struct io *io)
 				}
 
 			} else {
-				fprintf(stderr, "%s: invalid glyph info line\n", __func__);
+				fprintf(stderr, "load_glyphmap: invalid glyph info line\n");
 				goto err;
 			}
 
@@ -861,7 +861,7 @@ static struct dtx_glyphmap *load_glyphmap(struct io *io)
 			switch(hdr_lines) {
 			case 0:
 				if(line[0] != 'P' || !(line[1] == '6' || line[1] == '5')) {
-					fprintf(stderr, "%s: invalid file format (magic)\n", __func__);
+					fprintf(stderr, "load_glyphmap: invalid file format (magic)\n");
 					goto err;
 				}
 				greyscale = line[1] == '5';
@@ -869,7 +869,7 @@ static struct dtx_glyphmap *load_glyphmap(struct io *io)
 
 			case 1:
 				if(sscanf(line, "%d %d", &gmap->xsz, &gmap->ysz) != 2) {
-					fprintf(stderr, "%s: invalid file format (dim)\n", __func__);
+					fprintf(stderr, "load_glyphmap: invalid file format (dim)\n");
 					goto err;
 				}
 				break;
@@ -879,7 +879,7 @@ static struct dtx_glyphmap *load_glyphmap(struct io *io)
 					char *endp;
 					max_pixval = strtol(line, &endp, 10);
 					if(endp == line) {
-						fprintf(stderr, "%s: invalid file format (maxval)\n", __func__);
+						fprintf(stderr, "load_glyphmap: invalid file format (maxval)\n");
 						goto err;
 					}
 				}
@@ -893,7 +893,7 @@ static struct dtx_glyphmap *load_glyphmap(struct io *io)
 	}
 
 	if(gmap->ptsize == -1 || gmap->line_advance == FLT_MIN) {
-		fprintf(stderr, "%s: invalid glyphmap, insufficient information in ppm comments\n", __func__);
+		fprintf(stderr, "load_glyphmap: invalid glyphmap, insufficient information in ppm comments\n");
 		goto err;
 	}
 
@@ -909,7 +909,7 @@ static struct dtx_glyphmap *load_glyphmap(struct io *io)
 
 	num_pixels = gmap->xsz * gmap->ysz;
 	if(!(gmap->pixels = malloc(num_pixels))) {
-		fperror("failed to allocate pixels");
+		fperror("load_glyphmap: failed to allocate pixels");
 		goto err;
 	}
 
@@ -932,7 +932,7 @@ static struct dtx_glyphmap *load_glyphmap(struct io *io)
 	gmap->crange = gmap->cend - gmap->cstart;
 
 	if(!(gmap->glyphs = calloc(gmap->crange, sizeof *gmap->glyphs))) {
-		fperror("failed to allocate glyph info");
+		fperror("load_glyphmap: failed to allocate glyph info");
 		goto err;
 	}
 
@@ -961,7 +961,7 @@ int dtx_save_glyphmap(const char *fname, const struct dtx_glyphmap *gmap)
 	int res;
 
 	if(!(fp = fopen(fname, "wb"))) {
-		fprintf(stderr, "%s: failed to open file: %s: %s\n", __func__, fname, strerror(errno));
+		fprintf(stderr, "dtx_save_glyphmap: failed to open file: %s: %s\n", fname, strerror(errno));
 		return -1;
 	}
 	res = dtx_save_glyphmap_stream(fp, gmap);

@@ -1,9 +1,11 @@
-obj = src/main.o src/miniglut.o src/game.o src/scr_menu.o src/scr_game.o \
-	  src/util.o src/input.o src/audio.o src/options.o src/player.o
+obj = src/audio.o src/darray.o src/game.o src/geom.o src/gfxutil.o src/input.o \
+	  src/level.o src/main.o src/meshgen.o src/mesh.o src/miniglut.o src/mtltex.o \
+	  src/octree.o src/options.o src/player.o src/rbtree.o src/rendlvl.o \
+	  src/scr_debug.o src/scr_game.o src/scr_menu.o src/util.o
 bin = game
 
 dbg = -g
-opt = -O3
+opt = -O3 -n32 -mips4 -TARG:platform=ip32_5k
 def = -DMINIGLUT_USE_LIBC -DMIKMOD_STATIC
 inc = -Ilibs -Ilibs/imago/src -Ilibs/treestor/include -Ilibs/goat3d/include \
 	  -Ilibs/drawtext -Ilibs/mikmod/include

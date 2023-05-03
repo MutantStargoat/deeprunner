@@ -16,6 +16,21 @@ static int translate_skey(int key);
 
 static int warping;
 
+#if defined(__unix__) || defined(unix)
+#include <GL/glx.h>
+static Display *xdpy;
+static Window xwin;
+
+static void (*glx_swap_interval_ext)();
+static void (*glx_swap_interval_sgi)();
+#endif
+#ifdef _WIN32
+#include <windows.h>
+static PROC wgl_swap_interval_ext;
+#endif
+
+
+
 int main(int argc, char **argv)
 {
 	glutInit(&argc, argv);
@@ -36,6 +51,19 @@ int main(int argc, char **argv)
 	glutSpaceballMotionFunc(game_sball_motion);
 	glutSpaceballRotateFunc(game_sball_rotate);
 	glutSpaceballButtonFunc(game_sball_button);
+
+#if defined(__unix__) || defined(unix)
+	xdpy = glXGetCurrentDisplay();
+	xwin = glXGetCurrentDrawable();
+
+	if(!(glx_swap_interval_ext = glXGetProcAddress((unsigned char*)"glXSwapIntervalEXT"))) {
+		glx_swap_interval_sgi = glXGetProcAddress((unsigned char*)"glXSwapIntervalSGI");
+	}
+#endif
+#ifdef _WIN32
+	wgl_swap_interval_ext = wglGetProcAddress("wglSwapIntervalEXT");
+#endif
+
 
 	if(game_init() == -1) {
 		return 1;
@@ -112,6 +140,31 @@ void game_grabmouse(int grab)
 	}
 	mouse_grabbed = grab;
 }
+
+#if defined(__unix__) || defined(unix)
+void game_vsync(int vsync)
+{
+	vsync = vsync ? 1 : 0;
+	if(glx_swap_interval_ext) {
+		printf("using glXSwapIntervalEXT\n");
+		glx_swap_interval_ext(xdpy, xwin, vsync);
+	} else if(glx_swap_interval_sgi) {
+		printf("using glXSwapIntervalSGI\n");
+		glx_swap_interval_sgi(vsync);
+	} else {
+		printf("can't change vsync\n");
+	}
+}
+#endif
+#ifdef WIN32
+void game_vsync(int vsync)
+{
+	if(wgl_swap_interval_ext) {
+		wgl_swap_interval_ext(vsync ? 1 : 0);
+	}
+}
+#endif
+
 
 
 static void idle(void)

@@ -45,8 +45,8 @@ int oct_addtri(struct octnode *tree, struct triangle *tri)
 
 static void subbox(struct aabox *sub, struct aabox *full, int which)
 {
-	*sub = *full;
 	cgm_vec3 mid;
+	*sub = *full;
 
 	mid.x = (full->vmin.x + full->vmax.x) * 0.5f;
 	mid.y = (full->vmin.y + full->vmax.y) * 0.5f;

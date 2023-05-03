@@ -259,9 +259,10 @@ struct texture *lvl_texture(struct level *lvl, const char *fname)
 	return tex;
 }
 
+#define NUM_ROOM_RAYS	3
 struct room *lvl_room_at(const struct level *lvl, float x, float y, float z)
 {
-	/* XXX hack until we get the portals in, use 6 rays, and keep the best
+	/* XXX hack until we get the portals in, use N rays, and keep the best
 	 * in case one or two happens to go through a portal
 	 */
 	int i, j, num_rooms;
@@ -285,7 +286,7 @@ struct room *lvl_room_at(const struct level *lvl, float x, float y, float z)
 			continue;
 		}
 
-		for(j=0; j<6; j++) {
+		for(j=0; j<NUM_ROOM_RAYS; j++) {
 			ray.dir = rdir[j];
 			if(oct_raytest(room->octree, &ray, FLT_MAX, 0)) {
 				roomhits[i]++;

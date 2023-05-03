@@ -43,6 +43,7 @@ int game_init(void)
 
 	load_options(GAME_CFG_FILE);
 	game_resize(opt.xres, opt.yres);
+	game_vsync(opt.vsync);
 
 	if(iman_init() == -1) {
 		return -1;
@@ -73,6 +74,7 @@ int game_init(void)
 	glClearColor(0.1, 0.1, 0.1, 1);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
+	glDisable(GL_DITHER);
 
 	for(i=0; i<num_screens; i++) {
 		if(screens[i]->name && start_scr_name && strcmp(screens[i]->name, start_scr_name) == 0) {
@@ -111,8 +113,6 @@ void game_display(void)
 	time_msec = glutGet(GLUT_ELAPSED_TIME);
 
 	au_update();
-
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	cur_scr->display();
 
@@ -182,6 +182,11 @@ void game_keyboard(int key, int press)
 			} else {
 				au_volume(0);
 			}
+
+		case 'v':
+			opt.vsync ^= 1;
+			printf("vsync %s\n", opt.vsync ? "on" : "off");
+			game_vsync(opt.vsync);
 			break;
 		}
 	}

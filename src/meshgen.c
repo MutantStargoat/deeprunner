@@ -652,7 +652,7 @@ void gen_heightmap(struct mesh *mesh, float width, float height, int usub, int v
 }
 
 
-static inline void rev_vert(cgm_vec3 *res, float u, float v, cgm_vec2 (*rf)(float, float, void*), void *cls)
+static void rev_vert(cgm_vec3 *res, float u, float v, cgm_vec2 (*rf)(float, float, void*), void *cls)
 {
 	cgm_vec2 pos = rf(u, v, cls);
 
@@ -751,7 +751,7 @@ void gen_revol(struct mesh *mesh, int usub, int vsub, cgm_vec2 (*rfunc)(float, f
 	}
 }
 
-static inline void sweep_vert(cgm_vec3 *res, float u, float v, float height,
+static void sweep_vert(cgm_vec3 *res, float u, float v, float height,
 		cgm_vec2 (*sf)(float, float, void*), void *cls)
 {
 	cgm_vec2 pos = sf(u, v, cls);

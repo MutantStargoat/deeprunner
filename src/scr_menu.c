@@ -105,6 +105,8 @@ static void menu_display(void)
 	float x, y, alpha;
 	float tsec = (float)time_msec / 1000.0f;
 
+	glClear(GL_COLOR_BUFFER_BIT);
+
 	begin2d(480);
 
 	blit_tex_rect(xoffs, 0, 640, 480 * 0.9, gamelogo, 1, 0, 0, 1, 0.9);

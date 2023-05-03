@@ -75,11 +75,7 @@ DTX_COMMON int dtx_cur_color_int[4];
 DTX_COMMON float dtx_cur_offset[2];
 
 #define fperror(str) \
-	fprintf(stderr, "%s: %s: %s\n", __func__, (str), strerror(errno))
-
-#ifdef _MSC_VER
-#define __func__	__FUNCTION__
-#endif
+	fprintf(stderr, "%s: %s\n", (str), strerror(errno))
 
 /* returns zero if it should NOT be printed and modifies xpos/ypos */
 /* implemented in font.c */

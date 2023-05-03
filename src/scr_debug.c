@@ -85,6 +85,8 @@ static void dbg_display(void)
 	float mat[16];
 	struct triangle xtri;
 
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 	cgm_mrotation_quat(mat, &prot);
 	cgm_mtranslate(mat, ppos.x, ppos.y, ppos.z);
 	xtri = tri;

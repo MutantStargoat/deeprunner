@@ -1,9 +1,12 @@
 #ifndef OPTIONS_H_
 #define OPTIONS_H_
 
+enum {GFXOPT_TEX_NEAREST, GFXOPT_TEX_BILINEAR, GFXOPT_TEX_TRILINEAR};
+
 struct gfxoptions {
 	int blendui;
 	float drawdist;
+	int texfilter;
 };
 
 struct options {

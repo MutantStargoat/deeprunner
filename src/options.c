@@ -27,15 +27,18 @@ struct options opt = {
 
 static struct gfxoptions gfxdef_ultra = {
 	1,		/* blendui */
-	80		/* draw distance */
+	80,		/* draw distance */
+	GFXOPT_TEX_TRILINEAR
 };
 static struct gfxoptions gfxdef_vpro = {
 	1,		/* blendui */
-	80		/* draw distance */
+	80,		/* draw distance */
+	GFXOPT_TEX_TRILINEAR
 };
 static struct gfxoptions gfxdef_o2 = {
 	0,		/* blendui */
-	80		/* draw distance */
+	80,		/* draw distance */
+	GFXOPT_TEX_BILINEAR
 };
 static struct gfxoptions gfxdefopt;
 
@@ -69,6 +72,9 @@ int load_options(const char *fname)
 
 	opt.gfx.blendui = ts_lookup_int(cfg, "options.gfx.blendui", gfxdefopt.blendui);
 	opt.gfx.drawdist = ts_lookup_num(cfg, "options.gfx.drawdist", gfxdefopt.drawdist);
+	opt.gfx.texfilter = ts_lookup_int(cfg, "options.gfx.texfilter", gfxdefopt.texfilter);
+	if(opt.gfx.texfilter < GFXOPT_TEX_NEAREST) opt.gfx.texfilter = GFXOPT_TEX_NEAREST;
+	if(opt.gfx.texfilter > GFXOPT_TEX_TRILINEAR) opt.gfx.texfilter = GFXOPT_TEX_TRILINEAR;
 
 	ts_free_tree(cfg);
 	return 0;
@@ -102,6 +108,7 @@ int save_options(const char *fname)
 	fprintf(fp, "\tgfx {\n");
 	WROPT(2, "blendui = %d", opt.gfx.blendui, gfxdefopt.blendui);
 	WROPT(2, "drawdist = %f", opt.gfx.drawdist, gfxdefopt.drawdist);
+	WROPT(2, "texfilter = %d", opt.gfx.texfilter, gfxdefopt.texfilter);
 	fprintf(fp, "\t}\n");
 
 	fprintf(fp, "\taudio {\n");
