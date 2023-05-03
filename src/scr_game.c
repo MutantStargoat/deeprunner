@@ -36,6 +36,9 @@ static void gsball_button(int bn, int state);
 static void set_light_dir(int idx, float x, float y, float z);
 static void set_light_color(int idx, float r, float g, float b, float s);
 
+#ifdef DBG_SHOW_FRUST
+static void draw_frustum(const cgm_vec4 *frust);
+#endif
 
 struct game_screen scr_game = {
 	"game",
@@ -69,6 +72,11 @@ const struct triangle *dbg_hitpoly;
 #endif
 #ifdef DBG_SHOW_MAX_COL_ITER
 int dbg_max_col_iter;
+#endif
+#ifdef DBG_SHOW_FRUST
+extern cgm_vec4 dbg_frust[][6];
+extern int dbg_num_frust;
+static int dbg_frust_idx = -1;
 #endif
 static cgm_vec3 vispos;
 static cgm_quat visrot;
@@ -234,7 +242,7 @@ static void gupdate(void)
 #endif
 		vispos = player.pos;
 		visrot = player.rot;
-		rendlvl_setup(player.room, 0, viewproj);
+		rendlvl_setup(player.room, &vispos, viewproj);
 #ifdef DBG_FREEZEVIS
 	} else {
 		rendlvl_setup(0, &vispos, viewproj);
@@ -314,6 +322,17 @@ static void gdisplay(void)
 		glTranslatef(vispos.x, vispos.y, vispos.z);
 		glutSolidSphere(COL_RADIUS, 10, 5);
 		glPopMatrix();
+	}
+#endif
+
+#ifdef DBG_SHOW_FRUST
+	if(dbg_num_frust > 0) {
+		if(dbg_frust_idx >= dbg_num_frust) {
+			dbg_frust_idx = 0;
+		}
+		if(dbg_frust_idx >= 0) {
+			draw_frustum(dbg_frust[dbg_frust_idx]);
+		}
 	}
 #endif
 
@@ -491,6 +510,17 @@ static void gkeyb(int key, int press)
 		case GKEY_F1:
 			printf("player: %g %g %g\n", player.pos.x, player.pos.y, player.pos.z);
 			break;
+
+#ifdef DBG_SHOW_FRUST
+		case GKEY_F3:
+			if(dbg_frust_idx >= 0) dbg_frust_idx--;
+			printf("frustum: %d\n", dbg_frust_idx);
+			break;
+		case GKEY_F4:
+			if(dbg_frust_idx < dbg_num_frust - 1) dbg_frust_idx++;
+			printf("frustum: %d\n", dbg_frust_idx);
+			break;
+#endif
 		}
 	}
 }
@@ -558,4 +588,54 @@ static void set_light_color(int idx, float r, float g, float b, float s)
 	glLightfv(GL_LIGHT0 + idx, GL_DIFFUSE, color);
 	glLightfv(GL_LIGHT0 + idx, GL_SPECULAR, color);
 }
+
+
+#ifdef DBG_SHOW_FRUST
+static void draw_frustum(const cgm_vec4 *frust)
+{
+	int i, j, k, tries;
+	float u, v;
+	cgm_vec3 up, pt, vdir, norm;
+	static const float col[][4] = {
+		{0.5, 0, 0}, {0.5, 0, 0.5}, {0, 0.5, 0}, {0, 0.5, 0.5}};
+
+	for(i=0; i<4; i++) {
+		glPointSize(5);
+		glBegin(GL_LINES);
+		glColor3fv(col[i]);
+		for(j=0; j<128; j++) {
+			tries = 0;
+reject:
+			if(tries++ >= 1024) break;
+			vdir = *(cgm_vec3*)(frust + 4);
+			norm = *(cgm_vec3*)(frust + i);
+
+			cgm_vcross(&up, &vdir, &norm);
+			cgm_vnormalize(&up);
+			cgm_vcross(&vdir, &norm, &up);
+
+			u = (float)rand() / (float)RAND_MAX * opt.gfx.drawdist * 2 - opt.gfx.drawdist;
+			v = (float)rand() / (float)RAND_MAX * opt.gfx.drawdist * 2 - opt.gfx.drawdist;
+
+			pt.x = up.x * u + vdir.x * v;
+			pt.y = up.y * u + vdir.y * v;
+			pt.z = up.z * u + vdir.z * v;
+
+			if(cgm_vdot(&pt, &vdir) < 0.0f) {
+				cgm_vcons(&pt, -pt.x, -pt.y, -pt.z);
+			}
+			cgm_vadd(&pt, &vispos);
+
+			for(k=0; k<6; k++) {
+				if(i == k) continue;
+				if(plane_point_sdist(frust + k, &pt) < 0) goto reject;
+			}
+
+			glVertex3f(vispos.x, vispos.y, vispos.z);
+			glVertex3f(pt.x, pt.y, pt.z);
+		}
+		glEnd();
+	}
+}
+#endif
 

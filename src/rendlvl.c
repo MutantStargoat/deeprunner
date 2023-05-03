@@ -8,6 +8,13 @@
 static struct level *lvl;
 static struct room *cur_room;
 static cgm_vec4 frust[6];	/* frustum planes */
+static cgm_vec3 view_pos;
+
+#ifdef DBG_SHOW_FRUST
+#define MAX_FRUST	32
+cgm_vec4 dbg_frust[MAX_FRUST][6];
+int dbg_num_frust;
+#endif
 
 static unsigned int updateno;
 
@@ -19,7 +26,8 @@ static const float red[] = {1, 0.5, 0.5, 1};
 extern int dbg_freezevis;
 #endif
 
-static int portal_frustum_test(struct portal *portal);
+static int portal_frustum_test(struct portal *portal, const cgm_vec4 *frust);
+static void reduce_frustum(cgm_vec4 *np, const cgm_vec4 *p, const struct portal *portal);
 
 
 int rendlvl_init(struct level *level)
@@ -55,6 +63,7 @@ void rendlvl_setup(struct room *room, const cgm_vec3 *ppos, float *vp_matrix)
 		room = lvl_room_at(lvl, ppos->x, ppos->y, ppos->z);
 	}
 	cur_room = room;
+	view_pos = *ppos;
 
 	for(i=0; i<6; i++) {
 		cgm_mget_frustum_plane(vp_matrix, i, frust + i);
@@ -62,9 +71,10 @@ void rendlvl_setup(struct room *room, const cgm_vec3 *ppos, float *vp_matrix)
 	}
 }
 
-static void update_room(struct room *room)
+static void update_room(struct room *room, const cgm_vec4 *frust)
 {
 	int i, nmeshes, nportals;
+	cgm_vec4 newfrust[6];
 
 	nmeshes = darr_size(room->meshes);
 	for(i=0; i<nmeshes; i++) {
@@ -80,14 +90,19 @@ static void update_room(struct room *room)
 	/* recursively visit all rooms reachable through visible portals */
 	room->vis_frm = updateno;
 
+#ifdef DBG_SHOW_FRUST
+	memcpy(dbg_frust[dbg_num_frust++], frust, 6 * sizeof(cgm_vec4));
+#endif
+
 	nportals = darr_size(room->portals);
 	for(i=0; i<nportals; i++) {
 		struct portal *portal = room->portals + i;
 
 		if(!portal->link) continue;	/* unlinked portals */
 
-		if(portal_frustum_test(portal) && portal->link->vis_frm != updateno) {
-			update_room(portal->link);
+		if(portal_frustum_test(portal, frust) && portal->link->vis_frm != updateno) {
+			reduce_frustum(newfrust, frust, portal);
+			update_room(portal->link, newfrust);
 		}
 	}
 #endif
@@ -96,7 +111,7 @@ static void update_room(struct room *room)
 void rendlvl_update(void)
 {
 #ifdef DBG_ONLY_CUR_ROOM
-	if(cur_room) update_room(cur_room);
+	if(cur_room) update_room(cur_room, frust);
 #elif defined(DBG_ALL_ROOMS)
 	int i, nrooms;
 	struct room *room;
@@ -105,7 +120,7 @@ void rendlvl_update(void)
 	for(i=0; i<nrooms; i++) {
 		room = lvl->rooms[i];
 
-		update_room(room);
+		update_room(room, frust);
 	}
 #else
 
@@ -113,8 +128,12 @@ void rendlvl_update(void)
 	if(dbg_freezevis) return;
 #endif
 
+#ifdef DBG_SHOW_FRUST
+	dbg_num_frust = 0;
+#endif
+
 	updateno++;
-	if(cur_room) update_room(cur_room);
+	if(cur_room) update_room(cur_room, frust);
 #endif
 }
 
@@ -183,8 +202,8 @@ void render_level(void)
 #ifndef DBG_ALL_ROOMS
 	/* render only the current room, and those linked by visible portals */
 	render_room(cur_room);
-#endif
-#endif
+#endif	/* !def DBG_ALL_ROOMS */
+#endif	/* else of DBG_ONLY_CUR_ROOM */
 }
 
 void render_level_mesh(struct mesh *mesh)
@@ -215,7 +234,7 @@ void render_level_mesh(struct mesh *mesh)
 }
 
 
-static int portal_frustum_test(struct portal *portal)
+static int portal_frustum_test(struct portal *portal, const cgm_vec4 *frust)
 {
 	int i;
 
@@ -225,4 +244,38 @@ static int portal_frustum_test(struct portal *portal)
 		}
 	}
 	return 1;
+}
+
+static void reduce_frustum(cgm_vec4 *np, const cgm_vec4 *p, const struct portal *portal)
+{
+	int i;
+	cgm_vec3 pt, ptdir, n, axis;
+	const cgm_vec3 *norm;
+	/*static const cgm_vec3 axis[] = {{0, -1, 0}, {0, 1, 0}, {1, 0, 0}, {-1, 0, 0}};*/
+
+	/* near and far planes stay the same */
+	np[4] = p[4];
+	np[5] = p[5];
+
+	for(i=0; i<4; i++) {
+		if(plane_point_sdist(p + i, &portal->pos) <= portal->rad) {
+			/* portal already touches this plane, no need to reduce */
+			np[i] = p[i];
+			continue;
+		}
+
+		/* find point on the sphere nearest the plane */
+		norm = (const cgm_vec3*)(p + i);
+		pt = portal->pos; cgm_vsub_scaled(&pt, norm, portal->rad);
+
+		ptdir = pt; cgm_vsub(&ptdir, &view_pos);
+		cgm_vnormalize(&ptdir);
+
+		/* construct plane passing through the viewpos and that point */
+		cgm_vcross(&axis, &ptdir, norm);
+		cgm_vcross(&n, &axis, &ptdir);
+
+		cgm_wcons(np + i, n.x, n.y, n.z, -cgm_vdot(&pt, &n));
+		cgm_normalize_plane(np + i);
+	}
 }

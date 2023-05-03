@@ -14,5 +14,6 @@
 #undef DBG_SHOW_MAX_COL_ITER
 #define DBG_NO_IMAN
 #define DBG_SHOW_PORTALS
+#define DBG_SHOW_FRUST
 
 #endif	/* CONFIG_H_ */
