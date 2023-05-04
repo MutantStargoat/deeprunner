@@ -25,6 +25,24 @@ struct portal {
 	float rad;
 };
 
+enum trigger_type {
+	TRIG_DAMAGE,
+	TRIG_SHIELD,
+	TRIG_WIN
+};
+
+struct trigger {
+	char *name;
+	struct aabox box;
+
+	enum trigger_type type;
+	union {
+		float damage;
+		float shield;
+		int win;
+	} act;
+};
+
 struct level {
 	struct room **rooms;		/* darr */
 	struct texture **textures;	/* darr */
@@ -35,6 +53,12 @@ struct level {
 	char *datapath;
 	char *pathbuf;
 	int pathbuf_sz;
+};
+
+struct collision {
+	cgm_vec3 pos;
+	cgm_vec3 norm;
+	float depth;
 };
 
 struct room *alloc_room(void);
@@ -50,12 +74,6 @@ struct mesh *lvl_find_mesh(const struct level *lvl, const char *name);
 struct texture *lvl_texture(struct level *lvl, const char *fname);
 
 struct room *lvl_room_at(const struct level *lvl, float x, float y, float z);
-
-struct collision {
-	cgm_vec3 pos;
-	cgm_vec3 norm;
-	float depth;
-};
 
 int lvl_collision(const struct level *lvl, const struct room *room, const cgm_vec3 *pos,
 		const cgm_vec3 *vel, struct collision *col);
