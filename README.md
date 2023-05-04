@@ -38,6 +38,45 @@ Keybindings:
   - Q and E: roll left/right.
   - +/-: adjust sound volume.
 
+Options
+-------
+Configuration options are read from `game.cfg`. If it doesn't exist, run the
+game once and exit, and it will create one with the default options commented
+out. Comments begin with the `#` symbol, to change one of the default options,
+remove the `#` from the line and change the value. Here's a list of all options
+and their possible values.
+
+### video
+
+Video output options:
+ - `xres` and `yres`: set the resolution for windowed mode. Ignored in
+   fullscreen.
+ - `fullscreen`: 0 or 1 for windowed or fullscreen. Fullscreen does not switch
+   video modes; resizes the window to cover the entire screen.
+ - `vsync`: 0 or 1 for vsync off or on.
+
+### gfx
+
+Graphics options:
+ - `drawdist`: set the draw distance in game units.
+ - `texsize`: choose texture quality, value between 0 and 2.
+ - `texfilter`: 0 = no filtering, 1 = bilinear, 2 = trilinear mipmapping.
+
+### audio
+
+Audio settings:
+ - `volmaster`: master volume, 0 to 255.
+ - `volmusic`: music volume, 0 to 255.
+ - `volsfx`: sound effects volume, 0 to 255.
+ - `music`: 0 to disable music, 1 to enable music.
+
+### controls
+
+Control options:
+ - `invmousey`: set to 1 to invert the vertical mouse axis, 0 for normal.
+ - `mousespeed`: mouse speed, 0 to 100.
+ - `sballspeed`: 6dof spacemouse/spaceball speed, 0 to 100.
+
 
 License
 -------
