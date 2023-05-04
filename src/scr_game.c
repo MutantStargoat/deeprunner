@@ -206,7 +206,8 @@ static void gstop(void)
 	rendlvl_destroy();
 }
 
-#define KB_MOVE_SPEED	0.2
+#define KB_MOVE_SPEED	0.4
+#define KB_SPIN_SPEED	0.075
 
 static void gupdate(void)
 {
@@ -225,11 +226,17 @@ static void gupdate(void)
 		if(inpstate & INP_LEFT_BIT) {
 			player.vel.x -= KB_MOVE_SPEED;
 		}
+		if(inpstate & INP_UP_BIT) {
+			player.vel.y += KB_MOVE_SPEED;
+		}
+		if(inpstate & INP_DOWN_BIT) {
+			player.vel.y -= KB_MOVE_SPEED;
+		}
 		if(inpstate & INP_LROLL_BIT) {
-			player.roll -= 0.1;
+			player.roll -= KB_SPIN_SPEED;
 		}
 		if(inpstate & INP_RROLL_BIT) {
-			player.roll += 0.1;
+			player.roll += KB_SPIN_SPEED;
 		}
 	}
 
@@ -363,6 +370,7 @@ static void draw_ui(void)
 	int i, j;
 	float yoffs, yscale;
 	float xform[16], *ptr;
+	float x, vwidth = win_aspect * 480.0f;
 
 	begin2d(480);
 
@@ -428,16 +436,17 @@ static void draw_ui(void)
 	glPopMatrix();
 
 	/* crosshair */
+	x = vwidth * 0.5f;
 	glBegin(GL_LINES);
 	glColor3f(0.5, 0.8, 0.5);
-	glVertex2f(320 - 6, 240);
-	glVertex2f(320 - 2, 240);
-	glVertex2f(320 + 2, 240);
-	glVertex2f(320 + 6, 240);
-	glVertex2f(320, 240 - 6);
-	glVertex2f(320, 240 - 2);
-	glVertex2f(320, 240 + 6);
-	glVertex2f(320, 240 + 2);
+	glVertex2f(x - 6, 240);
+	glVertex2f(x - 2, 240);
+	glVertex2f(x + 2, 240);
+	glVertex2f(x + 6, 240);
+	glVertex2f(x, 240 - 6);
+	glVertex2f(x, 240 - 2);
+	glVertex2f(x, 240 + 6);
+	glVertex2f(x, 240 + 2);
 	glEnd();
 
 	end2d();
@@ -487,7 +496,7 @@ static void gkeyb(int key, int press)
 			}
 			break;
 
-		case '\t':
+		case GKEY_F2:
 			dbg_freezevis ^= 1;
 			if(!dbg_freezevis) {
 				player.pos = vispos;
