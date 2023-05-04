@@ -2,11 +2,13 @@
 #define OPTIONS_H_
 
 enum {GFXOPT_TEX_NEAREST, GFXOPT_TEX_BILINEAR, GFXOPT_TEX_TRILINEAR};
+enum {GFXOPT_TEX_LOW, GFXOPT_TEX_MID, GFXOPT_TEX_HIGH};
 
 struct gfxoptions {
 	int blendui;
 	float drawdist;
 	int texfilter;
+	int texsize;
 };
 
 struct options {

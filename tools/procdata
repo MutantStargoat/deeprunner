@@ -12,4 +12,31 @@ genglyphmap()
 genglyphmap data/src/impact.ttf data/hpfont.gmp 42 48-58
 genglyphmap data/src/nulshockb.ttf data/menufont.gmp 28 32-91
 
+hdir=data/level1/high
+mdir=data/level1/mid
+ldir=data/level1/low
+
+mkdir -p $hdir $mdir $ldir
+
+for i in data/src/level1/high/*.png; do
+	infile=`basename $i`
+	outfile=`basename $i .png`.jpg
+
+	if [ ! -f $hdir/$outfile -o $i -nt $hdir/$outfile ]; then
+		echo "copy $i -> $hdir/$outfile"
+		convert -quality 90 $i $hdir/$outfile
+		mv $hdir/$outfile $hdir/$infile		# rename png
+	fi
+	if [ ! -f $mdir/$outfile -o $i -nt $mdir/$outfile ]; then
+		echo "half $i -> $mdir/$outfile"
+		convert -quality 90 -resize "50%" $i $mdir/$outfile
+		mv $mdir/$outfile $mdir/$infile		# rename png
+	fi
+	if [ ! -f $ldir/$outfile -o $i -nt $ldir/$outfile ]; then
+		echo "quarter $i -> $ldir/$outfile"
+		convert -quality 90 -resize "25%" $i $ldir/$outfile
+		mv $ldir/$outfile $ldir/$infile		# rename png
+	fi
+done
+
 exit 0

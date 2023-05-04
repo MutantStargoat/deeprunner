@@ -7,6 +7,7 @@
 #include "darray.h"
 #include "util.h"
 #include "treestor.h"
+#include "options.h"
 
 static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, struct goat3d_node *gnode);
 static int conv_mesh(struct level *lvl, struct mesh *mesh, struct goat3d *gscn, struct goat3d_mesh *gmesh);
@@ -105,7 +106,7 @@ int lvl_load(struct level *lvl, const char *fname)
 		return -1;
 	}
 	printf("lvl_load(%s): scene: %s\n", fname, scnfile);
-	if((str = ts_lookup_str(ts, "level.datapath", 0))) {
+	if((str = ts_lookup_str(ts, "level.texpath", 0))) {
 		printf("  texture path: %s\n", str);
 		lvl->datapath = strdup_nf(str);
 	}
@@ -225,19 +226,29 @@ static const char *find_datafile(struct level *lvl, const char *fname)
 {
 	int len;
 	FILE *fp;
+	static const char *szdir[] = {"low", "mid", "high"};
 
 	if(!lvl->datapath) return fname;
 
-	len = strlen(lvl->datapath) + strlen(fname) + 1;
+	len = strlen(lvl->datapath) + strlen(fname) + 16;
 	if(lvl->pathbuf_sz < len + 1) {
 		lvl->pathbuf = realloc_nf(lvl->pathbuf, len + 1);
 	}
-	sprintf(lvl->pathbuf, "%s/%s", lvl->datapath, fname);
 
+	/* first try outside of the level diretories for non-resizable textures */
+	sprintf(lvl->pathbuf, "%s/%s", lvl->datapath, fname);
 	if((fp = fopen(lvl->pathbuf, "rb"))) {
 		fclose(fp);
 		return lvl->pathbuf;
 	}
+
+	/* try in the currently selected texture level directory */
+	sprintf(lvl->pathbuf, "%s/%s/%s", lvl->datapath, szdir[opt.gfx.texsize], fname);
+	if((fp = fopen(lvl->pathbuf, "rb"))) {
+		fclose(fp);
+		return lvl->pathbuf;
+	}
+
 	return fname;
 }
 
