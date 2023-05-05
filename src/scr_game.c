@@ -84,6 +84,10 @@ static int dbg_frust_idx = -1;
 static cgm_vec3 vispos;
 static cgm_quat visrot;
 
+static int lasers;
+static int laser_dlist;
+static unsigned int laser_tex;
+
 static int ginit(void)
 {
 	int i;
@@ -110,6 +114,29 @@ static int ginit(void)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		gluBuild2DMipmaps(GL_TEXTURE_2D, 1, 256, 256, GL_LUMINANCE, GL_UNSIGNED_BYTE, pix);
+
+		pptr = pix + 7 * 4;
+		for(i=0; i<4; i++) {
+			int blue = ((float)i / 3.0f) * 512.0f;
+			int rest = (int)(pow((float)i / 3.0f, 4) * 200.0f);
+			int r = rest;
+			int g = rest + blue / 4;
+			int b = blue;
+			int a = i * 255 / 3;
+			if(r > 255) r = 255;
+			if(g > 255) g = 255;
+			if(b > 255) b = 255;
+			pix[i * 4] = pptr[0] = r;
+			pix[i * 4 + 1] = pptr[1] = g;
+			pix[i * 4 + 2] = pptr[2] = b;
+			pix[i * 4 + 3] = pptr[3] = a;
+			pptr -= 4;
+		}
+		glGenTextures(1, &laser_tex);
+		glBindTexture(GL_TEXTURE_1D, laser_tex);
+		glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, 8, 0, GL_RGBA, GL_UNSIGNED_BYTE, pix);
 
 		free(pix);
 	}
@@ -143,11 +170,25 @@ static int ginit(void)
 	mesh_draw(&adidome);
 	glEndList();
 
+	laser_dlist = glGenLists(1);
+	glNewList(laser_dlist, GL_COMPILE);
+	glBegin(GL_QUADS);
+	for(i=0; i<2; i++) {
+		float x = i ? -1 : 1;
+		glTexCoord1f(0); glVertex3f(x - 0.25, -1, 0);
+		glTexCoord1f(1); glVertex3f(x + 0.25, -1, 0);
+		glTexCoord1f(1); glVertex3f(x + 0.25, -1, -200);
+		glTexCoord1f(0); glVertex3f(x - 0.25, -1, -200);
+	}
+	glEnd();
+	glEndList();
+
 	return 0;
 }
 
 static void gdestroy(void)
 {
+	glDeleteTextures(1, &laser_tex);
 	lvl_destroy(&lvl);
 }
 
@@ -243,6 +284,13 @@ static void gupdate(void)
 		}
 	}
 
+	lasers = 0;
+	if(inpstate & INP_FIRE_BIT) {
+		if(player.hp >= 0.0f && player.sp >= 0.0f) {
+			lasers = 1;
+		}
+	}
+
 	if(player.hp > 0) {
 		update_player_sball(&player);
 		update_player(&player);
@@ -306,6 +354,32 @@ static void gdisplay(void)
 	glPushAttrib(GL_ENABLE_BIT);
 	glDisable(GL_LIGHTING);
 	glDisable(GL_TEXTURE_2D);
+
+	if(lasers) {
+		int i;
+		float s = 1.0 + sin(time_msec / 100.0f) * 0.01;
+		float sz = 0.18 + sin(time_msec / 50.0f) * 0.008;
+		glDisable(GL_DEPTH_TEST);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_ONE, GL_ONE);
+		/*glEnable(GL_ALPHA_TEST);
+		glAlphaFunc(GL_GREATER, 0.5);*/
+		glEnable(GL_TEXTURE_1D);
+		glBindTexture(GL_TEXTURE_1D, laser_tex);
+		glLoadIdentity();
+		glColor3f(1, 1, 1);
+		glBegin(GL_QUADS);
+		for(i=0; i<2; i++) {
+			float x = (i ? -1 : 1) * s;
+			glTexCoord1f(0); glVertex3f(x - sz, -1, 0);
+			glTexCoord1f(1); glVertex3f(x + sz, -1, 0);
+			glTexCoord1f(1); glVertex3f(x + sz, -1, -400);
+			glTexCoord1f(0); glVertex3f(x - sz, -1, -400);
+		}
+		glEnd();
+		glDisable(GL_TEXTURE_1D);
+		/*glDisable(GL_ALPHA_TEST);*/
+	}
 
 #ifdef DBG_SHOW_COLPOLY
 	if(dbg_hitpoly) {
@@ -557,6 +631,18 @@ static void gkeyb(int key, int press)
 
 static void gmouse(int bn, int press, int x, int y)
 {
+	int i;
+
+	for(i=0; i<MAX_INPUTS; i++) {
+		if(inpmap[i].mbn == bn) {
+			if(press) {
+				inpstate |= 1 << inpmap[i].inp;
+			} else {
+				inpstate &= ~(1 << inpmap[i].inp);
+			}
+			break;
+		}
+	}
 }
 
 #define PIHALF	(M_PI / 2.0)
