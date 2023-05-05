@@ -30,8 +30,8 @@ struct game_screen scr_menu = {
 
 static struct texture *gamelogo;
 static struct texture *startex;/*, *blurmenu;*/
-static struct dtx_font *font;
-static int font_sz;
+struct dtx_font *font_menu;
+int font_menu_sz;
 static float font_height, font_baseline;
 
 static int sel, hover = -1;
@@ -60,12 +60,12 @@ static int menu_init(void)
 	}
 	*/
 
-	if(!(font = dtx_open_font_glyphmap("data/menufont.gmp"))) {
+	if(!(font_menu = dtx_open_font_glyphmap("data/menufont.gmp"))) {
 		fprintf(stderr, "failed to open menu font\n");
 		return -1;
 	}
-	font_sz = dtx_get_glyphmap_ptsize(dtx_get_glyphmap(font, 0));
-	dtx_use_font(font, font_sz);
+	font_menu_sz = dtx_get_glyphmap_ptsize(dtx_get_glyphmap(font_menu, 0));
+	dtx_use_font(font_menu, font_menu_sz);
 	font_height = dtx_line_height() * FONT_SCALE;
 	font_baseline = font_height * 0.2;
 
@@ -132,7 +132,7 @@ static void menu_display(void)
 
 	glPopMatrix();
 
-	dtx_use_font(font, font_sz);
+	dtx_use_font(font_menu, font_menu_sz);
 
 	glMatrixMode(GL_MODELVIEW);
 

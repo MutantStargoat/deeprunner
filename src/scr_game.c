@@ -62,6 +62,9 @@ static struct dtx_font *font_hp;
 static int font_hp_size;
 static struct texture *font_hp_tex;
 
+extern struct dtx_font *font_menu;
+extern int font_menu_sz;
+
 static struct au_module *mod;
 
 #ifdef DBG_FREEZEVIS
@@ -240,8 +243,10 @@ static void gupdate(void)
 		}
 	}
 
-	update_player_sball(&player);
-	update_player(&player);
+	if(player.hp > 0) {
+		update_player_sball(&player);
+		update_player(&player);
+	}
 
 	player_view_matrix(&player, view_mat);
 
@@ -448,6 +453,16 @@ static void draw_ui(void)
 	glVertex2f(x, 240 + 6);
 	glVertex2f(x, 240 + 2);
 	glEnd();
+
+	if(player.hp <= 0.0f) {
+		glPushMatrix();
+		dtx_use_font(font_menu, font_menu_sz);
+		glTranslatef(x - dtx_string_width("GAME OVER!") / 2, 240, 0);
+		glScalef(1, -1, 1);
+		glColor3f(1, 1, 1);
+		dtx_printf("GAME OVER!");
+		glPopMatrix();
+	}
 
 	end2d();
 }
