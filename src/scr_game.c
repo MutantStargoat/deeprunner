@@ -402,7 +402,7 @@ static void draw_ui(void)
 		glEnd();
 		yoffs = 71;
 		yscale = -1;
-		glAlphaFunc(GL_GREATER, (float)player.hp / MAX_HP);
+		glAlphaFunc(GL_GREATER, player.hp / MAX_HP);
 	}
 	glDisable(GL_ALPHA_TEST);
 
@@ -411,11 +411,11 @@ static void draw_ui(void)
 	glTranslatef(162, 26, 0);
 	glScalef(0.4, -0.4, 0.4);
 	glColor3f(0.008, 0.396, 0.678);
-	dtx_printf("%d", player.sp * 100 / MAX_SP);
+	dtx_printf("%d", (int)player.sp * 100 / MAX_SP);
 
 	glTranslatef(0, -85, 0);
 	glColor3f(0.725, 0.075, 0.173);
-	dtx_printf("%d", player.hp * 100 / MAX_HP);
+	dtx_printf("%d", (int)player.hp * 100 / MAX_HP);
 	glPopMatrix();
 
 	/* draw ADI */

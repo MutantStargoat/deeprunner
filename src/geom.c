@@ -320,7 +320,7 @@ int aabox_tri_test(const struct aabox *box, const struct triangle *tri)
 	return aabox_plane_test(box, &plane);
 }
 
-float aabox_sph_distsq(const struct aabox *box, const cgm_vec3 *pt, float rad)
+float aabox_distsq(const struct aabox *box, const cgm_vec3 *pt)
 {
 	float dmin, dmax, dsq = 0.0f;
 
@@ -344,7 +344,7 @@ float aabox_sph_distsq(const struct aabox *box, const cgm_vec3 *pt, float rad)
 
 int aabox_sph_test(const struct aabox *box, const cgm_vec3 *pt, float rad)
 {
-	float dsq = aabox_sph_distsq(box, pt, rad);
+	float dsq = aabox_distsq(box, pt);
 	return dsq <= rad * rad;
 }
 

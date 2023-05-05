@@ -4,6 +4,7 @@
 #include "player.h"
 #include "options.h"
 #include "geom.h"
+#include "darray.h"
 
 #define MOUSE_SPEED		(opt.mouse_speed * 0.0002)
 #define SBALL_RSPEED	(opt.sball_speed * 0.00002)
@@ -64,7 +65,7 @@ extern int dbg_max_col_iter;
 /* this is called in the timestep update at a constant rate */
 void update_player(struct player *p)
 {
-	int iter;
+	int i, iter, count;
 	cgm_quat rollquat;
 	/*cgm_vec3 fwd = {0, 0, 1}, right = {1, 0, 0}, up = {0, 1, 0};*/
 	cgm_vec3 fwd, right, up;
@@ -126,7 +127,30 @@ void update_player(struct player *p)
 		cgm_vadd(&p->pos, &vel);
 	}
 
-	//printf("player %f %f %f\n", p->pos.x, p->pos.y, p->pos.z);
+	/* check for pickups and triggers */
+	count = darr_size(p->room->triggers);
+	for(i=0; i<count; i++) {
+		struct trigger *trig = p->room->triggers + i;
+		if(aabox_sph_test(&trig->box, &p->pos, COL_RADIUS)) {
+			switch(trig->act.type) {
+			case ACT_DAMAGE:
+				p->hp -= trig->act.value;
+				if(p->hp <= 0.0f) p->hp = 0.0f;
+				if(p->hp >= MAX_HP) p->hp = MAX_HP;
+				break;
+
+			case ACT_SHIELD:
+				p->sp -= trig->act.value;
+				if(p->sp <= 0.0f) p->sp = 0.0f;
+				if(p->sp >= MAX_SP) p->sp = MAX_SP;
+				break;
+
+			case ACT_WIN:
+				/* TODO */
+				break;
+			}
+		}
+	}
 }
 
 void player_view_matrix(struct player *p, float *view_mat)

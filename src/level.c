@@ -11,7 +11,8 @@
 
 static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, struct goat3d_node *gnode);
 static int conv_mesh(struct level *lvl, struct mesh *mesh, struct goat3d *gscn, struct goat3d_mesh *gmesh);
-static void apply_objmod(struct level *lvl, struct mesh *mesh, struct ts_node *tsn);
+static void apply_objmod(struct level *lvl, struct room *room, struct mesh *mesh, struct ts_node *tsn);
+static int read_action(struct action *act, struct ts_node *tsn);
 static struct room *find_portal_link(struct level *lvl, struct portal *portal);
 static void build_room_octree(struct room *room);
 
@@ -21,6 +22,7 @@ struct room *alloc_room(void)
 	room->meshes = darr_alloc(0, sizeof *room->meshes);
 	room->colmesh = darr_alloc(0, sizeof *room->colmesh);
 	room->portals = darr_alloc(0, sizeof *room->portals);
+	room->triggers = darr_alloc(0, sizeof *room->triggers);
 	aabox_init(&room->aabb);
 	return room;
 }
@@ -50,6 +52,9 @@ void free_room(struct room *room)
 
 	darr_free(room->portals);
 
+	count = darr_size(room->triggers);
+	darr_free(room->triggers);
+
 	free(room->name);
 
 	oct_free(room->octree);
@@ -61,6 +66,7 @@ void lvl_init(struct level *lvl)
 	memset(lvl, 0, sizeof *lvl);
 	lvl->rooms = darr_alloc(0, sizeof *lvl->rooms);
 	lvl->textures = darr_alloc(0, sizeof *lvl->textures);
+	lvl->actions = darr_alloc(0, sizeof *lvl->actions);
 	cgm_qcons(&lvl->startrot, 0, 0, 0, 1);
 }
 
@@ -76,6 +82,11 @@ void lvl_destroy(struct level *lvl)
 		tex_free(lvl->textures[i]);
 	}
 	darr_free(lvl->textures);
+
+	for(i=0; i<darr_size(lvl->actions); i++) {
+		free(lvl->actions[i].name);
+	}
+	darr_free(lvl->actions);
 
 	free(lvl->datapath);
 	free(lvl->pathbuf);
@@ -167,6 +178,21 @@ int lvl_load(struct level *lvl, const char *fname)
 		darr_push(lvl->rooms, &room);
 	}
 
+	/* make a list of all trigger actions first, to instanciate triggers while
+	 * reading the objects
+	 */
+	tsnode = ts->child_list;
+	while(tsnode) {
+		struct action act;
+
+		if(strcmp(tsnode->name, "action") == 0) {
+			if(read_action(&act, tsnode) != -1) {
+				darr_push(lvl->actions, &act);
+			}
+		}
+		tsnode = tsnode->next;
+	}
+
 	/* look for named object modifications */
 	tsnode = ts->child_list;
 	while(tsnode) {
@@ -176,12 +202,12 @@ int lvl_load(struct level *lvl, const char *fname)
 				tsnode = tsnode->next;
 				continue;
 			}
-			if(!(mesh = lvl_find_mesh(lvl, str))) {
+			if(!(mesh = lvl_find_mesh(lvl, str, &room))) {
 				fprintf(stderr, "skipping object mod, \"%s\" not found\n", str);
 				tsnode = tsnode->next;
 				continue;
 			}
-			apply_objmod(lvl, mesh, tsnode);
+			apply_objmod(lvl, room, mesh, tsnode);
 		}
 		tsnode = tsnode->next;
 	}
@@ -204,7 +230,7 @@ int lvl_load(struct level *lvl, const char *fname)
 	return 0;
 }
 
-struct mesh *lvl_find_mesh(const struct level *lvl, const char *name)
+struct mesh *lvl_find_mesh(const struct level *lvl, const char *name, struct room **meshroom)
 {
 	int i, j, nrooms, nmeshes;
 
@@ -214,6 +240,7 @@ struct mesh *lvl_find_mesh(const struct level *lvl, const char *name)
 		for(j=0; j<nmeshes; j++) {
 			struct mesh *m = lvl->rooms[i]->meshes + j;
 			if(m->name && strcmp(m->name, name) == 0) {
+				if(meshroom) *meshroom = lvl->rooms[i];
 				return m;
 			}
 		}
@@ -537,8 +564,20 @@ static int conv_mesh(struct level *lvl, struct mesh *mesh, struct goat3d *gscn, 
 	return 0;
 }
 
-static void apply_objmod(struct level *lvl, struct mesh *mesh, struct ts_node *tsn)
+static struct action *find_action(struct level *lvl, const char *name)
 {
+	int i;
+	for(i=0; i<darr_size(lvl->actions); i++) {
+		if(strcmp(lvl->actions[i].name, name) == 0) {
+			return lvl->actions + i;
+		}
+	}
+	return 0;
+}
+
+static void apply_objmod(struct level *lvl, struct room *room, struct mesh *mesh, struct ts_node *tsn)
+{
+	const char *str;
 	float *vec;
 
 	if((vec = ts_lookup_vec(tsn, "object.uvanim.velocity", 0))) {
@@ -555,7 +594,72 @@ static void apply_objmod(struct level *lvl, struct mesh *mesh, struct ts_node *t
 	if(ts_lookup_int(tsn, "object.mtlattr.emissive", 0)) {
 		mesh->mtl.emissive = 1;
 	}
+
+	/* check if this adds any triggers */
+	if((str = ts_lookup_str(tsn, "object.trigger", 0))) {
+		struct trigger trig;
+		struct action *act = find_action(lvl, str);
+		if(!act) {
+			fprintf(stderr, "object \"%s\" refers to unknown trigger action \"%s\"\n",
+					mesh->name, str);
+		} else {
+			/* assume bounding box has already been computed by now (see read_mesh) */
+			trig.box = mesh->aabb;
+			trig.act = *act;
+			darr_push(room->triggers, &trig);
+			printf("add trigger for \"%s\" to room \"%s\"\n", act->name, room->name);
+		}
+	}
 }
+
+static int read_action(struct action *act, struct ts_node *tsn)
+{
+	int i;
+	const char *str;
+	struct ts_attr *attr;
+
+	static const struct {
+		const char *aname;
+		int ttype;
+		enum action_type atype;
+	} actions[] = {
+		{"damage", TS_NUMBER, ACT_DAMAGE},
+		{"shield", TS_NUMBER, ACT_SHIELD},
+		{"win", -1, ACT_WIN}
+	};
+
+	if(!(str = ts_get_attr_str(tsn, "name", 0))) {
+		fprintf(stderr, "skipping action without a name\n");
+		return -1;
+	}
+	act->name = strdup_nf(str);
+
+	attr = tsn->attr_list;
+	while(attr) {
+		for(i=0; i<sizeof actions/sizeof *actions; i++) {
+			if(strcmp(attr->name, actions[i].aname) != 0) {
+				continue;
+			}
+
+			if(actions[i].ttype >= 0 && actions[i].ttype != attr->val.type) {
+				fprintf(stderr, "unexpected type for action: %s\n", act->name);
+				free(act->name);
+				return -1;
+			}
+
+			act->type = actions[i].atype;
+			if(attr->val.type == TS_NUMBER) {
+				act->value = attr->val.fnum;
+			} else {
+				act->value = 0;
+			}
+			return 0;
+		}
+		attr = attr->next;
+	}
+	return -1;
+}
+
 
 static struct room *find_portal_link(struct level *lvl, struct portal *portal)
 {
@@ -577,7 +681,6 @@ static struct room *find_portal_link(struct level *lvl, struct portal *portal)
 	}
 	return 0;
 }
-
 
 
 #define MAX_OCT_DEPTH	8

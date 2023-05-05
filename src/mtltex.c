@@ -53,8 +53,9 @@ struct texture *tex_image(struct img_pixmap *img)
 {
 	struct texture *tex;
 	int alpha = img_has_alpha(img);
-	int ifmt, fmt, pixsz;
-	void *zerobuf;
+	int ifmt, fmt, pixsz, sz;
+	static void *zerobuf;
+	static int zerobuf_size;
 
 	if(!(tex = malloc(sizeof *tex))) {
 		fprintf(stderr, "failed to allocate texture\n");
@@ -84,8 +85,12 @@ struct texture *tex_image(struct img_pixmap *img)
 				(float)img->height / (float)tex->tex_height, 1);
 		tex->use_matrix = 1;
 
-		zerobuf = alloca(tex->tex_width * tex->tex_height * pixsz);
-		memset(zerobuf, 0, tex->tex_width * tex->tex_height * pixsz);
+		sz = tex->tex_width * tex->tex_height * pixsz;
+		if(zerobuf_size < sz) {
+			zerobuf = realloc_nf(zerobuf, sz);
+			zerobuf_size = sz;
+			memset(zerobuf, 0, sz);
+		}
 
 		/* using the same as the magnification filter, to avoid using mipmaps */
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, glmagfilt(opt.gfx.texfilter));

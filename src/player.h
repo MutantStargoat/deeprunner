@@ -11,7 +11,7 @@ struct player {
 	struct level *lvl;
 	struct room *room;	/* current room the player is in */
 
-	int hp, sp;	/* health and shields */
+	float hp, sp;	/* health and shields */
 
 	cgm_vec3 pos, prevpos;
 	cgm_quat rot;

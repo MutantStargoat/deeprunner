@@ -6,6 +6,24 @@
 
 struct portal;
 
+enum action_type {
+	ACT_DAMAGE,
+	ACT_SHIELD,
+	ACT_WIN
+};
+
+struct action {
+	char *name;
+	enum action_type type;
+	float value;
+};
+
+struct trigger {
+	struct aabox box;
+	struct action act;
+};
+
+
 struct room {
 	char *name;
 	struct mesh *meshes;	/* darr */
@@ -13,7 +31,8 @@ struct room {
 	struct aabox aabb;		/* axis-aligned bounding box of this room */
 	struct octnode *octree;	/* octree for collision poly intersections */
 
-	struct portal *portals;	/* darr */
+	struct portal *portals;		/* darr */
+	struct trigger *triggers;	/* darr */
 
 	unsigned int vis_frm, rendered;
 };
@@ -25,30 +44,14 @@ struct portal {
 	float rad;
 };
 
-enum trigger_type {
-	TRIG_DAMAGE,
-	TRIG_SHIELD,
-	TRIG_WIN
-};
-
-struct trigger {
-	char *name;
-	struct aabox box;
-
-	enum trigger_type type;
-	union {
-		float damage;
-		float shield;
-		int win;
-	} act;
-};
-
 struct level {
 	struct room **rooms;		/* darr */
 	struct texture **textures;	/* darr */
 
 	cgm_vec3 startpos;
 	cgm_quat startrot;
+
+	struct action *actions;		/* darr */
 
 	char *datapath;
 	char *pathbuf;
@@ -69,7 +72,8 @@ void lvl_destroy(struct level *lvl);
 
 int lvl_load(struct level *lvl, const char *fname);
 
-struct mesh *lvl_find_mesh(const struct level *lvl, const char *name);
+/* meshroom pointer optional, if we care which room this mesh was in */
+struct mesh *lvl_find_mesh(const struct level *lvl, const char *name, struct room **meshroom);
 
 struct texture *lvl_texture(struct level *lvl, const char *fname);
 

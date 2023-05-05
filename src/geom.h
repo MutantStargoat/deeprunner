@@ -40,7 +40,7 @@ void aabox_union(struct aabox *a, const struct aabox *b);
 void aabox_union_point(struct aabox *bb, const cgm_vec3 *pt);
 int aabox_aabox_test(const struct aabox *a, const struct aabox *b);
 int aabox_tri_test(const struct aabox *box, const struct triangle *tri);
-float aabox_sph_distsq(const struct aabox *box, const cgm_vec3 *pt, float rad);
+float aabox_distsq(const struct aabox *box, const cgm_vec3 *pt);
 int aabox_sph_test(const struct aabox *box, const cgm_vec3 *pt, float rad);
 
 int sph_sph_test(const cgm_vec3 *apos, float arad, const cgm_vec3 *bpos, float brad);
