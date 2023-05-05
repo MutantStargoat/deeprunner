@@ -18,6 +18,7 @@
 #include "rendlvl.h"
 #include "gfxutil.h"
 #include "drawtext.h"
+#include "loading.h"
 
 static int ginit(void);
 static void gdestroy(void);
@@ -91,11 +92,6 @@ static unsigned int laser_tex;
 static int ginit(void)
 {
 	int i;
-
-	lvl_init(&lvl);
-	if(lvl_load(&lvl, "data/level1.lvl") == -1) {
-		return -1;
-	}
 
 	{
 		int j;
@@ -201,6 +197,40 @@ static int gstart(void)
 		greshape(win_width, win_height);
 	}
 
+	/* start with 3 items: goat3d load, renderer init, load music,
+	 * the level loader will add more as soon as it can count the textures
+	 */
+	loading_start(3);
+	loading_update();
+
+	lvl_init(&lvl);
+	if(lvl_load(&lvl, "data/level1.lvl") == -1) {
+		return -1;
+	}
+
+	loading_step();
+
+	if(rendlvl_init(&lvl)) {
+		return -1;
+	}
+
+	loading_step();
+
+	init_player(&player);
+	player.pos = lvl.startpos;
+	player.rot = lvl.startrot;
+	player.lvl = &lvl;
+
+	if(opt.music) {
+		if(!(mod = au_load_module("data/ingame.it"))) {
+			fprintf(stderr, "failed to open music\n");
+		} else {
+			au_play_module(mod);
+		}
+	}
+
+	loading_step();
+
 	glLightModelfv(GL_LIGHT_MODEL_AMBIENT, amb);
 	glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, 0);
 	glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, 0);
@@ -219,23 +249,6 @@ static int gstart(void)
 
 	glClearColor(0, 0, 0, 1);
 	glFogfv(GL_FOG_COLOR, zero);
-
-	if(rendlvl_init(&lvl)) {
-		return -1;
-	}
-
-	init_player(&player);
-	player.pos = lvl.startpos;
-	player.rot = lvl.startrot;
-	player.lvl = &lvl;
-
-	if(opt.music) {
-		if(!(mod = au_load_module("data/ingame.it"))) {
-			fprintf(stderr, "failed to open music\n");
-		} else {
-			au_play_module(mod);
-		}
-	}
 	return 0;
 }
 

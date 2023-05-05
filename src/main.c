@@ -64,7 +64,6 @@ int main(int argc, char **argv)
 	wgl_swap_interval_ext = wglGetProcAddress("wglSwapIntervalEXT");
 #endif
 
-
 	if(game_init() == -1) {
 		return 1;
 	}
@@ -87,6 +86,8 @@ void game_quit(void)
 void game_resize(int x, int y)
 {
 	if(x == win_width && y == win_height) return;
+
+	game_reshape(x, y);
 
 	glutReshapeWindow(x, y);
 }

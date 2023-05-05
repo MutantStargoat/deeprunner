@@ -5,6 +5,9 @@
 #include "mtltex.h"
 #include "geom.h"
 
+struct goat3d;
+struct goat3d_mesh;
+
 struct mesh {
 	char *name;
 	cgm_vec3 *varr, *narr;
@@ -16,6 +19,8 @@ struct mesh {
 	struct material mtl;
 	struct aabox aabb;
 };
+
+typedef struct texture *(*mesh_tex_loader_func)(const char *fname, void *cls);
 
 int mesh_init(struct mesh *m);
 void mesh_destroy(struct mesh *m);
@@ -29,6 +34,8 @@ void mesh_get_triangle(struct mesh *m, int idx, struct triangle *tri);
 void mesh_draw(struct mesh *m);
 void mesh_compile(struct mesh *m);
 
+void mesh_tex_loader(mesh_tex_loader_func func, void *cls);
+int mesh_read_goat3d(struct mesh *m, struct goat3d *gscn, struct goat3d_mesh *gmesh);
 void mesh_dumpobj(struct mesh *m, const char *fname);
 
 /* --- mesh generation --- */

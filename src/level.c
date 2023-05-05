@@ -8,9 +8,9 @@
 #include "util.h"
 #include "treestor.h"
 #include "options.h"
+#include "loading.h"
 
 static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, struct goat3d_node *gnode);
-static int conv_mesh(struct level *lvl, struct mesh *mesh, struct goat3d *gscn, struct goat3d_mesh *gmesh);
 static void apply_objmod(struct level *lvl, struct room *room, struct mesh *mesh, struct ts_node *tsn);
 static int read_action(struct action *act, struct ts_node *tsn);
 static struct room *find_portal_link(struct level *lvl, struct portal *portal);
@@ -92,6 +92,41 @@ void lvl_destroy(struct level *lvl)
 	free(lvl->pathbuf);
 }
 
+static struct texture *texload_wrapper(const char *fname, void *cls)
+{
+	return lvl_texture(cls, fname);
+}
+
+static int count_goat3d_textures(struct goat3d *gscn)
+{
+	int i, ntex = 0, nmtl = goat3d_get_mtl_count(gscn);
+	for(i=0; i<nmtl; i++) {
+		struct goat3d_material *mtl = goat3d_get_mtl(gscn, i);
+		/* XXX change this if we change the number of textures we load from
+		 * the material
+		 */
+		if(goat3d_get_mtl_attrib_map(mtl, GOAT3D_MAT_ATTR_DIFFUSE)) {
+			ntex++;
+		}
+		if(goat3d_get_mtl_attrib_map(mtl, GOAT3D_MAT_ATTR_REFLECTION)) {
+			ntex++;
+		}
+	}
+	return ntex;
+}
+
+static int count_goat3d_trees(struct goat3d *gscn)
+{
+	int i, ntrees = 0, nnodes = goat3d_get_node_count(gscn);
+	for(i=0; i<nnodes; i++) {
+		struct goat3d_node *node = goat3d_get_node(gscn, i);
+		if(!goat3d_get_node_parent(node)) {
+			ntrees++;
+		}
+	}
+	return ntrees;
+}
+
 int lvl_load(struct level *lvl, const char *fname)
 {
 	int i, j, count, numport;
@@ -138,6 +173,14 @@ int lvl_load(struct level *lvl, const char *fname)
 		return -1;
 	}
 
+	/* change the amount of work expected by the loader */
+	count = count_goat3d_textures(gscn);// + count_goat3d_trees(gscn);
+	/* +1 for the stepping we'll do immediately for having loaded the scene file */
+	loading_additems(count + 1);
+	loading_step();
+
+	mesh_tex_loader(texload_wrapper, lvl);
+
 	count = goat3d_get_node_count(gscn);
 	for(i=0; i<count; i++) {
 		gnode = goat3d_get_node(gscn, i);
@@ -176,6 +219,8 @@ int lvl_load(struct level *lvl, const char *fname)
 		build_room_octree(room);
 
 		darr_push(lvl->rooms, &room);
+
+		//loading_step();
 	}
 
 	/* make a list of all trigger actions first, to instanciate triggers while
@@ -226,6 +271,7 @@ int lvl_load(struct level *lvl, const char *fname)
 		}
 	}
 
+	mesh_tex_loader(0, 0);
 	ts_free_tree(ts);
 	return 0;
 }
@@ -262,7 +308,7 @@ static const char *find_datafile(struct level *lvl, const char *fname)
 		lvl->pathbuf = realloc_nf(lvl->pathbuf, len + 1);
 	}
 
-	/* first try outside of the level diretories for non-resizable textures */
+	/* first try outside of the level directories for non-resizable textures */
 	sprintf(lvl->pathbuf, "%s/%s", lvl->datapath, fname);
 	if((fp = fopen(lvl->pathbuf, "rb"))) {
 		fclose(fp);
@@ -294,6 +340,7 @@ struct texture *lvl_texture(struct level *lvl, const char *fname)
 		return 0;
 	}
 	darr_push(lvl->textures, &tex);
+	loading_step();
 	return tex;
 }
 
@@ -466,7 +513,7 @@ static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, 
 		} else {
 			gmesh = goat3d_get_node_object(gnode);
 			mesh_init(&mesh);
-			if(conv_mesh(lvl, &mesh, gscn, gmesh) != -1) {
+			if(mesh_read_goat3d(&mesh, gscn, gmesh) != -1) {
 				free(mesh.name);
 				mesh.name = strdup_nf(name);
 
@@ -481,7 +528,7 @@ static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, 
 		if(type == GOAT3D_NODE_MESH) {
 			gmesh = goat3d_get_node_object(gnode);
 			mesh_init(&mesh);
-			if(conv_mesh(lvl, &mesh, gscn, gmesh) != -1) {
+			if(mesh_read_goat3d(&mesh, gscn, gmesh) != -1) {
 				free(mesh.name);
 				mesh.name = strdup_nf(name);
 
@@ -498,69 +545,6 @@ static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, 
 	for(i=0; i<count; i++) {
 		read_room(lvl, room, gscn, goat3d_get_node_child(gnode, i));
 	}
-	return 0;
-}
-
-static int conv_mesh(struct level *lvl, struct mesh *mesh, struct goat3d *gscn, struct goat3d_mesh *gmesh)
-{
-	int i, nfaces;
-	void *data;
-	cgm_vec2 *uvdata;
-	struct goat3d_material *gmtl;
-	const float *mattr;
-	const char *str;
-
-	mesh->name = strdup_nf(goat3d_get_mesh_name(gmesh));
-
-	mesh->vcount = goat3d_get_mesh_vertex_count(gmesh);
-	nfaces = goat3d_get_mesh_face_count(gmesh);
-	mesh->icount = nfaces * 3;
-
-	data = goat3d_get_mesh_attribs(gmesh, GOAT3D_MESH_ATTR_VERTEX);
-	mesh->varr = malloc_nf(mesh->vcount * sizeof *mesh->varr);
-	memcpy(mesh->varr, data, mesh->vcount * sizeof *mesh->varr);
-
-	if((data = goat3d_get_mesh_attribs(gmesh, GOAT3D_MESH_ATTR_NORMAL))) {
-		mesh->narr = malloc_nf(mesh->vcount * sizeof *mesh->narr);
-		memcpy(mesh->narr, data, mesh->vcount * sizeof *mesh->narr);
-	}
-
-	if((data = goat3d_get_mesh_attribs(gmesh, GOAT3D_MESH_ATTR_TEXCOORD))) {
-		uvdata = data;
-		mesh->uvarr = malloc_nf(mesh->vcount * sizeof *mesh->uvarr);
-		for(i=0; i<mesh->vcount; i++) {
-			mesh->uvarr[i].x = uvdata[i].x;
-			mesh->uvarr[i].y = 1.0f - uvdata[i].y;
-		}
-	}
-
-	data = goat3d_get_mesh_faces(gmesh);
-	mesh->idxarr = malloc_nf(mesh->icount * sizeof *mesh->idxarr);
-	memcpy(mesh->idxarr, data, mesh->icount * sizeof *mesh->idxarr);
-
-	mtl_init(&mesh->mtl);
-
-	if((gmtl = goat3d_get_mesh_mtl(gmesh))) {
-		if((mattr = goat3d_get_mtl_attrib(gmtl, GOAT3D_MAT_ATTR_DIFFUSE))) {
-			cgm_wcons(&mesh->mtl.kd, mattr[0], mattr[1], mattr[2], 1);
-		}
-		if((mattr = goat3d_get_mtl_attrib(gmtl, GOAT3D_MAT_ATTR_SPECULAR))) {
-			cgm_wcons(&mesh->mtl.ks, mattr[0], mattr[1], mattr[2], 1);
-		}
-		if((mattr = goat3d_get_mtl_attrib(gmtl, GOAT3D_MAT_ATTR_SHININESS))) {
-			mesh->mtl.shin = mattr[0];
-		}
-		if((mattr = goat3d_get_mtl_attrib(gmtl, GOAT3D_MAT_ATTR_ALPHA))) {
-			mesh->mtl.kd.w = mattr[0];
-		}
-		if((str = goat3d_get_mtl_attrib_map(gmtl, GOAT3D_MAT_ATTR_DIFFUSE))) {
-			mesh->mtl.texmap = lvl_texture(lvl, str);
-		}
-		if((str = goat3d_get_mtl_attrib_map(gmtl, GOAT3D_MAT_ATTR_REFLECTION))) {
-			mesh->mtl.envmap = lvl_texture(lvl, str);
-		}
-	}
-
 	return 0;
 }
 

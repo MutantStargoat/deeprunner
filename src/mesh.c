@@ -3,8 +3,13 @@
 #include <string.h>
 #include <errno.h>
 #include "opengl.h"
+#include "goat3d.h"
 #include "util.h"
 #include "mesh.h"
+
+static mesh_tex_loader_func load_tex;
+static void *load_tex_cls;
+
 
 int mesh_init(struct mesh *m)
 {
@@ -119,6 +124,81 @@ void mesh_compile(struct mesh *m)
 	mesh_draw(m);
 	glEndList();
 }
+
+
+void mesh_tex_loader(mesh_tex_loader_func func, void *cls)
+{
+	load_tex = func;
+	load_tex_cls = cls;
+}
+
+
+int mesh_read_goat3d(struct mesh *mesh, struct goat3d *gscn, struct goat3d_mesh *gmesh)
+{
+	int i, nfaces;
+	void *data;
+	cgm_vec2 *uvdata;
+	struct goat3d_material *gmtl;
+	const float *mattr;
+	const char *str;
+
+	mesh->name = strdup_nf(goat3d_get_mesh_name(gmesh));
+
+	mesh->vcount = goat3d_get_mesh_vertex_count(gmesh);
+	nfaces = goat3d_get_mesh_face_count(gmesh);
+	mesh->icount = nfaces * 3;
+
+	data = goat3d_get_mesh_attribs(gmesh, GOAT3D_MESH_ATTR_VERTEX);
+	mesh->varr = malloc_nf(mesh->vcount * sizeof *mesh->varr);
+	memcpy(mesh->varr, data, mesh->vcount * sizeof *mesh->varr);
+
+	if((data = goat3d_get_mesh_attribs(gmesh, GOAT3D_MESH_ATTR_NORMAL))) {
+		mesh->narr = malloc_nf(mesh->vcount * sizeof *mesh->narr);
+		memcpy(mesh->narr, data, mesh->vcount * sizeof *mesh->narr);
+	}
+
+	if((data = goat3d_get_mesh_attribs(gmesh, GOAT3D_MESH_ATTR_TEXCOORD))) {
+		uvdata = data;
+		mesh->uvarr = malloc_nf(mesh->vcount * sizeof *mesh->uvarr);
+		for(i=0; i<mesh->vcount; i++) {
+			mesh->uvarr[i].x = uvdata[i].x;
+			mesh->uvarr[i].y = 1.0f - uvdata[i].y;
+		}
+	}
+
+	data = goat3d_get_mesh_faces(gmesh);
+	mesh->idxarr = malloc_nf(mesh->icount * sizeof *mesh->idxarr);
+	memcpy(mesh->idxarr, data, mesh->icount * sizeof *mesh->idxarr);
+
+	mtl_init(&mesh->mtl);
+
+	if((gmtl = goat3d_get_mesh_mtl(gmesh))) {
+		if((mattr = goat3d_get_mtl_attrib(gmtl, GOAT3D_MAT_ATTR_DIFFUSE))) {
+			cgm_wcons(&mesh->mtl.kd, mattr[0], mattr[1], mattr[2], 1);
+		}
+		if((mattr = goat3d_get_mtl_attrib(gmtl, GOAT3D_MAT_ATTR_SPECULAR))) {
+			cgm_wcons(&mesh->mtl.ks, mattr[0], mattr[1], mattr[2], 1);
+		}
+		if((mattr = goat3d_get_mtl_attrib(gmtl, GOAT3D_MAT_ATTR_SHININESS))) {
+			mesh->mtl.shin = mattr[0];
+		}
+		if((mattr = goat3d_get_mtl_attrib(gmtl, GOAT3D_MAT_ATTR_ALPHA))) {
+			mesh->mtl.kd.w = mattr[0];
+		}
+
+		if(load_tex) {
+			if((str = goat3d_get_mtl_attrib_map(gmtl, GOAT3D_MAT_ATTR_DIFFUSE))) {
+				mesh->mtl.texmap = load_tex(str, load_tex_cls);
+			}
+			if((str = goat3d_get_mtl_attrib_map(gmtl, GOAT3D_MAT_ATTR_REFLECTION))) {
+				mesh->mtl.envmap = load_tex(str, load_tex_cls);
+			}
+		}
+	}
+
+	return 0;
+}
+
 
 void mesh_dumpobj(struct mesh *m, const char *fname)
 {
