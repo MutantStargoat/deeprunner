@@ -204,6 +204,10 @@ void render_level(void)
 	render_room(cur_room);
 #endif	/* !def DBG_ALL_ROOMS */
 #endif	/* else of DBG_ONLY_CUR_ROOM */
+
+	glMatrixMode(GL_TEXTURE);
+	glLoadIdentity();
+	glMatrixMode(GL_MODELVIEW);
 }
 
 void render_level_mesh(struct mesh *mesh)
