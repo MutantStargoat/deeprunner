@@ -53,6 +53,7 @@ int load_options(const char *fname)
 	struct ts_node *cfg;
 
 	detect_defaults();
+	opt.gfx = gfxdefopt;
 
 	if(!(cfg = ts_load(fname))) {
 		return -1;
