@@ -43,6 +43,7 @@ int aabox_tri_test(const struct aabox *box, const struct triangle *tri);
 float aabox_distsq(const struct aabox *box, const cgm_vec3 *pt);
 int aabox_sph_test(const struct aabox *box, const cgm_vec3 *pt, float rad);
 
+int ray_sphere(const cgm_ray *ray, const cgm_vec3 *cent, float rad, float *distret);
 int sph_sph_test(const cgm_vec3 *apos, float arad, const cgm_vec3 *bpos, float brad);
 
 float plane_point_sdist(const cgm_vec4 *plane, const cgm_vec3 *pt);

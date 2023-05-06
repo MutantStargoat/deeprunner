@@ -64,6 +64,8 @@ int main(int argc, char **argv)
 	wgl_swap_interval_ext = wglGetProcAddress("wglSwapIntervalEXT");
 #endif
 
+	game_reshape(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
+
 	if(game_init() == -1) {
 		return 1;
 	}

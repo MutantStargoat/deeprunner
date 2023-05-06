@@ -88,6 +88,9 @@ static cgm_quat visrot;
 static int lasers;
 static int laser_dlist;
 static unsigned int laser_tex;
+static struct texture *tex_flare;
+static struct collision lasers_hit;
+
 
 static int ginit(void)
 {
@@ -153,7 +156,6 @@ static int ginit(void)
 
 	if((font_hp_tex = tex_load("data/hpfont-rgb.png"))) {
 		dtxhack_replace_texture(dtx_get_glyphmap(font_hp, 0), font_hp_tex->texid);
-		printf("replacement texture: %d\n", font_hp_tex->texid);
 	}
 
 	gen_geosphere(&adidome, 8, 1, 1);
@@ -179,12 +181,17 @@ static int ginit(void)
 	glEnd();
 	glEndList();
 
+	if(!(tex_flare = tex_load("data/blspstar.png"))) {
+		return -1;
+	}
+
 	return 0;
 }
 
 static void gdestroy(void)
 {
 	glDeleteTextures(1, &laser_tex);
+	tex_free(tex_flare);
 }
 
 static int gstart(void)
@@ -311,6 +318,14 @@ static void gupdate(void)
 		update_player(&player);
 	}
 
+	if(lasers) {
+		cgm_vec3 dir = player.fwd;
+		cgm_vscale(&dir, lvl.maxdist);
+		if(!lvl_collision(&lvl, player.room, &player.pos, &dir, &lasers_hit)) {
+			lasers_hit.depth = -1.0f;
+		}
+	}
+
 	player_view_matrix(&player, view_mat);
 
 	cgm_mcopy(viewproj, view_mat);
@@ -374,8 +389,18 @@ static void gdisplay(void)
 		int i;
 		float s = 1.0 + sin(time_msec / 100.0f) * 0.01;
 		float sz = 0.18 + sin(time_msec / 50.0f) * 0.008;
-		glDisable(GL_DEPTH_TEST);
+
 		glEnable(GL_BLEND);
+		glDisable(GL_DEPTH_TEST);
+
+		if(lasers_hit.depth >= 0.0f) {
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glEnable(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D, tex_flare->texid);
+			draw_billboard(&lasers_hit.pos, 3, cgm_wvec(0.7, 0.8, 1, 1));
+			glDisable(GL_TEXTURE_2D);
+		}
+
 		glBlendFunc(GL_ONE, GL_ONE);
 		/*glEnable(GL_ALPHA_TEST);
 		glAlphaFunc(GL_GREATER, 0.5);*/
@@ -388,8 +413,8 @@ static void gdisplay(void)
 			float x = (i ? -1 : 1) * s;
 			glTexCoord1f(0); glVertex3f(x - sz, -1, 0);
 			glTexCoord1f(1); glVertex3f(x + sz, -1, 0);
-			glTexCoord1f(1); glVertex3f(x + sz, -1, -400);
-			glTexCoord1f(0); glVertex3f(x - sz, -1, -400);
+			glTexCoord1f(1); glVertex3f(x + sz, -1, -opt.gfx.drawdist);
+			glTexCoord1f(0); glVertex3f(x - sz, -1, -opt.gfx.drawdist);
 		}
 		glEnd();
 		glDisable(GL_TEXTURE_1D);

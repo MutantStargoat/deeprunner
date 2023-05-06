@@ -136,10 +136,9 @@ int lvl_load(struct level *lvl, const char *fname)
 	struct goat3d *gscn;
 	struct goat3d_node *gnode;
 	struct room *room;
-	struct aabox aabb;
 	struct mesh *mesh;
 
-	aabox_init(&aabb);
+	aabox_init(&lvl->aabb);
 
 	if(!(ts = ts_load(fname))) {
 		fprintf(stderr, "lvl_load: failed to load level file: %s\n", fname);
@@ -199,7 +198,7 @@ int lvl_load(struct level *lvl, const char *fname)
 			continue;
 		}
 
-		aabox_union(&aabb, &room->aabb);
+		aabox_union(&lvl->aabb, &room->aabb);
 
 		/* if the room has no collision meshes, use the renderable meshes for
 		 * collisions and issue a warning
@@ -270,6 +269,13 @@ int lvl_load(struct level *lvl, const char *fname)
 			}
 		}
 	}
+
+	if(lvl->aabb.vmin.x >= lvl->aabb.vmax.x) {
+		lvl->maxdist = 0;
+	} else {
+		lvl->maxdist = cgm_vdist(&lvl->aabb.vmin, &lvl->aabb.vmax);
+	}
+	printf("level diameter: %g\n", lvl->maxdist);
 
 	mesh_tex_loader(0, 0);
 	ts_free_tree(ts);
@@ -397,6 +403,7 @@ int lvl_collision(const struct level *lvl, const struct room *room, const cgm_ve
 {
 	cgm_ray ray;
 	struct trihit hit;
+	int i, num_portals;
 
 	if(!room) {
 		if(!(room = lvl_room_at(lvl, pos->x, pos->y, pos->z))) {
@@ -411,10 +418,20 @@ int lvl_collision(const struct level *lvl, const struct room *room, const cgm_ve
 #ifdef DBG_SHOW_COLPOLY
 		dbg_hitpoly = hit.tri;
 #endif
-		cgm_raypos(&col->pos, &ray, hit.t * 0.95);
+		cgm_raypos(&col->pos, &ray, hit.t);
 		col->norm = hit.tri->norm;
-		col->depth = -tri_plane_dist(hit.tri, pos);
+		col->depth = tri_plane_dist(hit.tri, pos);
 		return 1;
+	}
+
+	/* if we didn't hit anything, we probably hit a portal, test the portals and
+	 * continue testing across the next room */
+	num_portals = darr_size(room->portals);
+	for(i=0; i<num_portals; i++) {
+		struct portal *port = room->portals + i;
+		if(ray_sphere(&ray, &port->pos, port->rad, 0)) {
+			return lvl_collision(lvl, port->link, pos, vel, col);
+		}
 	}
 
 	return 0;

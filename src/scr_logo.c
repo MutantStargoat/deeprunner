@@ -147,7 +147,7 @@ static float clamp(float x, float a, float b)
 static void sgiscr(void)
 {
 	float aspect = O2ASPECT / win_aspect;
-	float trot, t, alpha, z;
+	float trot, alpha, z;
 	float tsec = (tmsec - SGISTART) / 1000.0f;
 
 	glDisable(GL_DEPTH_TEST);

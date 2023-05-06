@@ -67,8 +67,7 @@ void update_player(struct player *p)
 {
 	int i, iter, count;
 	cgm_quat rollquat;
-	/*cgm_vec3 fwd = {0, 0, 1}, right = {1, 0, 0}, up = {0, 1, 0};*/
-	cgm_vec3 fwd, right, up;
+	cgm_vec3 right, up;
 	cgm_vec3 vel;
 	struct collision col;
 	float vnlen;
@@ -80,18 +79,15 @@ void update_player(struct player *p)
 	}
 
 	cgm_mrotation_quat(p->rotmat, &p->rot);
-	/*cgm_vmul_v3m4(&fwd, p->rotmat);
-	cgm_vmul_v3m4(&right, p->rotmat);
-	cgm_vmul_v3m4(&up, p->rotmat);*/
 	cgm_vcons(&right, p->rotmat[0], p->rotmat[4], p->rotmat[8]);
 	cgm_vcons(&up, p->rotmat[1], p->rotmat[5], p->rotmat[9]);
-	cgm_vcons(&fwd, p->rotmat[2], p->rotmat[6], p->rotmat[10]);
+	cgm_vcons(&p->fwd, -p->rotmat[2], -p->rotmat[6], -p->rotmat[10]);
 
 	p->prevpos = p->pos;
 
-	vel.x = right.x * p->vel.x + up.x * p->vel.y + fwd.x * p->vel.z;
-	vel.y = right.y * p->vel.x + up.y * p->vel.y + fwd.y * p->vel.z;
-	vel.z = right.z * p->vel.x + up.z * p->vel.y + fwd.z * p->vel.z;
+	vel.x = right.x * p->vel.x + up.x * p->vel.y - p->fwd.x * p->vel.z;
+	vel.y = right.y * p->vel.x + up.y * p->vel.y - p->fwd.y * p->vel.z;
+	vel.z = right.z * p->vel.x + up.z * p->vel.y - p->fwd.z * p->vel.z;
 
 	cgm_vcons(&p->vel, 0, 0, 0);
 	p->roll = 0;

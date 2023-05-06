@@ -120,3 +120,33 @@ void texenv_sphmap(int enable)
 		glDisable(GL_TEXTURE_GEN_T);
 	}
 }
+
+void draw_billboard(const cgm_vec3 *p, float size, cgm_vec4 col)
+{
+	float m[16];
+
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+
+	glTranslatef(p->x, p->y, p->z);
+
+	glGetFloatv(GL_MODELVIEW_MATRIX, m);
+	/* make the upper 3x3 part of the matrix identity */
+	m[0] = m[5] = m[10] = 1.0f;
+	m[1] = m[2] = m[3] = m[4] = m[6] = m[7] = m[8] = m[9] = 0.0f;
+	glLoadMatrixf(m);
+
+	glBegin(GL_QUADS);
+	glColor4f(col.x, col.y, col.z, col.w);
+	glTexCoord2f(0, 0);
+	glVertex2f(-size, -size);
+	glTexCoord2f(1, 0);
+	glVertex2f(size, -size);
+	glTexCoord2f(1, 1);
+	glVertex2f(size, size);
+	glTexCoord2f(0, 1);
+	glVertex2f(-size, size);
+	glEnd();
+
+	glPopMatrix();
+}

@@ -56,6 +56,9 @@ struct level {
 	char *datapath;
 	char *pathbuf;
 	int pathbuf_sz;
+
+	struct aabox aabb;			/* bounding box of the entire level */
+	float maxdist;				/* maximum distance in the level */
 };
 
 struct collision {

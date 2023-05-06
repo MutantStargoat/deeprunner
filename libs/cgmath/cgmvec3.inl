@@ -13,6 +13,15 @@ static CGM_INLINE void cgm_vcons(cgm_vec3 *v, float x, float y, float z)
 	v->z = z;
 }
 
+static CGM_INLINE cgm_vec3 cgm_vvec(float x, float y, float z)
+{
+	cgm_vec3 v;
+	v.x = x;
+	v.y = y;
+	v.z = z;
+	return v;
+}
+
 static CGM_INLINE void cgm_vadd(cgm_vec3 *a, const cgm_vec3 *b)
 {
 	a->x += b->x;

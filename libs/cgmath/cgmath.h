@@ -71,6 +71,7 @@ extern "C" {
 
 /* --- operations on cgm_vec3 --- */
 static CGM_INLINE void cgm_vcons(cgm_vec3 *v, float x, float y, float z);
+static CGM_INLINE cgm_vec3 cgm_vvec(float x, float y, float z);
 
 static CGM_INLINE void cgm_vadd(cgm_vec3 *a, const cgm_vec3 *b);
 static CGM_INLINE void cgm_vadd_scaled(cgm_vec3 *a, const cgm_vec3 *b, float s); /* a+b*s */
@@ -105,6 +106,7 @@ static CGM_INLINE void cgm_vlerp(cgm_vec3 *res, const cgm_vec3 *a, const cgm_vec
 
 /* --- operations on cgm_vec4 --- */
 static CGM_INLINE void cgm_wcons(cgm_vec4 *v, float x, float y, float z, float w);
+static CGM_INLINE cgm_vec4 cgm_wvec(float x, float y, float z, float w);
 
 static CGM_INLINE void cgm_wadd(cgm_vec4 *a, const cgm_vec4 *b);
 static CGM_INLINE void cgm_wsub(cgm_vec4 *a, const cgm_vec4 *b);

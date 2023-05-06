@@ -348,6 +348,38 @@ int aabox_sph_test(const struct aabox *box, const cgm_vec3 *pt, float rad)
 	return dsq <= rad * rad;
 }
 
+int ray_sphere(const cgm_ray *ray, const cgm_vec3 *cent, float rad, float *distret)
+{
+	float a, b, c, d, sqrt_d, t1, t2;
+
+	a = cgm_vdot(&ray->dir, &ray->dir);
+	b = 2.0f * ray->dir.x * (ray->origin.x - cent->x) +
+		2.0f * ray->dir.y * (ray->origin.y - cent->y) +
+		2.0f * ray->dir.z * (ray->origin.z - cent->z);
+	c = cgm_vdot(cent, cent) + cgm_vdot(&ray->origin, &ray->origin) +
+		cgm_vdot(cent, &ray->origin) * -2.0f - rad * rad;
+
+	if((d = b * b - 4.0 * a * c) < 0.0) return 0;
+
+	sqrt_d = sqrt(d);
+	t1 = (-b + sqrt_d) / (2.0 * a);
+	t2 = (-b - sqrt_d) / (2.0 * a);
+
+	if((t1 < 1e-6f && t2 < 1e-6f) || (t1 > 1.0f && t2 > 1.0f)) {
+		return 0;
+	}
+
+	if(distret) {
+		if(t2 < t1) t1 = t2;
+		if(t1 < 1e-6f || t1 > 1.0f) {
+			*distret = t2;
+		} else {
+			*distret = t1;
+		}
+	}
+	return 1;
+}
+
 int sph_sph_test(const cgm_vec3 *apos, float arad, const cgm_vec3 *bpos, float brad)
 {
 	float radsum = arad + brad;

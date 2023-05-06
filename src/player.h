@@ -15,6 +15,7 @@ struct player {
 
 	cgm_vec3 pos, prevpos;
 	cgm_quat rot;
+	cgm_vec3 fwd;	/* forward vector, derived from rot */
 
 	cgm_vec3 vel;
 	float roll;
