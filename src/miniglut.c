@@ -532,7 +532,7 @@ static KeySym translate_keysym(KeySym sym)
 	case XK_Linefeed:
 		return '\r';
 	case XK_Return:
-		return '\n';
+		return '\r';
 	case XK_Delete:
 		return 127;
 	case XK_Tab:

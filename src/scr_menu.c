@@ -192,9 +192,8 @@ static void menu_keyb(int key, int press)
 		}
 		break;
 
-	case '\n':
+	case '\r':
 	case 'e':
-		printf("sel: %d\n", sel);
 		act_item(sel);
 		break;
 	}
