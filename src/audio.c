@@ -154,6 +154,7 @@ int au_play_module(struct au_module *mod)
 		au_stop_module(curmod);
 	}
 
+	((MODULE*)mod->impl)->wrap = 1;
 	Player_Start(mod->impl);
 	SET_MUS_VOL(vol_mus);
 	curmod = mod;

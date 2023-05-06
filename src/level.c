@@ -347,9 +347,6 @@ struct texture *lvl_texture(struct level *lvl, const char *fname)
 #define NUM_ROOM_RAYS	3
 struct room *lvl_room_at(const struct level *lvl, float x, float y, float z)
 {
-	/* XXX hack until we get the portals in, use N rays, and keep the best
-	 * in case one or two happens to go through a portal
-	 */
 	int i, j, num_rooms;
 	cgm_ray ray;
 	struct room *room;
