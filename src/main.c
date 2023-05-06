@@ -219,6 +219,8 @@ static void motion(int x, int y)
 			glutWarpPointer(win_width / 2, win_height / 2);
 		} else {
 			warping = 0;
+			mouse_x = x;
+			mouse_y = y;
 		}
 	} else {
 		game_motion(x, y);

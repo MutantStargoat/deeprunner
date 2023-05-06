@@ -1345,7 +1345,12 @@ void glutSetCursor(int cidx)
 
 void glutWarpPointer(int x, int y)
 {
-	SetCursorPos(x, y);
+	POINT pt;
+	pt.x = x;
+	pt.y = y;
+
+	ClientToScreen(win, &pt);
+	SetCursorPos(pt.x, pt.y);
 }
 
 void glutSetColor(int idx, float r, float g, float b)
