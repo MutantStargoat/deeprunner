@@ -31,6 +31,7 @@ static struct mesh mesh_sgi;
 static struct texture *tex_o2boot;
 static struct texture *tex_env;
 static struct texture *tex_way;
+static struct texture *tex_msg;
 
 static enum {ST_INVAL, ST_GOAT, ST_SGI} state;
 static long tmsec, tstart;
@@ -76,8 +77,11 @@ static int logo_start(void)
 	if(!(tex_way = tex_load("data/theway.png"))) {
 		return 0;
 	}
+	if(!(tex_msg = tex_load("data/msgtext.png"))) {
+		return 0;
+	}
 
-	state = ST_SGI;
+	state = ST_GOAT;
 	tstart = time_msec;
 	return 0;
 }
@@ -89,10 +93,16 @@ static void logo_stop(void)
 	tex_free(tex_o2boot);
 	tex_free(tex_env);
 	tex_free(tex_way);
+	tex_free(tex_msg);
 }
 
+#define TEXTW	400.0f
+#define TEXTH	(TEXTW / 4)
 static void msglogo(void)
 {
+	float vwidth = win_aspect * 480.0f;
+	float x, y;
+
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	glMatrixMode(GL_MODELVIEW);
@@ -101,6 +111,25 @@ static void msglogo(void)
 
 	glColor3f(1, 1, 1);
 	mesh_draw(&mesh_logo);
+
+	begin2d(480);
+
+	x = (vwidth - TEXTW) / 2.0f;
+	y = 360;
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	glBindTexture(GL_TEXTURE_2D, tex_msg->texid);
+	glEnable(GL_TEXTURE_2D);
+	glBegin(GL_QUADS);
+	glTexCoord2f(0, 0); glVertex2f(x, y);
+	glTexCoord2f(1, 0); glVertex2f(x + TEXTW, y);
+	glTexCoord2f(1, 1); glVertex2f(x + TEXTW, y + TEXTH);
+	glTexCoord2f(0, 1); glVertex2f(x, y + TEXTH);
+	glEnd();
+
+	end2d();
 }
 
 static float clamp(float x, float a, float b)
@@ -108,7 +137,7 @@ static float clamp(float x, float a, float b)
 	return x < a ? a : (x > b ? b : x);
 }
 
-#define SGISTART		0
+#define SGISTART		4000
 #define FADEOUT_START	(SGISTART + 7000)
 #define FADEOUT_DUR		1000
 #define END_TIME		FADEOUT_START + FADEOUT_DUR
@@ -119,6 +148,7 @@ static void sgiscr(void)
 {
 	float aspect = O2ASPECT / win_aspect;
 	float trot, t, alpha, z;
+	float tsec = (tmsec - SGISTART) / 1000.0f;
 
 	glDisable(GL_DEPTH_TEST);
 
@@ -221,6 +251,9 @@ static void logo_display(void)
 	switch(state) {
 	case ST_GOAT:
 		msglogo();
+		if(tmsec >= SGISTART) {
+			state = ST_SGI;
+		}
 		break;
 
 	case ST_SGI:
