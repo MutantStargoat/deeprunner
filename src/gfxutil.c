@@ -86,3 +86,37 @@ void blit_tex_rect(float x, float y, float xsz, float ysz, struct texture *tex,
 		glMatrixMode(GL_MODELVIEW);
 	}
 }
+
+void set_mtl_diffuse(float r, float g, float b, float a)
+{
+	float v[4];
+	v[0] = r;
+	v[1] = g;
+	v[2] = b;
+	v[3] = a;
+	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, v);
+}
+
+void set_mtl_specular(float r, float g, float b, float shin)
+{
+	float v[4];
+	v[0] = r;
+	v[1] = g;
+	v[2] = b;
+	v[3] = 1.0f;
+	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, v);
+	glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shin);
+}
+
+void texenv_sphmap(int enable)
+{
+	if(enable) {
+		glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+		glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+		glEnable(GL_TEXTURE_GEN_S);
+		glEnable(GL_TEXTURE_GEN_T);
+	} else {
+		glDisable(GL_TEXTURE_GEN_S);
+		glDisable(GL_TEXTURE_GEN_T);
+	}
+}

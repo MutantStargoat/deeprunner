@@ -8,6 +8,7 @@
 #include "rbtree.h"
 #include "util.h"
 #include "options.h"
+#include "gfxutil.h"
 
 struct texture *tex_load(const char *fname)
 {
@@ -117,7 +118,11 @@ struct texture *tex_image(struct img_pixmap *img)
 
 void tex_free(struct texture *tex)
 {
-	glDeleteTextures(1, &tex->texid);
+	if(!tex) return;
+
+	if(tex->texid) {
+		glDeleteTextures(1, &tex->texid);
+	}
 #ifdef DBG_NO_IMAN
 	img_free(tex->img);
 #endif
@@ -135,20 +140,16 @@ static int last_envmap;
 
 static void setup_envmap(unsigned int envmap)
 {
-	glBindTexture(GL_TEXTURE_2D, envmap);
-	glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
-	glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
 	glEnable(GL_TEXTURE_2D);
-	glEnable(GL_TEXTURE_GEN_S);
-	glEnable(GL_TEXTURE_GEN_T);
+	glBindTexture(GL_TEXTURE_2D, envmap);
+	texenv_sphmap(1);
 	last_envmap = 1;
 }
 
 #define stop_envmap()	\
 	do { \
 		if(last_envmap) { \
-			glDisable(GL_TEXTURE_GEN_S); \
-			glDisable(GL_TEXTURE_GEN_T); \
+			texenv_sphmap(0); \
 			last_envmap = 0; \
 		} \
 	} while(0)

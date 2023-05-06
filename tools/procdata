@@ -9,6 +9,12 @@ genglyphmap()
 [ ! -e data/level1.g3d -o data/src/level1.gltf -nt data/level1.g3d ] && \
 	ass2goat data/src/level1.gltf && mv data/src/level1.goat3d data/level1.g3d
 
+[ ! -e data/msglogo.g3d -o data/src/msglogo.obj -nt data/msglogo.g3d ] && \
+	ass2goat data/src/msglogo.obj && mv data/src/msglogo.goat3d data/msglogo.g3d
+
+[ ! -e data/sgilogo.g3d -o data/src/sgilogo.gltf -nt data/sgilogo.g3d ] && \
+	ass2goat data/src/sgilogo.gltf && mv data/src/sgilogo.goat3d data/sgilogo.g3d
+
 genglyphmap data/src/impact.ttf data/hpfont.gmp 42 48-58
 genglyphmap data/src/nulshockb.ttf data/menufont.gmp 28 32-91
 

@@ -167,14 +167,14 @@ int lvl_load(struct level *lvl, const char *fname)
 		cgm_qnormalize(&lvl->startrot);
 	}
 
-	if(!(gscn = goat3d_create()) || goat3d_load(gscn, scnfile)) {
+	if(!(gscn = goat3d_create()) || goat3d_load(gscn, scnfile) == -1) {
 		fprintf(stderr, "lvl_load(%s): failed to load scene file: %s\n", fname, scnfile);
 		ts_free_tree(ts);
 		return -1;
 	}
 
 	/* change the amount of work expected by the loader */
-	count = count_goat3d_textures(gscn);// + count_goat3d_trees(gscn);
+	count = count_goat3d_textures(gscn) + count_goat3d_trees(gscn);
 	/* +1 for the stepping we'll do immediately for having loaded the scene file */
 	loading_additems(count + 1);
 	loading_step();
@@ -220,7 +220,7 @@ int lvl_load(struct level *lvl, const char *fname)
 
 		darr_push(lvl->rooms, &room);
 
-		//loading_step();
+		loading_step();
 	}
 
 	/* make a list of all trigger actions first, to instanciate triggers while

@@ -57,6 +57,7 @@ int game_init(void)
 	au_volume(opt.vol_master);
 
 	/* initialize screens */
+	screens[num_screens++] = &scr_logo;
 	screens[num_screens++] = &scr_menu;
 	screens[num_screens++] = &scr_game;
 	screens[num_screens++] = &scr_debug;
@@ -83,7 +84,7 @@ int game_init(void)
 		}
 	}
 	if(!cur_scr) {
-		game_chscr(&scr_menu);
+		game_chscr(&scr_logo);
 	}
 
 	return 0;
@@ -241,14 +242,19 @@ void game_sball_button(int bn, int st)
 
 void game_chscr(struct game_screen *scr)
 {
+	struct game_screen *prev = cur_scr;
+
 	if(!scr) return;
 
 	if(scr->start && scr->start() == -1) {
 		return;
 	}
+	if(scr->reshape) {
+		scr->reshape(win_width, win_height);
+	}
 
-	if(cur_scr && cur_scr->stop) {
-		cur_scr->stop();
+	if(prev && prev->stop) {
+		prev->stop();
 	}
 	cur_scr = scr;
 }

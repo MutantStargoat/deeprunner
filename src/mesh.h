@@ -36,7 +36,8 @@ void mesh_compile(struct mesh *m);
 
 void mesh_tex_loader(mesh_tex_loader_func func, void *cls);
 int mesh_read_goat3d(struct mesh *m, struct goat3d *gscn, struct goat3d_mesh *gmesh);
-void mesh_dumpobj(struct mesh *m, const char *fname);
+int mesh_load(struct mesh *m, const char *fname, const char *mname);
+void mesh_dumpobj(const struct mesh *m, const char *fname);
 
 /* --- mesh generation --- */
 

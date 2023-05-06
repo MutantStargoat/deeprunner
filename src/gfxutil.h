@@ -14,4 +14,9 @@ void blit_tex(float x, float y, struct texture *tex, float alpha);
 void blit_tex_rect(float x, float y, float xsz, float ysz, struct texture *tex,
 		float alpha, float u, float v, float usz, float vsz);
 
+void set_mtl_diffuse(float r, float g, float b, float a);
+void set_mtl_specular(float r, float g, float b, float shin);
+
+void texenv_sphmap(int enable);
+
 #endif	/* GFXUTIL_H_ */

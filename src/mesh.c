@@ -199,8 +199,44 @@ int mesh_read_goat3d(struct mesh *mesh, struct goat3d *gscn, struct goat3d_mesh 
 	return 0;
 }
 
+int mesh_load(struct mesh *m, const char *fname, const char *mname)
+{
+	struct goat3d *gscn;
+	struct goat3d_mesh *gmesh;
 
-void mesh_dumpobj(struct mesh *m, const char *fname)
+	if(!(gscn = goat3d_create()) || goat3d_load(gscn, fname) == -1) {
+		fprintf(stderr, "failed to load mesh: %s\n", fname);
+		goat3d_free(gscn);
+		return -1;
+	}
+
+	if(mname) {
+		if(!(gmesh = goat3d_get_mesh_by_name(gscn, mname))) {
+			fprintf(stderr, "mesh_load: failed to find mesh named \"%s\" in \"%s\"\n",
+					mname, fname);
+			goat3d_free(gscn);
+			return -1;
+		}
+	} else {
+		if(!(gmesh = goat3d_get_mesh(gscn, 0))) {
+			fprintf(stderr, "mesh_load: %s contains no meshes\n", fname);
+			goat3d_free(gscn);
+			return -1;
+		}
+	}
+
+	mesh_init(m);
+	if(mesh_read_goat3d(m, gscn, gmesh) == -1) {
+		fprintf(stderr, "mesh_load(%s): failed to convert mesh \"%s\"\n",
+				fname, goat3d_get_mesh_name(gmesh));
+		goat3d_free(gscn);
+		return -1;
+	}
+	goat3d_free(gscn);
+	return 0;
+}
+
+void mesh_dumpobj(const struct mesh *m, const char *fname)
 {
 	static const char *fmtstr[] = {" %u", " %u//%u", " %u/%u", " %u/%u/%u"};
 	int i, j;

@@ -185,7 +185,6 @@ static int ginit(void)
 static void gdestroy(void)
 {
 	glDeleteTextures(1, &laser_tex);
-	lvl_destroy(&lvl);
 }
 
 static int gstart(void)
@@ -237,6 +236,8 @@ static int gstart(void)
 
 	glHint(GL_FOG_HINT, GL_FASTEST);
 
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
 	glDepthFunc(GL_LEQUAL);
 
 	glEnable(GL_LIGHTING);
@@ -261,6 +262,7 @@ static void gstop(void)
 	}
 
 	rendlvl_destroy();
+	lvl_destroy(&lvl);
 }
 
 #define KB_MOVE_SPEED	0.4
