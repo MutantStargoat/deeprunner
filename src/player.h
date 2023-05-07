@@ -7,11 +7,17 @@
 #define MAX_HP	256
 #define MAX_SP	256
 
+enum {
+	ITEM_KEY	= 1,
+	ITEM_SECRET	= 2
+};
+
 struct player {
 	struct level *lvl;
 	struct room *room;	/* current room the player is in */
 
 	float hp, sp;	/* health and shields */
+	unsigned int items;
 
 	cgm_vec3 pos, prevpos;
 	cgm_quat rot;

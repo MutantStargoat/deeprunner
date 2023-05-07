@@ -1,6 +1,8 @@
 #ifndef GAME_H_
 #define GAME_H_
 
+#include "audio.h"
+
 #define GAME_CFG_FILE	"game.cfg"
 
 #define TSTEP	(1.0f / 30.0f)
@@ -52,6 +54,7 @@ extern long time_msec;
 extern struct game_screen *cur_scr;
 extern struct game_screen scr_logo, scr_menu, scr_game, scr_debug;
 
+extern struct au_sample *sfx_o2chime;
 
 int game_init(void);
 void game_shutdown(void);

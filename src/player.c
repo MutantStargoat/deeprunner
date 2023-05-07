@@ -1,6 +1,8 @@
 #include "config.h"
 
+#include <string.h>
 #include <float.h>
+#include "game.h"
 #include "player.h"
 #include "options.h"
 #include "geom.h"
@@ -15,6 +17,8 @@ static int check_collision(struct player *p, const cgm_vec3 *vel, struct collisi
 
 void init_player(struct player *p)
 {
+	memset(p, 0, sizeof *p);
+
 	cgm_vcons(&p->pos, 0, 0, 0);
 	cgm_qcons(&p->rot, 0, 0, 0, 1);
 
@@ -148,6 +152,9 @@ void update_player(struct player *p)
 			if(obj->octree && !oct_sphtest(obj->octree, &localpos, COL_RADIUS, 0)) {
 				continue;
 			}
+			if(obj->act.type == ACT_PICKUP) {
+				obj->mesh = 0;
+			}
 			activate(p, &obj->act);
 		}
 	}
@@ -193,9 +200,10 @@ static void activate(struct player *p, struct action *act)
 
 	case ACT_PICKUP:
 		if(strcmp(act->name, "secret") == 0) {
-			printf("PICK UP SECRET!\n");
+			p->items |= ITEM_SECRET;
+			au_play_sample(sfx_o2chime, AU_CRITICAL);
 		} else if(strcmp(act->name, "key") == 0) {
-			printf("PICK UP KEY!\n");
+			p->items |= ITEM_KEY;
 		}
 		act->type = ACT_NONE;
 		break;

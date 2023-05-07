@@ -17,6 +17,8 @@
 #include <unistd.h>
 #endif
 
+#define NUM_SFX_CHAN	4
+
 #define SET_MUS_VOL(vol) \
 	do { \
 		int mv = (vol) * vol_master >> 9; \
@@ -54,11 +56,14 @@ int au_init(void)
 	MikMod_RegisterLoader(&load_s3m);
 	MikMod_RegisterLoader(&load_xm);
 
+	md_mode |= DMODE_SOFT_SNDFX;
 	if(MikMod_Init("")) {
 		fprintf(stderr, "failed ot initialize mikmod: %s\n", MikMod_strerror(MikMod_errno));
 		return -1;
 	}
 	MikMod_InitThreads();
+
+	MikMod_SetNumVoices(-1, NUM_SFX_CHAN);
 
 	{
 #ifdef _WIN32
@@ -75,12 +80,14 @@ int au_init(void)
 	}
 
 	printf("MikMod driver: %s\n", MikMod_InfoDriver());
+	MikMod_EnableOutput();
 	return 0;
 }
 
 void au_shutdown(void)
 {
 	curmod = 0;
+	MikMod_DisableOutput();
 	MikMod_Exit();
 }
 
@@ -178,9 +185,7 @@ static void *update(void *cls)
 #endif
 {
 	for(;;) {
-		if(Player_Active()) {
-			MikMod_Update();
-		}
+		MikMod_Update();
 #ifdef _WIN32
 		Sleep(10);
 #else
@@ -206,6 +211,43 @@ int au_module_state(struct au_module *mod)
 		return curmod == mod ? AU_PLAYING : AU_STOPPED;
 	}
 	return curmod ? AU_PLAYING : AU_STOPPED;
+}
+
+struct au_sample *au_load_sample(const char *fname)
+{
+	struct au_sample *sfx;
+	SAMPLE *mmsfx;
+
+	printf("loading sfx: %s\n", fname);
+	if(!(mmsfx = Sample_Load(fname))) {
+		fprintf(stderr, "failed to load sample: %s: %s\n", fname,
+				MikMod_strerror(MikMod_errno));
+		return 0;
+	}
+
+	if(!(sfx = malloc(sizeof *sfx))) {
+		fprintf(stderr, "failed to allocate sample\n");
+		Sample_Free(mmsfx);
+		return 0;
+	}
+	sfx->name = strdup(fname);
+	sfx->impl = mmsfx;
+	return sfx;
+}
+
+void au_free_sample(struct au_sample *sfx)
+{
+	if(!sfx) return;
+
+	Sample_Free(sfx->impl);
+	free(sfx->name);
+	free(sfx);
+}
+
+void au_play_sample(struct au_sample *sfx, int prio)
+{
+	int voice = Sample_Play(sfx->impl, 0, prio == AU_CRITICAL ? SFX_CRITICAL : 0);
+	Voice_SetPanning(voice, 127);
 }
 
 int au_volume(int vol)

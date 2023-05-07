@@ -6,6 +6,7 @@
 #include "mesh.h"
 #include "drawtext.h"
 #include "goat3d.h"
+#include "audio.h"
 
 static int logo_init(void);
 static void logo_destroy(void);
@@ -149,6 +150,12 @@ static void sgiscr(void)
 	float aspect = O2ASPECT / win_aspect;
 	float trot, alpha, z;
 	float tsec = (tmsec - SGISTART) / 1000.0f;
+	static int played_chime;
+
+	if(!played_chime && tsec >= 1.0f) {
+		au_play_sample(sfx_o2chime, 0);
+		played_chime = 1;
+	}
 
 	glDisable(GL_DEPTH_TEST);
 

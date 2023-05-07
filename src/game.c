@@ -25,6 +25,8 @@ long time_msec;
 
 struct game_screen *cur_scr;
 
+struct au_sample *sfx_o2chime;
+
 /* available screens */
 #define MAX_SCREENS	8
 static struct game_screen *screens[MAX_SCREENS];
@@ -55,6 +57,8 @@ int game_init(void)
 	au_music_volume(opt.vol_mus);
 	au_sfx_volume(opt.vol_sfx);
 	au_volume(opt.vol_master);
+
+	sfx_o2chime = au_load_sample("data/sfx/o2chime.wav");
 
 	/* initialize screens */
 	screens[num_screens++] = &scr_logo;

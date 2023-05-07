@@ -2,6 +2,7 @@
 #define AUDIO_H_
 
 enum { AU_STOPPED, AU_PLAYING };
+enum { AU_NORMAL, AU_CRITICAL };	/* sample playback priority */
 
 enum {
 	AU_CUR = 0x7000,
@@ -10,6 +11,11 @@ enum {
 };
 
 struct au_module {
+	char *name;
+	void *impl;
+};
+
+struct au_sample {
 	char *name;
 	void *impl;
 };
@@ -24,6 +30,11 @@ int au_play_module(struct au_module *mod);
 void au_update(void);
 int au_stop_module(struct au_module *mod);
 int au_module_state(struct au_module *mod);
+
+struct au_sample *au_load_sample(const char *fname);
+void au_free_sample(struct au_sample *sfx);
+void au_play_sample(struct au_sample *sfx, int prio);
+
 
 int au_volume(int vol);
 int au_sfx_volume(int vol);

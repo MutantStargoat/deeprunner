@@ -781,8 +781,13 @@ static int read_action(struct action *act, struct ts_node *tsn)
 
 static int add_dynmesh(struct level *lvl, struct ts_node *tsn)
 {
+	const char *str;
 	struct mesh *mesh;
 	const char *name, *fname, *meshname;
+	float num, xform[16];
+	int use_xform;
+	struct ts_attr *attr;
+	float *vec;
 
 	if(!(name = ts_get_attr_str(tsn, "name", 0))) {
 		fprintf(stderr, "skipping dynmesh without name\n");
@@ -801,7 +806,54 @@ static int add_dynmesh(struct level *lvl, struct ts_node *tsn)
 		mesh_destroy(mesh);
 		return -1;
 	}
+
+	if((vec = ts_lookup_vec(tsn, "dynmesh.mtlattr.diffuse", 0))) {
+		mesh->mtl.kd.x = vec[0];
+		mesh->mtl.kd.y = vec[1];
+		mesh->mtl.kd.z = vec[2];
+	}
+	if((vec = ts_lookup_vec(tsn, "dynmesh.mtlattr.specular", 0))) {
+		mesh->mtl.ks.x = vec[0];
+		mesh->mtl.ks.y = vec[1];
+		mesh->mtl.ks.z = vec[2];
+	}
+	if((num = ts_lookup_num(tsn, "dynmesh.mtlattr.shininess", 0)) > 0.0f) {
+		mesh->mtl.shin = num;
+	}
+	if((str = ts_lookup_str(tsn, "dynmesh.mtlattr.texmap", 0))) {
+		mesh->mtl.texmap = lvl_texture(lvl, str);
+	}
+	if((str = ts_lookup_str(tsn, "dynmesh.mtlattr.envmap", 0))) {
+		mesh->mtl.envmap = lvl_texture(lvl, str);
+	}
+
+
+	/* perform transformations to the mesh */
+	cgm_midentity(xform);
+	use_xform = 0;
+
+	attr = tsn->attr_list;
+	while(attr) {
+		if(strcmp(attr->name, "rotate") == 0) {
+			if(attr->val.type == TS_VECTOR) {
+				cgm_mrotate(xform, cgm_deg_to_rad(attr->val.vec[0]),
+						attr->val.vec[1], attr->val.vec[2], attr->val.vec[3]);
+				use_xform = 1;
+			}
+		} else if(strcmp(attr->name, "scale") == 0) {
+			if(attr->val.type == TS_NUMBER) {
+				cgm_mscale(xform, attr->val.fnum, attr->val.fnum, attr->val.fnum);
+				use_xform = 1;
+			}
+		}
+		attr = attr->next;
+	}
+	if(use_xform) {
+		mesh_transform(mesh, xform);
+	}
+
 	mesh_calc_bounds(mesh);
+
 	darr_push(lvl->dynmeshes, &mesh);
 	return 0;
 }
