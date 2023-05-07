@@ -318,7 +318,12 @@ static void gupdate(void)
 	lasers = 0;
 	if(inpstate & INP_FIRE_BIT) {
 		if(player.hp >= 0.0f && player.sp >= 0.0f) {
+			static long last_laser_sfx;
 			lasers = 1;
+			if(time_msec - last_laser_sfx > 100) {
+				au_play_sample(sfx_laser, 0);
+				last_laser_sfx = time_msec;
+			}
 		}
 	}
 

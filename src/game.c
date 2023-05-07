@@ -26,6 +26,7 @@ long time_msec;
 struct game_screen *cur_scr;
 
 struct au_sample *sfx_o2chime;
+struct au_sample *sfx_laser;
 
 /* available screens */
 #define MAX_SCREENS	8
@@ -58,8 +59,6 @@ int game_init(void)
 	au_sfx_volume(opt.vol_sfx);
 	au_volume(opt.vol_master);
 
-	sfx_o2chime = au_load_sample("data/sfx/o2chime.wav");
-
 	/* initialize screens */
 	screens[num_screens++] = &scr_logo;
 	screens[num_screens++] = &scr_menu;
@@ -89,6 +88,16 @@ int game_init(void)
 	}
 	if(!cur_scr) {
 		game_chscr(&scr_logo);
+	}
+
+	if(!(sfx_o2chime = au_load_sample("data/sfx/o2chime.wav"))) {
+		return -1;
+	}
+	if(!(sfx_laser = au_load_sample("data/sfx/laser.wav"))) {
+		return -1;
+	}
+	if(!(sfx_gling1 = au_load_sample("data/sfx/gling1.wav"))) {
+		return -1;
 	}
 
 	return 0;

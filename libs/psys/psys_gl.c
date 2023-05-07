@@ -29,7 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <OpenGL/gl.h>
 #endif
 
-#include <imago2.h>
+#include "imago2.h"
 #include "psys.h"
 #include "psys_gl.h"
 

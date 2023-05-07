@@ -17,7 +17,7 @@
 #include <unistd.h>
 #endif
 
-#define NUM_SFX_CHAN	4
+#define NUM_SFX_CHAN	16
 
 #define SET_SFX_VOL(vol) \
 	do { \

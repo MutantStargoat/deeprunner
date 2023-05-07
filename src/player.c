@@ -204,6 +204,7 @@ static void activate(struct player *p, struct action *act)
 			au_play_sample(sfx_o2chime, AU_CRITICAL);
 		} else if(strcmp(act->name, "key") == 0) {
 			p->items |= ITEM_KEY;
+			au_play_sample(sfx_gling1, AU_CRITICAL);
 		}
 		act->type = ACT_NONE;
 		break;
