@@ -85,6 +85,7 @@ void lvl_init(struct level *lvl)
 	lvl->textures = darr_alloc(0, sizeof *lvl->textures);
 	lvl->actions = darr_alloc(0, sizeof *lvl->actions);
 	lvl->dynmeshes = darr_alloc(0, sizeof *lvl->dynmeshes);
+	lvl->enemies = darr_alloc(0, sizeof *lvl->enemies);
 	cgm_qcons(&lvl->startrot, 0, 0, 0, 1);
 }
 
@@ -112,6 +113,11 @@ void lvl_destroy(struct level *lvl)
 	}
 	darr_free(lvl->dynmeshes);
 
+	for(i=0; i<darr_size(lvl->enemies); i++) {
+		destroy_enemy(lvl->enemies[i]);
+		free(lvl->enemies[i]);
+	}
+	darr_free(lvl->enemies);
 
 	free(lvl->datapath);
 	free(lvl->pathbuf);
@@ -190,6 +196,8 @@ int lvl_load(struct level *lvl, const char *fname)
 		cgm_qcons(&lvl->startrot, vec[0], vec[1], vec[2], vec[3]);
 		cgm_qnormalize(&lvl->startrot);
 	}
+
+	lvl->max_enemies = ts_lookup_int(ts, "level.max_enemies", 0);
 
 	if(!(gscn = goat3d_create()) || goat3d_load(gscn, scnfile) == -1) {
 		fprintf(stderr, "lvl_load(%s): failed to load scene file: %s\n", fname, scnfile);
@@ -986,5 +994,15 @@ static void build_room_octree(struct room *room)
 		}
 		darr_free(room->colmesh);
 		room->colmesh = 0;
+	}
+}
+
+
+void lvl_spawn_enemies(struct level *lvl)
+{
+	int i;
+	struct room *room;
+
+	for(i=0; i<lvl->max_enemies; i++) {
 	}
 }

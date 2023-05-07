@@ -19,6 +19,7 @@
 #include "gfxutil.h"
 #include "drawtext.h"
 #include "loading.h"
+#include "enemy.h"
 
 static int ginit(void);
 static void gdestroy(void);
@@ -40,6 +41,7 @@ static void set_light_color(int idx, float r, float g, float b, float s);
 #ifdef DBG_SHOW_FRUST
 static void draw_frustum(const cgm_vec4 *frust);
 #endif
+
 
 struct game_screen scr_game = {
 	"game",
@@ -225,6 +227,8 @@ static int gstart(void)
 
 	init_player(&player);
 	player.lvl = &lvl;
+
+	lvl_spawn_enemies(&lvl);
 
 	if((env = getenv("START_ROOM"))) {
 		struct room *sr = lvl_find_room(&lvl, env);
@@ -812,4 +816,3 @@ reject:
 	}
 }
 #endif
-

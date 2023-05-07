@@ -89,6 +89,9 @@ struct level {
 
 	struct aabox aabb;			/* bounding box of the entire level */
 	float maxdist;				/* maximum distance in the level */
+
+	int max_enemies;
+	struct enemy **enemies;		/* darr */
 };
 
 struct collision {
@@ -121,5 +124,6 @@ int lvl_collision(const struct level *lvl, const struct room *room, const cgm_ve
 int lvl_collision_rad(const struct level *lvl, const struct room *room, const cgm_vec3 *pos,
 		const cgm_vec3 *vel, float rad, struct collision *col);
 
+void lvl_spawn_enemies(struct level *lvl);
 
 #endif	/* LEVEL_H_ */
