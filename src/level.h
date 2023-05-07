@@ -8,8 +8,10 @@
 struct portal;
 
 enum action_type {
+	ACT_NONE,
 	ACT_DAMAGE,
 	ACT_SHIELD,
+	ACT_PICKUP,
 	ACT_WIN
 };
 
@@ -30,6 +32,12 @@ struct object {
 	struct mesh *colmesh;
 	cgm_vec3 pos;
 	cgm_quat rot;
+
+	int anim_rot;
+	cgm_vec3 rotaxis;
+	float rotspeed;
+
+	struct action act;
 
 	float matrix[16];	/* derived from pos/rot and parent if available */
 
@@ -96,6 +104,7 @@ int lvl_load(struct level *lvl, const char *fname);
 /* meshroom pointer optional, if we care which room this mesh was in */
 struct room *lvl_find_room(const struct level *lvl, const char *name);
 struct mesh *lvl_find_mesh(const struct level *lvl, const char *name, struct room **meshroom);
+struct object *lvl_find_dynobj(const struct level *lvl, const char *name);
 struct mesh *lvl_find_dynmesh(const struct level *lvl, const char *name);
 
 struct texture *lvl_texture(struct level *lvl, const char *fname);

@@ -13,6 +13,8 @@
 static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, struct goat3d_node *gnode);
 static void apply_objmod(struct level *lvl, struct room *room, struct mesh *mesh, struct ts_node *tsn);
 static int read_action(struct action *act, struct ts_node *tsn);
+static int add_dynmesh(struct level *lvl, struct ts_node *tsn);
+static int proc_dynobj(struct level *lvl, struct ts_node *tsn);
 static struct room *find_portal_link(struct level *lvl, struct portal *portal);
 static void build_room_octree(struct room *room);
 
@@ -279,6 +281,24 @@ int lvl_load(struct level *lvl, const char *fname)
 		tsnode = tsnode->next;
 	}
 
+	/* add dynamic meshes */
+	tsnode = ts->child_list;
+	while(tsnode) {
+		if(strcmp(tsnode->name, "dynmesh") == 0) {
+			add_dynmesh(lvl, tsnode);
+		}
+		tsnode = tsnode->next;
+	}
+
+	/* add dynamic objects */
+	tsnode = ts->child_list;
+	while(tsnode) {
+		if(strcmp(tsnode->name, "dynobject") == 0) {
+			proc_dynobj(lvl, tsnode);
+		}
+		tsnode = tsnode->next;
+	}
+
 	/* link up rooms through their portals */
 	count = darr_size(lvl->rooms);
 	for(i=0; i<count; i++) {
@@ -331,9 +351,26 @@ struct mesh *lvl_find_mesh(const struct level *lvl, const char *name, struct roo
 			}
 		}
 	}
-
 	return 0;
 }
+
+struct object *lvl_find_dynobj(const struct level *lvl, const char *name)
+{
+	int i, j, nrooms, nobj;
+
+	nrooms = darr_size(lvl->rooms);
+	for(i=0; i<nrooms; i++) {
+		nobj = darr_size(lvl->rooms[i]->objects);
+		for(j=0; j<nobj; j++) {
+			struct object *obj = lvl->rooms[i]->objects[j];
+			if(obj->name && strcmp(obj->name, name) == 0) {
+				return obj;
+			}
+		}
+	}
+	return 0;
+}
+
 
 struct mesh *lvl_find_dynmesh(const struct level *lvl, const char *name)
 {
@@ -734,6 +771,85 @@ static int read_action(struct action *act, struct ts_node *tsn)
 	return -1;
 }
 
+
+static int add_dynmesh(struct level *lvl, struct ts_node *tsn)
+{
+	struct mesh *mesh;
+	const char *name, *fname, *meshname;
+
+	if(!(name = ts_get_attr_str(tsn, "name", 0))) {
+		fprintf(stderr, "skipping dynmesh without name\n");
+		return -1;
+	}
+	if(!(fname = ts_get_attr_str(tsn, "file", 0))) {
+		fprintf(stderr, "skipping dynmesh without filename\n");
+		return -1;
+	}
+	meshname = ts_get_attr_str(tsn, "mesh", 0);
+
+	mesh = mesh_alloc();
+	mesh->name = strdup_nf(name);
+	if(mesh_load(mesh, fname, meshname) == -1) {
+		fprintf(stderr, "failed to load dynmesh \"%s\" from: %s\n", mesh->name, fname);
+		mesh_destroy(mesh);
+		return -1;
+	}
+	mesh_calc_bounds(mesh);
+	darr_push(lvl->dynmeshes, &mesh);
+	return 0;
+}
+
+static int proc_dynobj(struct level *lvl, struct ts_node *tsn)
+{
+	struct object *obj;
+	struct mesh *mesh;
+	const char *str, *name;
+	float *vec;
+	struct action *act;
+
+	if(!(name = ts_get_attr_str(tsn, "name", 0))) {
+		fprintf(stderr, "skipping dynobject without name\n");
+		return -1;
+	}
+
+	if(!(obj = lvl_find_dynobj(lvl, name))) {
+		fprintf(stderr, "proc_dynobj: failed to find dynobj: %s\n", name);
+		return -1;
+	}
+
+	if((str = ts_get_attr_str(tsn, "mesh", 0))) {
+		if(!(mesh = lvl_find_dynmesh(lvl, str))) {
+			fprintf(stderr, "proc_dynobj(%s): failed to find mesh: %s\n", name, str);
+			return -1;
+		}
+		obj->mesh = mesh;
+	}
+	if((str = ts_get_attr_str(tsn, "colmesh", 0))) {
+		if(!(mesh = lvl_find_dynmesh(lvl, str))) {
+			fprintf(stderr, "proc_dynobj(%s): failed to find collision mesh: %s\n", name, str);
+			return -1;
+		}
+		obj->colmesh = mesh;
+	}
+
+	if((vec = ts_get_attr_vec(tsn, "rotaxis", 0))) {
+		cgm_vcons(&obj->rotaxis, vec[0], vec[1], vec[2]);
+		cgm_vnormalize(&obj->rotaxis);
+		if((obj->rotspeed = ts_get_attr_num(tsn, "rotspeed", 0.0f)) != 0.0f) {
+			obj->anim_rot = 1;
+		}
+	}
+
+	if((str = ts_get_attr_str(tsn, "action", 0))) {
+		if(!(act = find_action(lvl, str))) {
+			fprintf(stderr, "proc_dynobj(%s): failed to find action: %s\n", name, str);
+			return -1;
+		}
+		obj->act = *act;
+	}
+
+	return 0;
+}
 
 static struct room *find_portal_link(struct level *lvl, struct portal *portal)
 {

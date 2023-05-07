@@ -62,6 +62,33 @@ extern int dbg_freezevis;
 extern int dbg_max_col_iter;
 #endif
 
+static int check_collision(struct player *p, const cgm_vec3 *vel, struct collision *col)
+{
+	int i, nobj;
+
+	if(lvl_collision_rad(p->lvl, p->room, &p->pos, vel, COL_RADIUS, col)) {
+		return 1;
+	}
+
+	nobj = darr_size(p->room->objects);
+	for(i=0; i<nobj; i++) {
+		struct object *obj = p->room->objects[i];
+		if(obj->colmesh) {
+			if(!aabox_sph_test(&obj->colmesh->aabb, &p->pos, COL_RADIUS)) {
+				continue;
+			}
+			/* TODO check triangles */
+		} else if(obj->mesh) {
+			if(aabox_sph_test(&obj->mesh->aabb, &p->pos, COL_RADIUS)) {
+				cgm_vcons(&col->norm, 0, 0, 0);
+				return 1;
+			}
+		}
+	}
+
+	return 0;
+}
+
 /* this is called in the timestep update at a constant rate */
 void update_player(struct player *p)
 {
@@ -106,8 +133,7 @@ void update_player(struct player *p)
 	}
 
 	iter = 0;
-	while(cgm_vlength_sq(&vel) > 1e-5 && iter++ < 16 &&
-			lvl_collision_rad(p->lvl, p->room, &p->pos, &vel, COL_RADIUS, &col)) {
+	while(cgm_vlength_sq(&vel) > 1e-5 && iter++ < 16 && check_collision(p, &vel, &col)) {
 		vnlen = -cgm_vdot(&vel, &col.norm);
 		cgm_vadd_scaled(&vel, &col.norm, vnlen);	/* vel += norm * vnlen */
 	}
@@ -141,8 +167,20 @@ void update_player(struct player *p)
 				if(p->sp >= MAX_SP) p->sp = MAX_SP;
 				break;
 
+			case ACT_PICKUP:
+				if(strcmp(trig->act.name, "secret") == 0) {
+					printf("PICK UP SECRET!\n");
+				} else if(strcmp(trig->act.name, "key") == 0) {
+					printf("PICK UP KEY!\n");
+				}
+				trig->act.type = ACT_NONE;
+				break;
+
 			case ACT_WIN:
 				/* TODO */
+				break;
+
+			default:
 				break;
 			}
 		}

@@ -81,8 +81,11 @@ void rendlvl_setup(struct room *room, const cgm_vec3 *ppos, float *vp_matrix)
 
 static void update_room(struct room *room, const cgm_vec4 *frust)
 {
-	int i, nmeshes, nportals;
+	static float tm;
+	int i, nmeshes, nobj, nportals;
 	cgm_vec4 newfrust[6];
+
+	tm += TSTEP;
 
 	nmeshes = darr_size(room->meshes);
 	for(i=0; i<nmeshes; i++) {
@@ -92,6 +95,21 @@ static void update_room(struct room *room, const cgm_vec4 *frust)
 			m->mtl.uvoffs.x += m->mtl.texvel.x;
 			m->mtl.uvoffs.y += m->mtl.texvel.y;
 		}
+	}
+
+	/* update dynamic objects */
+	nobj = darr_size(room->objects);
+	for(i=0; i<nobj; i++) {
+		struct object *obj = room->objects[i];
+
+		if(obj->anim_rot) {
+			cgm_qrotation(&obj->rot, tm, obj->rotaxis.x, obj->rotaxis.y, obj->rotaxis.z);
+		}
+
+		cgm_mrotation_quat(obj->matrix, &obj->rot);
+		obj->matrix[12] = obj->pos.x;
+		obj->matrix[13] = obj->pos.y;
+		obj->matrix[14] = obj->pos.z;
 	}
 
 #if !defined(DBG_ONLY_CUR_ROOM) && !defined(DBG_ALL_ROOMS)
@@ -255,11 +273,6 @@ void render_level_mesh(struct mesh *mesh)
 
 void render_dynobj(struct object *obj)
 {
-	cgm_mrotation_quat(obj->matrix, &obj->rot);
-	obj->matrix[12] = obj->pos.x;
-	obj->matrix[13] = obj->pos.y;
-	obj->matrix[14] = obj->pos.z;
-
 	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
 	glMultMatrixf(obj->matrix);
