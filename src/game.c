@@ -26,7 +26,7 @@ long time_msec;
 struct game_screen *cur_scr;
 
 struct au_sample *sfx_o2chime;
-struct au_sample *sfx_laser;
+struct au_sample *sfx_laser, *sfx_gling1;
 
 /* available screens */
 #define MAX_SCREENS	8
