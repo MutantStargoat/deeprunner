@@ -14,6 +14,7 @@ struct enemy {
 	cgm_vec3 fwd;
 
 	struct mesh *mesh;
+	float matrix[16];
 };
 
 void init_enemy(struct enemy *enemy);

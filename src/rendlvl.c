@@ -5,6 +5,7 @@
 #include "game.h"
 #include "rendlvl.h"
 #include "darray.h"
+#include "enemy.h"
 
 static struct level *lvl;
 static struct room *cur_room;
@@ -115,6 +116,9 @@ static void update_room(struct room *room, const cgm_vec4 *frust)
 		cgm_minverse(obj->invmatrix);
 	}
 
+	/* update enemies */
+	/* TODO */
+
 #if !defined(DBG_ONLY_CUR_ROOM) && !defined(DBG_ALL_ROOMS)
 	/* recursively visit all rooms reachable through visible portals */
 	room->vis_frm = updateno;
@@ -170,6 +174,7 @@ void rendlvl_update(void)
 static void render_room(struct room *room)
 {
 	int i, nmeshes, nportals, nobj;
+	struct enemy *mob;
 
 	nmeshes = darr_size(room->meshes);
 	for(i=0; i<nmeshes; i++) {
@@ -181,6 +186,15 @@ static void render_room(struct room *room)
 	for(i=0; i<nobj; i++) {
 		if(room->objects[i]->mesh) {
 			render_dynobj(room->objects[i]);
+		}
+	}
+
+	/* render enemies */
+	nobj = darr_size(room->enemies);
+	for(i=0; i<nobj; i++) {
+		mob = room->enemies[i];
+		if(mob->hp > 0.0f) {
+			render_enemy(mob);
 		}
 	}
 
@@ -287,6 +301,19 @@ void render_dynobj(struct object *obj)
 	glMatrixMode(GL_MODELVIEW);
 	glPopMatrix();
 }
+
+void render_enemy(struct enemy *mob)
+{
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glMultMatrixf(mob->matrix);
+
+	render_level_mesh(mob->mesh);
+
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+}
+
 
 static int portal_frustum_test(struct portal *portal, const cgm_vec4 *frust)
 {

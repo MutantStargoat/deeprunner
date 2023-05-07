@@ -15,18 +15,17 @@ genglyphmap()
 [ ! -e data/sgilogo.g3d -o data/src/sgilogo.gltf -nt data/sgilogo.g3d ] && \
 	ass2goat data/src/sgilogo.gltf && mv data/src/sgilogo.goat3d data/sgilogo.g3d
 
+[ ! -e data/enemies.g3d -o data/src/enemies.gltf -nt data/enemies.g3d ] && \
+	ass2goat data/src/enemies.gltf && mv data/src/enemies.goat3d data/enemies.g3d
+
+
 genglyphmap data/src/impact.ttf data/hpfont.gmp 42 48-58
 genglyphmap data/src/nulshockb.ttf data/menufont.gmp 28 32-91
 
-hdir=data/level1/high
-mdir=data/level1/mid
-ldir=data/level1/low
-
-mkdir -p $hdir $mdir $ldir
-
-for i in data/src/level1/high/*.png; do
-	infile=`basename $i`
-	outfile=`basename $i .png`.jpg
+proctextures()
+{
+	infile=$1
+	outfile=$2
 
 	if [ ! -f $hdir/$infile -o $i -nt $hdir/$infile ]; then
 		echo "copy $i -> $hdir/$outfile"
@@ -43,6 +42,20 @@ for i in data/src/level1/high/*.png; do
 		convert -quality 90 -resize "25%" $i $ldir/$outfile
 		mv $ldir/$outfile $ldir/$infile		# rename png
 	fi
+}
+
+# process level textures
+hdir=data/level1/high
+mdir=data/level1/mid
+ldir=data/level1/low
+
+mkdir -p $hdir $mdir $ldir
+
+for i in data/src/level1/high/*.png data/src/enemies/*.png; do
+	infile=`basename $i`
+	outfile=`basename $i .png`.jpg
+
+	proctextures $infile $outfile
 done
 
 exit 0

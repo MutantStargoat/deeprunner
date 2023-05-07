@@ -9,6 +9,7 @@
 #include "treestor.h"
 #include "options.h"
 #include "loading.h"
+#include "enemy.h"
 
 static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, struct goat3d_node *gnode);
 static void apply_objmod(struct level *lvl, struct room *room, struct mesh *mesh, struct ts_node *tsn);
@@ -27,6 +28,7 @@ struct room *alloc_room(void)
 	room->triggers = darr_alloc(0, sizeof *room->triggers);
 	room->objects = darr_alloc(0, sizeof *room->objects);
 	room->emitters = darr_alloc(0, sizeof *room->emitters);
+	room->enemies = darr_alloc(0, sizeof *room->enemies);
 	aabox_init(&room->aabb);
 	return room;
 }
@@ -71,6 +73,8 @@ void free_room(struct room *room)
 		psys_free(room->emitters[i]);
 	}
 	darr_free(room->emitters);
+
+	darr_free(room->enemies);
 
 	free(room->name);
 
@@ -197,7 +201,7 @@ int lvl_load(struct level *lvl, const char *fname)
 		cgm_qnormalize(&lvl->startrot);
 	}
 
-	lvl->max_enemies = ts_lookup_int(ts, "level.max_enemies", 0);
+	lvl->max_enemies = ts_lookup_int(ts, "level.enemies.spawn", 0);
 
 	if(!(gscn = goat3d_create()) || goat3d_load(gscn, scnfile) == -1) {
 		fprintf(stderr, "lvl_load(%s): failed to load scene file: %s\n", fname, scnfile);
@@ -808,12 +812,14 @@ static int add_dynmesh(struct level *lvl, struct ts_node *tsn)
 	meshname = ts_get_attr_str(tsn, "mesh", 0);
 
 	mesh = mesh_alloc();
-	mesh->name = strdup_nf(name);
 	if(mesh_load(mesh, fname, meshname) == -1) {
 		fprintf(stderr, "failed to load dynmesh \"%s\" from: %s\n", mesh->name, fname);
 		mesh_destroy(mesh);
 		return -1;
 	}
+	free(mesh->name);
+	mesh->name = strdup_nf(name);
+	printf("adding dynamic mesh: \"%s\"\n", mesh->name);
 
 	if((vec = ts_lookup_vec(tsn, "dynmesh.mtlattr.diffuse", 0))) {
 		mesh->mtl.kd.x = vec[0];
@@ -1000,9 +1006,38 @@ static void build_room_octree(struct room *room)
 
 void lvl_spawn_enemies(struct level *lvl)
 {
-	int i;
+	int i, j, which;
 	struct room *room;
+	struct object *obj;
+	struct enemy *enemy;
+	struct mesh *mesh;
+	static const char *names[] = {"enemy_flying1", "enemy_flying2", "enemy_spike"};
 
-	for(i=0; i<lvl->max_enemies; i++) {
+	for(i=0; i<darr_size(lvl->rooms); i++) {
+		room = lvl->rooms[i];
+
+		for(j=0; j<darr_size(room->objects); j++) {
+			obj = room->objects[j];
+			if(match_prefix(obj->name, "dummy_spawn")) {
+				which = rand() % (sizeof names / sizeof *names);
+				if(!(mesh = lvl_find_dynmesh(lvl, names[which]))) {
+					fprintf(stderr, "failed to find enemy mesh: %s\n", names[which]);
+					continue;
+				}
+
+				enemy = malloc_nf(sizeof *enemy);
+				init_enemy(enemy);
+				enemy->mesh = mesh;
+				enemy->pos = obj->pos;
+				enemy->rot = obj->rot;
+				cgm_mcopy(enemy->matrix, obj->matrix);
+
+				enemy->room = room;
+				enemy->lvl = lvl;
+
+				darr_push(lvl->enemies, &enemy);
+				darr_push(room->enemies, &enemy);
+			}
+		}
 	}
 }

@@ -3,6 +3,7 @@
 
 #define COL_RADIUS	0.25f
 
+#define DBG_NOSEED
 #define DBG_ESCQUIT
 
 #define DBG_NO_OCTREE

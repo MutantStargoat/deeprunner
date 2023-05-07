@@ -400,7 +400,6 @@ static void gdisplay(void)
 	glEnable(GL_FOG);
 
 	render_level();
-	/* TODO: render non-static meshes */
 
 	glDisable(GL_FOG);
 

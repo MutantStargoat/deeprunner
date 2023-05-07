@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "miniglut.h"
 #include <GL/glu.h>
 #include "game.h"
@@ -42,6 +43,10 @@ int game_init(void)
 
 #ifndef NDEBUG
 	enable_fpexcept();
+#endif
+
+#ifndef DBG_NOSEED
+	srand(time(0));
 #endif
 
 	load_options(GAME_CFG_FILE);

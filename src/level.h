@@ -3,6 +3,7 @@
 
 #include "mesh.h"
 #include "octree.h"
+#include "enemy.h"
 #include "psys/psys.h"
 
 struct portal;
@@ -60,6 +61,7 @@ struct room {
 	struct trigger *triggers;	/* darr */
 
 	struct object **objects;	/* darr */
+	struct enemy **enemies;	/* darr (no ownership) */
 
 	struct psys_emitter **emitters;
 
