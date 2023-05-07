@@ -196,6 +196,7 @@ static void gdestroy(void)
 
 static int gstart(void)
 {
+	char *env;
 	float amb[] = {0.25, 0.25, 0.25, 1};
 	float zero[] = {0, 0, 0, 1};
 
@@ -223,9 +224,17 @@ static int gstart(void)
 	loading_step();
 
 	init_player(&player);
-	player.pos = lvl.startpos;
-	player.rot = lvl.startrot;
 	player.lvl = &lvl;
+
+	if((env = getenv("START_ROOM"))) {
+		struct room *sr = lvl_find_room(&lvl, env);
+		if(sr) {
+			cgm_vlerp(&player.pos, &sr->aabb.vmin, &sr->aabb.vmax, 0.5f);
+		}
+	} else {
+		player.pos = lvl.startpos;
+		player.rot = lvl.startrot;
+	}
 
 	if(opt.music) {
 		if(!(mod = au_load_module("data/ingame.it"))) {
@@ -352,6 +361,11 @@ static void gdisplay(void)
 	static float tm_acc = TSTEP;
 	long msec;
 
+#ifdef DBG_FREEZEVIS
+	if(dbg_freezevis) {
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	} else
+#endif
 	glClear(GL_DEPTH_BUFFER_BIT);
 
 	msec = glutGet(GLUT_ELAPSED_TIME);

@@ -10,7 +10,7 @@ def = -DMINIGLUT_USE_LIBC -DMIKMOD_STATIC
 inc = -Ilibs -Ilibs/imago/src -Ilibs/treestor/include -Ilibs/goat3d/include \
 	  -Ilibs/drawtext -Ilibs/mikmod/include
 libs = libs/unix/imago.a libs/unix/goat3d.a libs/unix/treestor.a \
-	   libs/unix/drawtext.a libs/unix/mikmod.a
+	   libs/unix/drawtext.a libs/unix/psys.a libs/unix/mikmod.a
 
 CFLAGS = $(warn) $(dbg) $(opt) $(inc) $(def) -MMD
 LDFLAGS = $(ldsys_pre) $(libs) $(ldsys)

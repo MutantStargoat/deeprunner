@@ -3,6 +3,7 @@
 
 #include "mesh.h"
 #include "octree.h"
+#include "psys/psys.h"
 
 struct portal;
 
@@ -23,6 +24,18 @@ struct trigger {
 	struct action act;
 };
 
+struct object {
+	char *name;
+	struct mesh *mesh;
+	struct mesh *colmesh;
+	cgm_vec3 pos;
+	cgm_quat rot;
+
+	float matrix[16];	/* derived from pos/rot and parent if available */
+
+	struct object *child_list, *parent;
+	struct object *next;
+};
 
 struct room {
 	char *name;
@@ -33,6 +46,10 @@ struct room {
 
 	struct portal *portals;		/* darr */
 	struct trigger *triggers;	/* darr */
+
+	struct object **objects;	/* darr */
+
+	struct psys_emitter **emitters;
 
 	unsigned int vis_frm, rendered;
 };
@@ -52,6 +69,7 @@ struct level {
 	cgm_quat startrot;
 
 	struct action *actions;		/* darr */
+	struct mesh **dynmeshes;	/* darr */
 
 	char *datapath;
 	char *pathbuf;
@@ -76,7 +94,9 @@ void lvl_destroy(struct level *lvl);
 int lvl_load(struct level *lvl, const char *fname);
 
 /* meshroom pointer optional, if we care which room this mesh was in */
+struct room *lvl_find_room(const struct level *lvl, const char *name);
 struct mesh *lvl_find_mesh(const struct level *lvl, const char *name, struct room **meshroom);
+struct mesh *lvl_find_dynmesh(const struct level *lvl, const char *name);
 
 struct texture *lvl_texture(struct level *lvl, const char *fname);
 
@@ -87,5 +107,6 @@ int lvl_collision(const struct level *lvl, const struct room *room, const cgm_ve
 
 int lvl_collision_rad(const struct level *lvl, const struct room *room, const cgm_vec3 *pos,
 		const cgm_vec3 *vel, float rad, struct collision *col);
+
 
 #endif	/* LEVEL_H_ */

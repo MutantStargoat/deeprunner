@@ -2,6 +2,7 @@
 
 #include "opengl.h"
 #include "miniglut.h"
+#include "game.h"
 #include "rendlvl.h"
 #include "darray.h"
 
@@ -46,6 +47,13 @@ int rendlvl_init(struct level *level)
 			if(!room->meshes[j].dlist) {
 				mesh_compile(room->meshes + j);
 			}
+		}
+	}
+
+	nmeshes = darr_size(level->dynmeshes);
+	for(i=0; i<nmeshes; i++) {
+		if(!level->dynmeshes[i]->dlist) {
+			mesh_compile(level->dynmeshes[i]);
 		}
 	}
 	return 0;
@@ -140,11 +148,19 @@ void rendlvl_update(void)
 
 static void render_room(struct room *room)
 {
-	int i, nmeshes, nportals;
+	int i, nmeshes, nportals, nobj;
 
 	nmeshes = darr_size(room->meshes);
 	for(i=0; i<nmeshes; i++) {
 		render_level_mesh(room->meshes + i);
+	}
+
+	/* render dynamic objects */
+	nobj = darr_size(room->objects);
+	for(i=0; i<nobj; i++) {
+		if(room->objects[i]->mesh) {
+			render_dynobj(room->objects[i]);
+		}
 	}
 
 	/* mark this room as visited in the current frame */
@@ -237,6 +253,22 @@ void render_level_mesh(struct mesh *mesh)
 	}
 }
 
+void render_dynobj(struct object *obj)
+{
+	cgm_mrotation_quat(obj->matrix, &obj->rot);
+	obj->matrix[12] = obj->pos.x;
+	obj->matrix[13] = obj->pos.y;
+	obj->matrix[14] = obj->pos.z;
+
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glMultMatrixf(obj->matrix);
+
+	render_level_mesh(obj->mesh);
+
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+}
 
 static int portal_frustum_test(struct portal *portal, const cgm_vec4 *frust)
 {

@@ -33,6 +33,19 @@ void mesh_destroy(struct mesh *m)
 	}
 }
 
+struct mesh *mesh_alloc(void)
+{
+	struct mesh *m = malloc_nf(sizeof *m);
+	mesh_init(m);
+	return m;
+}
+
+void mesh_free(struct mesh *m)
+{
+	mesh_destroy(m);
+	free(m);
+}
+
 void mesh_transform(struct mesh *m, const float *mat)
 {
 	int i;

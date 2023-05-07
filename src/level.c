@@ -23,6 +23,8 @@ struct room *alloc_room(void)
 	room->colmesh = darr_alloc(0, sizeof *room->colmesh);
 	room->portals = darr_alloc(0, sizeof *room->portals);
 	room->triggers = darr_alloc(0, sizeof *room->triggers);
+	room->objects = darr_alloc(0, sizeof *room->objects);
+	room->emitters = darr_alloc(0, sizeof *room->emitters);
 	aabox_init(&room->aabb);
 	return room;
 }
@@ -55,6 +57,19 @@ void free_room(struct room *room)
 	count = darr_size(room->triggers);
 	darr_free(room->triggers);
 
+	count = darr_size(room->objects);
+	for(i=0; i<count; i++) {
+		free(room->objects[i]->name);
+		free(room->objects[i]);
+	}
+	darr_free(room->objects);
+
+	count = darr_size(room->emitters);
+	for(i=0; i<count; i++) {
+		psys_free(room->emitters[i]);
+	}
+	darr_free(room->emitters);
+
 	free(room->name);
 
 	oct_free(room->octree);
@@ -67,6 +82,7 @@ void lvl_init(struct level *lvl)
 	lvl->rooms = darr_alloc(0, sizeof *lvl->rooms);
 	lvl->textures = darr_alloc(0, sizeof *lvl->textures);
 	lvl->actions = darr_alloc(0, sizeof *lvl->actions);
+	lvl->dynmeshes = darr_alloc(0, sizeof *lvl->dynmeshes);
 	cgm_qcons(&lvl->startrot, 0, 0, 0, 1);
 }
 
@@ -87,6 +103,13 @@ void lvl_destroy(struct level *lvl)
 		free(lvl->actions[i].name);
 	}
 	darr_free(lvl->actions);
+
+	for(i=0; i<darr_size(lvl->dynmeshes); i++) {
+		mesh_destroy(lvl->dynmeshes[i]);
+		free(lvl->dynmeshes[i]);
+	}
+	darr_free(lvl->dynmeshes);
+
 
 	free(lvl->datapath);
 	free(lvl->pathbuf);
@@ -282,6 +305,17 @@ int lvl_load(struct level *lvl, const char *fname)
 	return 0;
 }
 
+struct room *lvl_find_room(const struct level *lvl, const char *name)
+{
+	int i, count = darr_size(lvl->rooms);
+	for(i=0; i<count; i++) {
+		if(strcmp(lvl->rooms[i]->name, name) == 0) {
+			return lvl->rooms[i];
+		}
+	}
+	return 0;
+}
+
 struct mesh *lvl_find_mesh(const struct level *lvl, const char *name, struct room **meshroom)
 {
 	int i, j, nrooms, nmeshes;
@@ -298,6 +332,17 @@ struct mesh *lvl_find_mesh(const struct level *lvl, const char *name, struct roo
 		}
 	}
 
+	return 0;
+}
+
+struct mesh *lvl_find_dynmesh(const struct level *lvl, const char *name)
+{
+	int i, count = darr_size(lvl->dynmeshes);
+	for(i=0; i<count; i++) {
+		if(lvl->dynmeshes[i]->name && strcmp(lvl->dynmeshes[i]->name, name) == 0) {
+			return lvl->dynmeshes[i];
+		}
+	}
 	return 0;
 }
 
@@ -507,7 +552,8 @@ static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, 
 	enum goat3d_node_type type = goat3d_get_node_type(gnode);
 	struct goat3d_mesh *gmesh;
 	struct portal portal;
-	struct mesh mesh;
+	struct mesh mesh, *dynmesh;
+	struct object *obj;
 	float xform[16];
 
 	if(match_prefix(name, "portal_")) {
@@ -520,6 +566,36 @@ static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, 
 			portal.link = 0;
 			portal.name = strdup_nf(name);
 			darr_push(room->portals, &portal);
+		}
+	} else if(match_prefix(name, "dummy_")) {
+		obj = calloc_nf(1, sizeof *obj);
+		obj->name = strdup_nf(name);
+		goat3d_get_node_position(gnode, &obj->pos.x, &obj->pos.y, &obj->pos.z);
+		goat3d_get_node_rotation(gnode, &obj->rot.x, &obj->rot.y, &obj->rot.z, &obj->rot.w);
+		goat3d_get_node_matrix(gnode, obj->matrix);
+		darr_push(room->objects, &obj);
+	} else if(match_prefix(name, "dyn_")) {
+		if(type != GOAT3D_NODE_MESH) {
+			fprintf(stderr, "ignoring non-mesh with \"dyn_\" prefix: %s\n", name);
+		} else {
+			gmesh = goat3d_get_node_object(gnode);
+			dynmesh = mesh_alloc();
+			if(mesh_read_goat3d(dynmesh, gscn, gmesh) != -1) {
+				free(dynmesh->name);
+				dynmesh->name = strdup_nf(name);
+				mesh_calc_bounds(dynmesh);
+				darr_push(lvl->dynmeshes, &dynmesh);
+			}
+
+			/* add an object for this dynmesh in the room it was found in */
+			obj = calloc_nf(1, sizeof *obj);
+			obj->name = strdup_nf(name);
+			obj->mesh = dynmesh;
+			goat3d_get_node_position(gnode, &obj->pos.x, &obj->pos.y, &obj->pos.z);
+			goat3d_get_node_rotation(gnode, &obj->rot.x, &obj->rot.y, &obj->rot.z, &obj->rot.w);
+			goat3d_get_node_matrix(gnode, obj->matrix);
+			darr_push(room->objects, &obj);
+			return 0;	/* no hierarchy for dynmeshes for now */
 		}
 	} else if(match_prefix(name, "col_")) {
 		if(type != GOAT3D_NODE_MESH) {

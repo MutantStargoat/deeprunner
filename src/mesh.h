@@ -25,6 +25,9 @@ typedef struct texture *(*mesh_tex_loader_func)(const char *fname, void *cls);
 int mesh_init(struct mesh *m);
 void mesh_destroy(struct mesh *m);
 
+struct mesh *mesh_alloc(void);
+void mesh_free(struct mesh *m);
+
 void mesh_transform(struct mesh *m, const float *mat);
 void mesh_calc_bounds(struct mesh *m);
 
