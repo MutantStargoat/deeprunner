@@ -18,6 +18,9 @@ struct mesh {
 
 	struct material mtl;
 	struct aabox aabb;
+
+	cgm_vec3 bsph_cent;
+	float bsph_rad;
 };
 
 typedef struct texture *(*mesh_tex_loader_func)(const char *fname, void *cls);

@@ -11,6 +11,8 @@
 #include "loading.h"
 #include "enemy.h"
 
+#define MAX_HIT_DEPTH	2
+
 static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, struct goat3d_node *gnode);
 static void apply_objmod(struct level *lvl, struct room *room, struct mesh *mesh, struct ts_node *tsn);
 static int read_action(struct action *act, struct ts_node *tsn);
@@ -18,6 +20,12 @@ static int add_dynmesh(struct level *lvl, struct ts_node *tsn);
 static int proc_dynobj(struct level *lvl, struct ts_node *tsn);
 static struct room *find_portal_link(struct level *lvl, struct portal *portal);
 static void build_room_octree(struct room *room);
+
+static int check_collision(const struct level *lvl, const struct room *room,
+		const cgm_vec3 *pos, const cgm_vec3 *vel, struct collision *col,
+		struct room **visited, int *num_visited);
+static struct enemy *check_enemy_hit(struct level *lvl, struct room *room,
+	   struct room **visited, int *num_visited, const cgm_ray *ray);
 
 struct room *alloc_room(void)
 {
@@ -495,9 +503,24 @@ extern const struct triangle *dbg_hitpoly;
 int lvl_collision(const struct level *lvl, const struct room *room, const cgm_vec3 *pos,
 		const cgm_vec3 *vel, struct collision *col)
 {
+	struct room *visited[MAX_HIT_DEPTH];
+	int num_visited = 0;
+
+	return check_collision(lvl, room, pos, vel, col, visited, &num_visited);
+}
+
+static int check_collision(const struct level *lvl, const struct room *room,
+		const cgm_vec3 *pos, const cgm_vec3 *vel, struct collision *col,
+		struct room **visited, int *num_visited)
+{
 	cgm_ray ray;
 	struct trihit hit;
-	int i, num_portals;
+	int i, j, num_portals;
+
+	if(*num_visited >= MAX_HIT_DEPTH) {
+		return 0;
+	}
+	visited[(*num_visited)++] = (struct room*)room;
 
 	if(!room) {
 		if(!(room = lvl_room_at(lvl, pos->x, pos->y, pos->z))) {
@@ -523,8 +546,16 @@ int lvl_collision(const struct level *lvl, const struct room *room, const cgm_ve
 	num_portals = darr_size(room->portals);
 	for(i=0; i<num_portals; i++) {
 		struct portal *port = room->portals + i;
-		if(ray_sphere(&ray, &port->pos, port->rad, 0)) {
-			return lvl_collision(lvl, port->link, pos, vel, col);
+
+		for(j=0; j<*num_visited; j++) {
+			if(visited[j] == port->link) {
+				port = 0;
+				break;
+			}
+		}
+
+		if(port && ray_sphere(&ray, &port->pos, port->rad, 0)) {
+			return check_collision(lvl, port->link, pos, vel, col, visited, num_visited);
 		}
 	}
 
@@ -1012,6 +1043,7 @@ void lvl_spawn_enemies(struct level *lvl)
 	struct enemy *enemy;
 	struct mesh *mesh;
 	static const char *names[] = {"enemy_flying1", "enemy_flying2", "enemy_spike"};
+	static void (*ai[])(struct enemy*) = {enemy_ai_flying1, enemy_ai_flying2, enemy_ai_spike};
 
 	for(i=0; i<darr_size(lvl->rooms); i++) {
 		room = lvl->rooms[i];
@@ -1027,9 +1059,10 @@ void lvl_spawn_enemies(struct level *lvl)
 
 				enemy = malloc_nf(sizeof *enemy);
 				init_enemy(enemy);
-				enemy->mesh = mesh;
+				enemy_addmesh(enemy, mesh);
 				enemy->pos = obj->pos;
 				enemy->rot = obj->rot;
+				enemy->aifunc = ai[which];
 				cgm_mcopy(enemy->matrix, obj->matrix);
 
 				enemy->room = room;
@@ -1040,4 +1073,59 @@ void lvl_spawn_enemies(struct level *lvl)
 			}
 		}
 	}
+}
+
+struct enemy *lvl_check_enemy_hit(struct level *lvl, struct room *room, const cgm_ray *ray)
+{
+	struct room *visited[MAX_HIT_DEPTH];
+	int num_visited = 0;
+
+	return check_enemy_hit(lvl, room, visited, &num_visited, ray);
+}
+
+static struct enemy *check_enemy_hit(struct level *lvl, struct room *room,
+	   struct room **visited, int *num_visited, const cgm_ray *ray)
+{
+	int i, j, num_portals, num_mobs;
+	float t, tmin = FLT_MAX;
+	struct enemy *mob, *hitmob = 0;
+
+	if(*num_visited >= MAX_HIT_DEPTH) {
+		return 0;
+	}
+	visited[(*num_visited)++] = room;
+
+	num_mobs = darr_size(room->enemies);
+	for(i=0; i<num_mobs; i++) {
+		mob = room->enemies[i];
+		if(enemy_hit_test(mob, ray, &t) && t < tmin) {
+			printf("hit %s\n", mob->mesh->name);
+			tmin = t;
+			hitmob = mob;
+		}
+	}
+
+	if(hitmob) {
+		return hitmob;
+	}
+
+	/* if we didn't hit anything, we probably hit a portal, test the portals and
+	 * continue testing across the next room */
+	num_portals = darr_size(room->portals);
+	for(i=0; i<num_portals; i++) {
+		struct portal *port = room->portals + i;
+
+		for(j=0; j<*num_visited; j++) {
+			if(visited[j] == port->link) {
+				port = 0;
+				break;
+			}
+		}
+
+		if(port && ray_sphere(ray, &port->pos, port->rad, 0)) {
+			return check_enemy_hit(lvl, port->link, visited, num_visited, ray);
+		}
+	}
+
+	return 0;
 }

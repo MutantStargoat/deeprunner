@@ -62,12 +62,25 @@ void mesh_transform(struct mesh *m, const float *mat)
 void mesh_calc_bounds(struct mesh *m)
 {
 	int i;
+	float dsq;
 
 	aabox_init(&m->aabb);
+	cgm_vcons(&m->bsph_cent, 0, 0, 0);
 
 	for(i=0; i<m->vcount; i++) {
 		aabox_union_point(&m->aabb, m->varr + i);
+		cgm_vadd(&m->bsph_cent, m->varr + i);
 	}
+	cgm_vscale(&m->bsph_cent, 1.0f / (float)m->vcount);
+
+	m->bsph_rad = 0.0f;
+	for(i=0; i<m->vcount; i++) {
+		dsq = cgm_vdist_sq(&m->bsph_cent, m->varr + i);
+		if(dsq > m->bsph_rad) {
+			m->bsph_rad = dsq;
+		}
+	}
+	m->bsph_rad = sqrt(m->bsph_rad);
 }
 
 int mesh_num_triangles(struct mesh *m)

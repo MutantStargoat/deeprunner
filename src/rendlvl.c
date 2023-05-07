@@ -6,6 +6,7 @@
 #include "rendlvl.h"
 #include "darray.h"
 #include "enemy.h"
+#include "gfxutil.h"
 
 static struct level *lvl;
 static struct room *cur_room;
@@ -107,10 +108,7 @@ static void update_room(struct room *room, const cgm_vec4 *frust)
 			cgm_qrotation(&obj->rot, tm, obj->rotaxis.x, obj->rotaxis.y, obj->rotaxis.z);
 		}
 
-		cgm_mrotation_quat(obj->matrix, &obj->rot);
-		obj->matrix[12] = obj->pos.x;
-		obj->matrix[13] = obj->pos.y;
-		obj->matrix[14] = obj->pos.z;
+		calc_posrot_matrix(obj->matrix, &obj->pos, &obj->rot);
 
 		cgm_mcopy(obj->invmatrix, obj->matrix);
 		cgm_minverse(obj->invmatrix);

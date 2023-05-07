@@ -14,12 +14,12 @@
 #include "cgmath/cgmath.h"
 #include "audio.h"
 #include "options.h"
-#include "player.h"
 #include "rendlvl.h"
 #include "gfxutil.h"
 #include "drawtext.h"
 #include "loading.h"
 #include "enemy.h"
+#include "darray.h"
 
 static int ginit(void);
 static void gdestroy(void);
@@ -54,7 +54,7 @@ struct game_screen scr_game = {
 
 static float view_mat[16], proj_mat[16];
 
-static struct player player;
+struct player *player;
 
 static struct level lvl;
 static unsigned int dbgtex;
@@ -225,19 +225,20 @@ static int gstart(void)
 
 	loading_step();
 
-	init_player(&player);
-	player.lvl = &lvl;
+	player = malloc_nf(sizeof *player);
+	init_player(player);
+	player->lvl = &lvl;
 
 	lvl_spawn_enemies(&lvl);
 
 	if((env = getenv("START_ROOM"))) {
 		struct room *sr = lvl_find_room(&lvl, env);
 		if(sr) {
-			cgm_vlerp(&player.pos, &sr->aabb.vmin, &sr->aabb.vmax, 0.5f);
+			cgm_vlerp(&player->pos, &sr->aabb.vmin, &sr->aabb.vmax, 0.5f);
 		}
 	} else {
-		player.pos = lvl.startpos;
-		player.rot = lvl.startrot;
+		player->pos = lvl.startpos;
+		player->rot = lvl.startrot;
 	}
 
 	if(opt.music) {
@@ -290,38 +291,39 @@ static void gstop(void)
 
 static void gupdate(void)
 {
+	int i, count;
 	float viewproj[16];
 
 	if(inpstate & INP_MOVE_BITS) {
 		if(inpstate & INP_FWD_BIT) {
-			player.vel.z -= KB_MOVE_SPEED;
+			player->vel.z -= KB_MOVE_SPEED;
 		}
 		if(inpstate & INP_BACK_BIT) {
-			player.vel.z += KB_MOVE_SPEED;
+			player->vel.z += KB_MOVE_SPEED;
 		}
 		if(inpstate & INP_RIGHT_BIT) {
-			player.vel.x += KB_MOVE_SPEED;
+			player->vel.x += KB_MOVE_SPEED;
 		}
 		if(inpstate & INP_LEFT_BIT) {
-			player.vel.x -= KB_MOVE_SPEED;
+			player->vel.x -= KB_MOVE_SPEED;
 		}
 		if(inpstate & INP_UP_BIT) {
-			player.vel.y += KB_MOVE_SPEED;
+			player->vel.y += KB_MOVE_SPEED;
 		}
 		if(inpstate & INP_DOWN_BIT) {
-			player.vel.y -= KB_MOVE_SPEED;
+			player->vel.y -= KB_MOVE_SPEED;
 		}
 		if(inpstate & INP_LROLL_BIT) {
-			player.roll -= KB_SPIN_SPEED;
+			player->roll -= KB_SPIN_SPEED;
 		}
 		if(inpstate & INP_RROLL_BIT) {
-			player.roll += KB_SPIN_SPEED;
+			player->roll += KB_SPIN_SPEED;
 		}
 	}
 
 	lasers = 0;
 	if(inpstate & INP_FIRE_BIT) {
-		if(player.hp >= 0.0f && player.sp >= 0.0f) {
+		if(player->hp >= 0.0f && player->sp >= 0.0f) {
 			static long last_laser_sfx;
 			lasers = 1;
 			if(time_msec - last_laser_sfx > 100) {
@@ -331,20 +333,43 @@ static void gupdate(void)
 		}
 	}
 
-	if(player.hp > 0) {
-		update_player_sball(&player);
-		update_player(&player);
+	if(player->hp > 0) {
+		update_player_sball(player);
+		update_player(player);
 	}
 
-	if(lasers) {
-		cgm_vec3 dir = player.fwd;
-		cgm_vscale(&dir, lvl.maxdist);
-		if(!lvl_collision(&lvl, player.room, &player.pos, &dir, &lasers_hit)) {
-			lasers_hit.depth = -1.0f;
+	/* update enemies */
+	count = darr_size(lvl.enemies);
+	for(i=0; i<count; i++) {
+		struct enemy *mob = lvl.enemies[i];
+		if(mob->hp > 0.0f) {
+			enemy_update(mob);
 		}
 	}
 
-	player_view_matrix(&player, view_mat);
+	if(lasers) {
+		cgm_ray ray;
+		struct enemy *mob;
+		cgm_vec3 dir = player->fwd;
+
+		cgm_vscale(&dir, lvl.maxdist);
+
+		if(!lvl_collision(&lvl, player->room, &player->pos, &dir, &lasers_hit)) {
+			lasers_hit.depth = -1.0f;
+			ray.dir = dir;
+		} else {
+			printf("lasers depth: %f\n", lasers_hit.depth);
+			ray.dir = player->fwd;
+			cgm_vscale(&ray.dir, lasers_hit.depth);	/* don't test further than the walls */
+		}
+
+		ray.origin = player->pos;
+		if((mob = lvl_check_enemy_hit(&lvl, player->room, &ray))) {
+			enemy_damage(mob, LASER_DAMAGE);
+		}
+	}
+
+	player_view_matrix(player, view_mat);
 
 	cgm_mcopy(viewproj, view_mat);
 	cgm_mmul(viewproj, proj_mat);
@@ -352,9 +377,9 @@ static void gupdate(void)
 #ifdef DBG_FREEZEVIS
 	if(!dbg_freezevis) {
 #endif
-		vispos = player.pos;
-		visrot = player.rot;
-		rendlvl_setup(player.room, &vispos, viewproj);
+		vispos = player->pos;
+		visrot = player->rot;
+		rendlvl_setup(player->room, &vispos, viewproj);
 #ifdef DBG_FREEZEVIS
 	} else {
 		rendlvl_setup(0, &vispos, viewproj);
@@ -382,7 +407,7 @@ static void gdisplay(void)
 	prev_msec = msec;
 
 	/* updating mouse input every frame feels more fluid */
-	update_player_mouse(&player);
+	update_player_mouse(player);
 
 	/* update all other game logic once per timestep */
 	while(tm_acc >= TSTEP) {
@@ -530,7 +555,7 @@ static void draw_ui(void)
 	glEnable(GL_ALPHA_TEST);
 	glDisable(GL_TEXTURE_2D);
 
-	glAlphaFunc(GL_GREATER, (float)player.sp / MAX_SP);
+	glAlphaFunc(GL_GREATER, (float)player->sp / MAX_SP);
 
 	yoffs = 0.0f;
 	yscale = 1.0f;
@@ -543,7 +568,7 @@ static void draw_ui(void)
 		glEnd();
 		yoffs = 71;
 		yscale = -1;
-		glAlphaFunc(GL_GREATER, player.hp / MAX_HP);
+		glAlphaFunc(GL_GREATER, player->hp / MAX_HP);
 	}
 	glDisable(GL_ALPHA_TEST);
 
@@ -552,18 +577,18 @@ static void draw_ui(void)
 	glTranslatef(162, 26, 0);
 	glScalef(0.4, -0.4, 0.4);
 	glColor3f(0.008, 0.396, 0.678);
-	dtx_printf("%d", (int)player.sp * 100 / MAX_SP);
+	dtx_printf("%d", (int)player->sp * 100 / MAX_SP);
 
 	glTranslatef(0, -85, 0);
 	glColor3f(0.725, 0.075, 0.173);
-	dtx_printf("%d", (int)player.hp * 100 / MAX_HP);
+	dtx_printf("%d", (int)player->hp * 100 / MAX_HP);
 	glPopMatrix();
 
 	/* draw ADI */
 	glEnable(GL_CULL_FACE);
 	glPushMatrix();
 	glTranslatef(41, 36, 0);
-	ptr = player.rotmat;
+	ptr = player->rotmat;
 	for(i=0; i<4; i++) {
 		for(j=0; j<4; j++) {
 			xform[(j << 2) + i] = *ptr++;
@@ -590,7 +615,7 @@ static void draw_ui(void)
 	glVertex2f(x, 240 + 2);
 	glEnd();
 
-	if(player.hp <= 0.0f) {
+	if(player->hp <= 0.0f) {
 		glPushMatrix();
 		dtx_use_font(font_menu, font_menu_sz);
 		glTranslatef(x - dtx_string_width("GAME OVER!") / 2, 240, 0);
@@ -650,31 +675,31 @@ static void gkeyb(int key, int press)
 		case GKEY_F2:
 			dbg_freezevis ^= 1;
 			if(!dbg_freezevis) {
-				player.pos = vispos;
-				player.rot = visrot;
+				player->pos = vispos;
+				player->rot = visrot;
 			}
 			greshape(win_width, win_height);	/* to change the far clip */
 			break;
 
 		case ';':
-			player.hp -= 8;
-			if(player.hp < 0) player.hp = 0;
+			player->hp -= 8;
+			if(player->hp < 0) player->hp = 0;
 			break;
 		case '\'':
-			player.hp += 8;
-			if(player.hp > MAX_HP) player.hp = MAX_HP;
+			player->hp += 8;
+			if(player->hp > MAX_HP) player->hp = MAX_HP;
 			break;
 		case '[':
-			player.sp -= 8;
-			if(player.sp < 0) player.sp = 0;
+			player->sp -= 8;
+			if(player->sp < 0) player->sp = 0;
 			break;
 		case ']':
-			player.sp += 8;
-			if(player.sp > MAX_SP) player.sp = MAX_SP;
+			player->sp += 8;
+			if(player->sp > MAX_SP) player->sp = MAX_SP;
 			break;
 
 		case GKEY_F1:
-			printf("player: %g %g %g\n", player.pos.x, player.pos.y, player.pos.z);
+			printf("player: %g %g %g\n", player->pos.x, player->pos.y, player->pos.z);
 			break;
 
 #ifdef DBG_SHOW_FRUST
@@ -724,25 +749,25 @@ static void gmotion(int x, int y)
 	if(!(dx | dy)) return;
 
 	if(mouse_state[0] || mouse_grabbed) {
-		player.mouse_input.x += dx;
-		player.mouse_input.y += opt.inv_mouse_y ? -dy : dy;
+		player->mouse_input.x += dx;
+		player->mouse_input.y += opt.inv_mouse_y ? -dy : dy;
 	}
 }
 
 static void gsball_motion(int x, int y, int z)
 {
-	cgm_vcons(&player.sball_mov, x, y, -z);
+	cgm_vcons(&player->sball_mov, x, y, -z);
 }
 
 static void gsball_rotate(int x, int y, int z)
 {
-	cgm_vcons(&player.sball_rot, -x, -y, z);
+	cgm_vcons(&player->sball_rot, -x, -y, z);
 }
 
 static void gsball_button(int bn, int press)
 {
-	printf("pos: %g %g %g\n", player.pos.x, player.pos.y, player.pos.z);
-	printf("rot: %g %g %g %g\n", player.rot.x, player.rot.y, player.rot.z, player.rot.w);
+	printf("pos: %g %g %g\n", player->pos.x, player->pos.y, player->pos.z);
+	printf("rot: %g %g %g %g\n", player->rot.x, player->rot.y, player->rot.z, player->rot.w);
 }
 
 static void set_light_dir(int idx, float x, float y, float z)

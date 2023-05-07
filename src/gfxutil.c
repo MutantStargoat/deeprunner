@@ -150,3 +150,12 @@ void draw_billboard(const cgm_vec3 *p, float size, cgm_vec4 col)
 
 	glPopMatrix();
 }
+
+
+void calc_posrot_matrix(float *matrix, const cgm_vec3 *pos, const cgm_quat *rot)
+{
+	cgm_mrotation_quat(matrix, rot);
+	matrix[12] = pos->x;
+	matrix[13] = pos->y;
+	matrix[14] = pos->z;
+}

@@ -127,5 +127,6 @@ int lvl_collision_rad(const struct level *lvl, const struct room *room, const cg
 		const cgm_vec3 *vel, float rad, struct collision *col);
 
 void lvl_spawn_enemies(struct level *lvl);
+struct enemy *lvl_check_enemy_hit(struct level *lvl, struct room *room, const cgm_ray *ray);
 
 #endif	/* LEVEL_H_ */

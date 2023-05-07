@@ -23,4 +23,6 @@ void texenv_sphmap(int enable);
 
 void draw_billboard(const cgm_vec3 *pos, float sz, cgm_vec4 col);
 
+void calc_posrot_matrix(float *matrix, const cgm_vec3 *pos, const cgm_quat *rot);
+
 #endif	/* GFXUTIL_H_ */
