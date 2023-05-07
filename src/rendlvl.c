@@ -272,6 +272,8 @@ void render_level_mesh(struct mesh *mesh)
 			break;
 		}
 	}
+
+	mtl_end();
 }
 
 void render_dynobj(struct object *obj)

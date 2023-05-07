@@ -211,6 +211,11 @@ int mtl_apply(struct material *mtl, int pass)
 	return 0;
 }
 
+void mtl_end(void)
+{
+	stop_envmap();
+}
+
 /* ------------- image manager ------------- */
 struct rbtree *imandb;
 

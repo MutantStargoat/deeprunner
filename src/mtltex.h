@@ -31,6 +31,7 @@ void tex_free(struct texture *tex);
 /* material */
 void mtl_init(struct material *mtl);
 int mtl_apply(struct material *mtl, int pass);		/* set material and bind textures */
+void mtl_end(void);
 
 /* image manager */
 int iman_init(void);
