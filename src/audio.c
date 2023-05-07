@@ -19,6 +19,12 @@
 
 #define NUM_SFX_CHAN	4
 
+#define SET_SFX_VOL(vol) \
+	do { \
+		int mv = (vol) * vol_master >> 9; \
+		md_sndfxvolume = mv ? mv + 1 : 0; \
+	} while(0)
+
 #define SET_MUS_VOL(vol) \
 	do { \
 		int mv = (vol) * vol_master >> 9; \
@@ -102,7 +108,7 @@ struct au_module *au_load_module(const char *fname)
 		return 0;
 	}
 
-	if(!(mikmod = Player_Load(fname, 128, 0))) {
+	if(!(mikmod = Player_Load(fname, 64, 0))) {
 		fprintf(stderr, "au_load_module: failed to load module: %s: %s\n",
 				fname, MikMod_strerror(MikMod_errno));
 		free(mod);
@@ -224,6 +230,7 @@ struct au_sample *au_load_sample(const char *fname)
 				MikMod_strerror(MikMod_errno));
 		return 0;
 	}
+	mmsfx->panning = PAN_CENTER;
 
 	if(!(sfx = malloc(sizeof *sfx))) {
 		fprintf(stderr, "failed to allocate sample\n");
@@ -246,8 +253,7 @@ void au_free_sample(struct au_sample *sfx)
 
 void au_play_sample(struct au_sample *sfx, int prio)
 {
-	int voice = Sample_Play(sfx->impl, 0, prio == AU_CRITICAL ? SFX_CRITICAL : 0);
-	Voice_SetPanning(voice, 127);
+	Sample_Play(sfx->impl, 0, prio == AU_CRITICAL ? SFX_CRITICAL : 0);
 }
 
 int au_volume(int vol)
@@ -266,7 +272,7 @@ int au_sfx_volume(int vol)
 {
 	AU_VOLADJ(vol_sfx, vol);
 	vol_sfx = vol;
-	/* TODO */
+	SET_SFX_VOL(vol);
 	return vol_sfx;
 }
 

@@ -780,7 +780,8 @@ static SBYTE Sample_Play_internal(SAMPLE *s,ULONG start,UBYTE flags)
 			if(md_driver->VoiceStopped(c=sfxpool+md_sngchn)) {
 				sfxinfo[sfxpool]=flags;
 				Voice_Play_internal(c,s,start);
-				md_driver->VoiceSetVolume(c,s->volume<<2);
+				Voice_SetVolume_internal(c, s->volume<<2);
+				/*md_driver->VoiceSetVolume(c,s->volume<<2);*/
 				Voice_SetPanning_internal(c,s->panning);
 				md_driver->VoiceSetFrequency(c,s->speed);
 				sfxpool++;
@@ -790,7 +791,8 @@ static SBYTE Sample_Play_internal(SAMPLE *s,ULONG start,UBYTE flags)
 		} else {
 			sfxinfo[sfxpool]=flags;
 			Voice_Play_internal(c=sfxpool+md_sngchn,s,start);
-			md_driver->VoiceSetVolume(c,s->volume<<2);
+			Voice_SetVolume_internal(c, s->volume<<2);
+			/*md_driver->VoiceSetVolume(c,s->volume<<2);*/
 			Voice_SetPanning_internal(c,s->panning);
 			md_driver->VoiceSetFrequency(c,s->speed);
 			sfxpool++;
