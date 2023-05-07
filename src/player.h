@@ -30,6 +30,8 @@ struct player {
 
 	cgm_vec2 mouse_input;
 	cgm_vec3 sball_mov, sball_rot;
+
+	long last_dmg;
 };
 
 void init_player(struct player *p);

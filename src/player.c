@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include <float.h>
+#include <limits.h>
 #include "game.h"
 #include "player.h"
 #include "options.h"
@@ -24,6 +25,8 @@ void init_player(struct player *p)
 
 	p->hp = MAX_HP;
 	p->sp = MAX_SP;
+
+	p->last_dmg = -DMG_OVERLAY_DUR;
 }
 
 void update_player_mouse(struct player *p)
@@ -181,6 +184,8 @@ static void activate(struct player *p, struct action *act)
 			p->sp = 0.0f;
 			if(p->hp < 0.0f) p->hp = 0.0f;
 			if(p->hp > MAX_HP) p->hp = MAX_HP;
+
+			p->last_dmg = time_msec;
 		} else if(p->sp > MAX_SP) {
 			p->sp = MAX_SP;
 		}
@@ -190,6 +195,8 @@ static void activate(struct player *p, struct action *act)
 		p->hp -= act->value;
 		if(p->hp < 0.0f) p->hp = 0.0f;
 		if(p->hp > MAX_HP) p->hp = MAX_HP;
+
+		p->last_dmg = time_msec;
 		break;
 
 	case ACT_SHIELD:

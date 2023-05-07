@@ -3,6 +3,7 @@
 
 #define COL_RADIUS	0.25f
 #define LASER_DAMAGE	8
+#define DMG_OVERLAY_DUR	128
 
 #define DBG_NOSEED
 #define DBG_ESCQUIT

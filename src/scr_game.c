@@ -93,6 +93,8 @@ static unsigned int laser_tex;
 static struct texture *tex_flare;
 static struct collision lasers_hit;
 
+static struct texture *tex_damage;
+
 
 static int ginit(void)
 {
@@ -187,6 +189,10 @@ static int ginit(void)
 		return -1;
 	}
 
+	if(!(tex_damage = tex_load("data/dmgvign.png"))) {
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -194,6 +200,7 @@ static void gdestroy(void)
 {
 	glDeleteTextures(1, &laser_tex);
 	tex_free(tex_flare);
+	tex_free(tex_damage);
 }
 
 static int gstart(void)
@@ -358,7 +365,6 @@ static void gupdate(void)
 			lasers_hit.depth = -1.0f;
 			ray.dir = dir;
 		} else {
-			printf("lasers depth: %f\n", lasers_hit.depth);
 			ray.dir = player->fwd;
 			cgm_vscale(&ray.dir, lasers_hit.depth);	/* don't test further than the walls */
 		}
@@ -615,6 +621,22 @@ static void draw_ui(void)
 	glVertex2f(x, 240 + 2);
 	glEnd();
 
+	if(time_msec - player->last_dmg < DMG_OVERLAY_DUR) {
+		glEnable(GL_TEXTURE_2D);
+		glDisable(GL_CULL_FACE);
+		glBindTexture(GL_TEXTURE_2D, tex_damage->texid);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+		glBegin(GL_QUADS);
+		glColor3f(1, 1, 1);
+		glTexCoord2f(0, 0); glVertex2f(0, 0);
+		glTexCoord2f(1, 0);	glVertex2f(vwidth, 0);
+		glTexCoord2f(1, 1); glVertex2f(vwidth, 480);
+		glTexCoord2f(0, 1); glVertex2f(0, 480);
+		glEnd();
+	}
+
 	if(player->hp <= 0.0f) {
 		glPushMatrix();
 		dtx_use_font(font_menu, font_menu_sz);
@@ -684,6 +706,7 @@ static void gkeyb(int key, int press)
 		case ';':
 			player->hp -= 8;
 			if(player->hp < 0) player->hp = 0;
+			player->last_dmg = time_msec;
 			break;
 		case '\'':
 			player->hp += 8;
