@@ -110,6 +110,9 @@ static void update_room(struct room *room, const cgm_vec4 *frust)
 		obj->matrix[12] = obj->pos.x;
 		obj->matrix[13] = obj->pos.y;
 		obj->matrix[14] = obj->pos.z;
+
+		cgm_mcopy(obj->invmatrix, obj->matrix);
+		cgm_minverse(obj->invmatrix);
 	}
 
 #if !defined(DBG_ONLY_CUR_ROOM) && !defined(DBG_ALL_ROOMS)

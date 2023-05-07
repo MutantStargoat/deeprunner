@@ -10,6 +10,7 @@ struct portal;
 enum action_type {
 	ACT_NONE,
 	ACT_DAMAGE,
+	ACT_HPDAMAGE,
 	ACT_SHIELD,
 	ACT_PICKUP,
 	ACT_WIN
@@ -30,6 +31,8 @@ struct object {
 	char *name;
 	struct mesh *mesh;
 	struct mesh *colmesh;
+	struct octnode *octree;
+	struct aabox aabb;
 	cgm_vec3 pos;
 	cgm_quat rot;
 
@@ -40,6 +43,7 @@ struct object {
 	struct action act;
 
 	float matrix[16];	/* derived from pos/rot and parent if available */
+	float invmatrix[16];
 
 	struct object *child_list, *parent;
 	struct object *next;

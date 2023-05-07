@@ -610,6 +610,8 @@ static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, 
 		goat3d_get_node_position(gnode, &obj->pos.x, &obj->pos.y, &obj->pos.z);
 		goat3d_get_node_rotation(gnode, &obj->rot.x, &obj->rot.y, &obj->rot.z, &obj->rot.w);
 		goat3d_get_node_matrix(gnode, obj->matrix);
+		cgm_mcopy(obj->invmatrix, obj->matrix);
+		cgm_minverse(obj->invmatrix);
 		darr_push(room->objects, &obj);
 	} else if(match_prefix(name, "dyn_")) {
 		if(type != GOAT3D_NODE_MESH) {
@@ -628,9 +630,12 @@ static int read_room(struct level *lvl, struct room *room, struct goat3d *gscn, 
 			obj = calloc_nf(1, sizeof *obj);
 			obj->name = strdup_nf(name);
 			obj->mesh = dynmesh;
+			obj->aabb = dynmesh->aabb;
 			goat3d_get_node_position(gnode, &obj->pos.x, &obj->pos.y, &obj->pos.z);
 			goat3d_get_node_rotation(gnode, &obj->rot.x, &obj->rot.y, &obj->rot.z, &obj->rot.w);
 			goat3d_get_node_matrix(gnode, obj->matrix);
+			cgm_mcopy(obj->invmatrix, obj->matrix);
+			cgm_minverse(obj->invmatrix);
 			darr_push(room->objects, &obj);
 			return 0;	/* no hierarchy for dynmeshes for now */
 		}
@@ -735,7 +740,9 @@ static int read_action(struct action *act, struct ts_node *tsn)
 		enum action_type atype;
 	} actions[] = {
 		{"damage", TS_NUMBER, ACT_DAMAGE},
+		{"hpdamage", TS_NUMBER, ACT_HPDAMAGE},
 		{"shield", TS_NUMBER, ACT_SHIELD},
+		{"pickup", TS_NUMBER, ACT_PICKUP},
 		{"win", -1, ACT_WIN}
 	};
 
@@ -806,6 +813,7 @@ static int proc_dynobj(struct level *lvl, struct ts_node *tsn)
 	const char *str, *name;
 	float *vec;
 	struct action *act;
+	int i, ntri;
 
 	if(!(name = ts_get_attr_str(tsn, "name", 0))) {
 		fprintf(stderr, "skipping dynobject without name\n");
@@ -823,6 +831,9 @@ static int proc_dynobj(struct level *lvl, struct ts_node *tsn)
 			return -1;
 		}
 		obj->mesh = mesh;
+		if(!obj->colmesh) {
+			obj->aabb = mesh->aabb;
+		}
 	}
 	if((str = ts_get_attr_str(tsn, "colmesh", 0))) {
 		if(!(mesh = lvl_find_dynmesh(lvl, str))) {
@@ -830,6 +841,19 @@ static int proc_dynobj(struct level *lvl, struct ts_node *tsn)
 			return -1;
 		}
 		obj->colmesh = mesh;
+		obj->aabb = mesh->aabb;
+		obj->octree = oct_create();
+
+		ntri = mesh_num_triangles(mesh);
+		for(i=0; i<ntri; i++) {
+			struct triangle tri;
+			mesh_get_triangle(mesh, i, &tri);
+			oct_addtri(obj->octree, &tri);
+		}
+		/* TODO: move octrees to meshes */
+#ifndef DBG_NO_OCTREE
+		oct_build(obj->octree, MAX_OCT_DEPTH, MAX_OCT_TRIS);
+#endif
 	}
 
 	if((vec = ts_get_attr_vec(tsn, "rotaxis", 0))) {

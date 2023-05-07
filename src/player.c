@@ -10,6 +10,9 @@
 #define SBALL_RSPEED	(opt.sball_speed * 0.00002)
 #define SBALL_TSPEED	(opt.sball_speed * 0.00004)
 
+static void activate(struct player *p, struct action *act);
+static int check_collision(struct player *p, const cgm_vec3 *vel, struct collision *col);
+
 void init_player(struct player *p)
 {
 	cgm_vcons(&p->pos, 0, 0, 0);
@@ -61,33 +64,6 @@ extern int dbg_freezevis;
 #ifdef DBG_SHOW_MAX_COL_ITER
 extern int dbg_max_col_iter;
 #endif
-
-static int check_collision(struct player *p, const cgm_vec3 *vel, struct collision *col)
-{
-	int i, nobj;
-
-	if(lvl_collision_rad(p->lvl, p->room, &p->pos, vel, COL_RADIUS, col)) {
-		return 1;
-	}
-
-	nobj = darr_size(p->room->objects);
-	for(i=0; i<nobj; i++) {
-		struct object *obj = p->room->objects[i];
-		if(obj->colmesh) {
-			if(!aabox_sph_test(&obj->colmesh->aabb, &p->pos, COL_RADIUS)) {
-				continue;
-			}
-			/* TODO check triangles */
-		} else if(obj->mesh) {
-			if(aabox_sph_test(&obj->mesh->aabb, &p->pos, COL_RADIUS)) {
-				cgm_vcons(&col->norm, 0, 0, 0);
-				return 1;
-			}
-		}
-	}
-
-	return 0;
-}
 
 /* this is called in the timestep update at a constant rate */
 void update_player(struct player *p)
@@ -153,36 +129,26 @@ void update_player(struct player *p)
 	count = darr_size(p->room->triggers);
 	for(i=0; i<count; i++) {
 		struct trigger *trig = p->room->triggers + i;
+		if(trig->act.type == ACT_NONE) continue;
 		if(aabox_sph_test(&trig->box, &p->pos, COL_RADIUS)) {
-			switch(trig->act.type) {
-			case ACT_DAMAGE:
-				p->hp -= trig->act.value;
-				if(p->hp <= 0.0f) p->hp = 0.0f;
-				if(p->hp >= MAX_HP) p->hp = MAX_HP;
-				break;
+			activate(p, &trig->act);
+		}
+	}
 
-			case ACT_SHIELD:
-				p->sp -= trig->act.value;
-				if(p->sp <= 0.0f) p->sp = 0.0f;
-				if(p->sp >= MAX_SP) p->sp = MAX_SP;
-				break;
+	count = darr_size(p->room->objects);
+	for(i=0; i<count; i++) {
+		cgm_vec3 localpos;
+		struct object *obj = p->room->objects[i];
+		if(obj->act.type == ACT_NONE) continue;
 
-			case ACT_PICKUP:
-				if(strcmp(trig->act.name, "secret") == 0) {
-					printf("PICK UP SECRET!\n");
-				} else if(strcmp(trig->act.name, "key") == 0) {
-					printf("PICK UP KEY!\n");
-				}
-				trig->act.type = ACT_NONE;
-				break;
+		localpos = p->pos;
+		cgm_vmul_m4v3(&localpos, obj->invmatrix);
 
-			case ACT_WIN:
-				/* TODO */
-				break;
-
-			default:
-				break;
+		if(aabox_sph_test(&obj->aabb, &localpos, COL_RADIUS)) {
+			if(obj->octree && !oct_sphtest(obj->octree, &localpos, COL_RADIUS, 0)) {
+				continue;
 			}
+			activate(p, &obj->act);
 		}
 	}
 }
@@ -196,3 +162,81 @@ void player_view_matrix(struct player *p, float *view_mat)
 	cgm_mrotation_quat(rotmat, &p->rot);
 	cgm_mmul(view_mat, rotmat);
 }
+
+
+static void activate(struct player *p, struct action *act)
+{
+	switch(act->type) {
+	case ACT_DAMAGE:
+		p->sp -= act->value;
+		if(p->sp < 0.0f) {
+			p->hp += p->sp;
+			p->sp = 0.0f;
+			if(p->hp < 0.0f) p->hp = 0.0f;
+			if(p->hp > MAX_HP) p->hp = MAX_HP;
+		} else if(p->sp > MAX_SP) {
+			p->sp = MAX_SP;
+		}
+		break;
+
+	case ACT_HPDAMAGE:
+		p->hp -= act->value;
+		if(p->hp < 0.0f) p->hp = 0.0f;
+		if(p->hp > MAX_HP) p->hp = MAX_HP;
+		break;
+
+	case ACT_SHIELD:
+		p->sp -= act->value;
+		if(p->sp <= 0.0f) p->sp = 0.0f;
+		if(p->sp >= MAX_SP) p->sp = MAX_SP;
+		break;
+
+	case ACT_PICKUP:
+		if(strcmp(act->name, "secret") == 0) {
+			printf("PICK UP SECRET!\n");
+		} else if(strcmp(act->name, "key") == 0) {
+			printf("PICK UP KEY!\n");
+		}
+		act->type = ACT_NONE;
+		break;
+
+	case ACT_WIN:
+		/* TODO */
+		break;
+
+	default:
+		break;
+	}
+}
+
+static int check_collision(struct player *p, const cgm_vec3 *vel, struct collision *col)
+{
+	/*int i, nobj;*/
+
+	if(lvl_collision_rad(p->lvl, p->room, &p->pos, vel, COL_RADIUS, col)) {
+		return 1;
+	}
+
+#if 0
+	nobj = darr_size(p->room->objects);
+	for(i=0; i<nobj; i++) {
+		struct object *obj = p->room->objects[i];
+		if(obj->colmesh) {
+			if(!aabox_sph_test(&obj->colmesh->aabb, &p->pos, COL_RADIUS)) {
+				continue;
+			}
+			cgm_vcons(&col->norm, 0, 0, 0);
+			return 1;
+			/* TODO check triangles */
+		} else if(obj->mesh) {
+			if(aabox_sph_test(&obj->mesh->aabb, &p->pos, COL_RADIUS)) {
+				cgm_vcons(&col->norm, 0, 0, 0);
+				return 1;
+			}
+		}
+	}
+#endif
+
+	return 0;
+}
+
