@@ -17,6 +17,9 @@ struct enemy {
 	struct mesh *mesh;
 	float matrix[16];
 
+	long last_shield_hit, last_dmg_hit;
+	cgm_vec3 last_hit_pos;
+
 	void (*aifunc)(struct enemy *mob);
 };
 

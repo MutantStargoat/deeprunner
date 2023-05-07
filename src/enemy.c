@@ -7,8 +7,8 @@
 #include "geom.h"
 #include "gfxutil.h"
 
-#define MAX_HP	32
-#define MAX_SP	16
+#define MAX_HP	40
+#define MAX_SP	36
 
 void init_enemy(struct enemy *enemy)
 {
@@ -16,6 +16,9 @@ void init_enemy(struct enemy *enemy)
 
 	enemy->hp = MAX_HP;
 	enemy->sp = MAX_SP;
+
+	enemy->last_shield_hit = -SHIELD_OVERLAY_DUR;
+	enemy->last_dmg_hit = -EXPL_DUR;
 
 	enemy->rad = 1.0f;	/* will be overriden once we assign a mesh */
 }
@@ -42,7 +45,11 @@ int enemy_hit_test(struct enemy *mob, const cgm_ray *ray, float *distret)
 	if(!mob->mesh || mob->hp <= 0.0f) {
 		return 0;
 	}
-	return ray_sphere(ray, &mob->pos, mob->rad, distret);
+	if(ray_sphere(ray, &mob->pos, mob->rad, distret)) {
+		cgm_raypos(&mob->last_hit_pos, ray, *distret);
+		return 1;
+	}
+	return 0;
 }
 
 int enemy_damage(struct enemy *mob, float dmg)
@@ -56,6 +63,9 @@ int enemy_damage(struct enemy *mob, float dmg)
 			mob->hp = 0.0f;
 			return 0;
 		}
+		mob->last_dmg_hit = time_msec;
+	} else {
+		mob->last_shield_hit = time_msec;
 	}
 	return 1;
 }

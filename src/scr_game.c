@@ -188,7 +188,6 @@ static int ginit(void)
 	if(!(tex_flare = tex_load("data/blspstar.png"))) {
 		return -1;
 	}
-
 	if(!(tex_damage = tex_load("data/dmgvign.png"))) {
 		return -1;
 	}

@@ -29,6 +29,8 @@ static const float red[] = {1, 0.5, 0.5, 1};
 extern int dbg_freezevis;
 #endif
 
+static struct texture *tex_shield, *tex_expl;
+
 static int portal_frustum_test(struct portal *portal, const cgm_vec4 *frust);
 static void reduce_frustum(cgm_vec4 *np, const cgm_vec4 *p, const struct portal *portal);
 
@@ -58,11 +60,22 @@ int rendlvl_init(struct level *level)
 			mesh_compile(level->dynmeshes[i]);
 		}
 	}
+
+	if(!(tex_shield = tex_load("data/ring.png"))) {
+		return -1;
+	}
+	if(!(tex_expl = tex_load("data/explanim.png"))) {
+		return -1;
+	}
+
+
 	return 0;
 }
 
 void rendlvl_destroy(void)
 {
+	tex_free(tex_shield);
+	tex_free(tex_expl);
 }
 
 void rendlvl_setup(struct room *room, const cgm_vec3 *ppos, float *vp_matrix)
@@ -302,6 +315,8 @@ void render_dynobj(struct object *obj)
 
 void render_enemy(struct enemy *mob)
 {
+	long expl_time;
+
 	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
 	glMultMatrixf(mob->matrix);
@@ -310,6 +325,44 @@ void render_enemy(struct enemy *mob)
 
 	glMatrixMode(GL_MODELVIEW);
 	glPopMatrix();
+
+	if((expl_time = time_msec - mob->last_dmg_hit) < EXPL_DUR) {
+		int frm = expl_time / EXPL_FRAME_DUR;
+		float tx = (float)frm / NUM_EXPL_FRAMES;
+
+		glPushAttrib(GL_ENABLE_BIT);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glDisable(GL_LIGHTING);
+		glDisable(GL_DEPTH_TEST);
+		glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, tex_expl->texid);
+
+		glMatrixMode(GL_TEXTURE);
+		glLoadIdentity();
+		glTranslatef(tx, 0, 0);
+		glScalef(1.0 / NUM_EXPL_FRAMES, 1, 1);
+
+		draw_billboard(&mob->last_hit_pos, mob->rad * 0.5, cgm_wvec(1, 1, 1, 1));
+
+		glMatrixMode(GL_TEXTURE);
+		glLoadIdentity();
+		glMatrixMode(GL_MODELVIEW);
+
+		glPopAttrib();
+
+	} else if(time_msec - mob->last_shield_hit < SHIELD_OVERLAY_DUR) {
+		glPushAttrib(GL_ENABLE_BIT);
+
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glDisable(GL_LIGHTING);
+		glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, tex_shield->texid);
+		draw_billboard(&mob->pos, mob->rad, cgm_wvec(0.2, 0.4, 1, 0.8));
+
+		glPopAttrib();
+	}
 }
 
 
