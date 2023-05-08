@@ -86,7 +86,11 @@ int game_init(void)
 	glClearColor(0.1, 0.1, 0.1, 1);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
-	glDisable(GL_DITHER);
+	if(opt.gfx.dither) {
+		glEnable(GL_DITHER);
+	} else {
+		glDisable(GL_DITHER);
+	}
 
 	for(i=0; i<num_screens; i++) {
 		if(screens[i]->name && start_scr_name && strcmp(screens[i]->name, start_scr_name) == 0) {

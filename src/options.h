@@ -9,6 +9,7 @@ struct gfxoptions {
 	float drawdist;
 	int texfilter;
 	int texsize;
+	int dither;
 };
 
 struct options {

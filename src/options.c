@@ -25,23 +25,45 @@ struct options opt = {
 	DEF_MOUSE_SPEED, DEF_SBALL_SPEED,
 };
 
+#ifndef __sgi
+/* PC specific profiles (modern) */
 static struct gfxoptions gfxdef_ultra = {
 	1,		/* blendui */
 	80,		/* draw distance */
 	GFXOPT_TEX_TRILINEAR,
-	GFXOPT_TEX_HIGH
+	GFXOPT_TEX_HIGH,
+	1		/* dither */
 };
-static struct gfxoptions gfxdef_vpro = {
+#else
+/* SGI specific profiles */
+static struct gfxoptions gfxdef_vpro32 = {
 	1,		/* blendui */
 	80,		/* draw distance */
 	GFXOPT_TEX_TRILINEAR,
-	GFXOPT_TEX_HIGH
+	GFXOPT_TEX_MID,
+	1		/* dither */
+};
+static struct gfxoptions gfxdef_vpro128 = {
+	1,		/* blendui */
+	80,		/* draw distance */
+	GFXOPT_TEX_TRILINEAR,
+	GFXOPT_TEX_HIGH,
+	1		/* dither */
 };
 static struct gfxoptions gfxdef_o2 = {
 	0,		/* blendui */
 	80,		/* draw distance */
 	GFXOPT_TEX_BILINEAR,
-	GFXOPT_TEX_MID
+	GFXOPT_TEX_MID,
+	0		/* dither */
+};
+#endif
+static struct gfxoptions gfxdef_lowest = {
+	0,		/* blendui */
+	80,		/* draw distance */
+	GFXOPT_TEX_NEAREST,
+	GFXOPT_TEX_LOW,
+	0		/* dither */
 };
 static struct gfxoptions gfxdefopt;
 
@@ -143,6 +165,8 @@ int save_options(const char *fname)
 #include <sys/utsname.h>
 
 #ifdef __sgi
+#include <invent.h>
+
 static const char *ipnames[] = {
 	0, "IRIS 1000", "IRIS 2x00/3x00", 0, "IRIS 4D",		/* 0-4 */
 	"IRIS 4D", "IRIS 4D", "IRIS 4D", 0, "IRIS 4D/210",	/* 5-9 */
@@ -153,11 +177,39 @@ static const char *ipnames[] = {
 	"Octane", 0, "O2", 0, 0, /* 30-34*/
 	"Fuel/Tezro/Onyx3k/Origin3k", 0, 0, 0	/* 35-39 */
 };
+
+struct gfxinfo {
+	int gfx;
+	unsigned int st;
+};
+
+static int searchfunc(inventory_t *inv, void *cls)
+{
+	struct gfxinfo *ginf = cls;
+
+	if(inv->inv_class != INV_GRAPHICS) {
+		return 0;
+	}
+
+	ginf->gfx = inv->inv_type;
+	ginf->st = inv->inv_state;
+	return 1;
+}
+
+static int hinv_gfx(struct gfxinfo *ginf)
+{
+	if(scaninvent(searchfunc, ginf) > 0) {
+		return ginf->gfx;
+	}
+	return -1;
+}
+
 #endif
 
 static void detect_defaults(void)
 {
 #ifdef __sgi
+	struct gfxinfo ginf;
 	int ip = 0;
 #endif
 	struct utsname uts;
@@ -176,7 +228,46 @@ static void detect_defaults(void)
 	} else {
 		putchar('\n');
 	}
-	gfxdefopt = ip <= 32 ? gfxdef_o2 : gfxdef_vpro;
+
+	if(ip == 32) {	/* O2 */
+		printf("gfx detect: O2\n");
+		gfxdefopt = gfxdef_o2;
+	} else if(ip == 30) {	/* Octane */
+		printf("gfx detect: ");
+		if(hinv_gfx(&ginf) == INV_ODSY) {
+			int arch = ginf.st & INV_ODSY_ARCHS;
+
+			switch(ginf.st & INV_ODSY_MEMCFG) {
+			case INV_ODSY_MEMCFG_32:
+				printf("Odyssey V%d\n", arch == INV_ODSY_REVA_ARCH ? 6 : 10);
+				gfxdefopt = gfxdef_vpro32;
+				break;
+
+			case INV_ODSY_MEMCFG_64:
+				printf("Odyssey 64MB\n");
+				gfxdefopt = gfxdef_vpro32;
+				break;
+
+			case INV_ODSY_MEMCFG_128:
+			case INV_ODSY_MEMCFG_256:
+			case INV_ODSY_MEMCFG_512:
+				printf("Odyssey V%d\n", arch == INV_ODSY_REVA_ARCH ? 8 : 12);
+				gfxdefopt = gfxdef_vpro128;
+				break;
+
+			default:
+				printf("???\n");
+				gfxdefopt = gfxdef_vpro128;
+			}
+		}
+	} else if(ip < 32) {
+		printf("gfx detect: low end\n");
+		gfxdefopt = gfxdef_lowest;
+	} else if(ip > 32) {
+		printf("gfx detect: high end\n");
+		gfxdefopt = gfxdef_vpro128;
+	}
+
 #else
 	/* TODO: improve detection, for now assume non-IRIX means modern PC */
 	printf("Running on %s\n", uts.sysname);
