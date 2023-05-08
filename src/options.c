@@ -41,7 +41,7 @@ static struct gfxoptions gfxdef_o2 = {
 	0,		/* blendui */
 	80,		/* draw distance */
 	GFXOPT_TEX_BILINEAR,
-	GFXOPT_TEX_HIGH
+	GFXOPT_TEX_MID
 };
 static struct gfxoptions gfxdefopt;
 

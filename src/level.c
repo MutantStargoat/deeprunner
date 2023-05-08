@@ -1104,7 +1104,6 @@ static struct enemy *check_enemy_hit(struct level *lvl, struct room *room,
 	for(i=0; i<num_mobs; i++) {
 		mob = room->enemies[i];
 		if(enemy_hit_test(mob, ray, &t) && t < tmin) {
-			printf("hit %s\n", mob->mesh->name);
 			tmin = t;
 			hitmob = mob;
 		}

@@ -31,6 +31,10 @@ extern int dbg_freezevis;
 
 static struct texture *tex_shield, *tex_expl;
 
+#define MAX_EXPLOSIONS	16
+static struct explosion explosions[MAX_EXPLOSIONS];
+
+
 static int portal_frustum_test(struct portal *portal, const cgm_vec4 *frust);
 static void reduce_frustum(cgm_vec4 *np, const cgm_vec4 *p, const struct portal *portal);
 
@@ -151,10 +155,12 @@ static void update_room(struct room *room, const cgm_vec4 *frust)
 
 void rendlvl_update(void)
 {
+	int i;
+
 #ifdef DBG_ONLY_CUR_ROOM
 	if(cur_room) update_room(cur_room, frust);
 #elif defined(DBG_ALL_ROOMS)
-	int i, nrooms;
+	int nrooms;
 	struct room *room;
 
 	nrooms = darr_size(lvl->rooms);
@@ -176,6 +182,17 @@ void rendlvl_update(void)
 	updateno++;
 	if(cur_room) update_room(cur_room, frust);
 #endif
+
+	/* update explosions */
+	for(i=0; i<MAX_EXPLOSIONS; i++) {
+		struct explosion *e = explosions + i;
+		if(e->start_time >= 0) {
+			e->tm = time_msec - e->start_time;
+			if(e->tm >= EXPL_DUR) {
+				e->start_time = -1;
+			}
+		}
+	}
 }
 
 
@@ -269,6 +286,13 @@ void render_level(void)
 #endif	/* !def DBG_ALL_ROOMS */
 #endif	/* else of DBG_ONLY_CUR_ROOM */
 
+	/* render explosions */
+	for(i=0; i<MAX_EXPLOSIONS; i++) {
+		if(explosions[i].start_time >= 0) {
+			render_explosion(explosions + i);
+		}
+	}
+
 	glMatrixMode(GL_TEXTURE);
 	glLoadIdentity();
 	glMatrixMode(GL_MODELVIEW);
@@ -317,7 +341,7 @@ void render_dynobj(struct object *obj)
 
 void render_enemy(struct enemy *mob)
 {
-	long expl_time;
+	long expl_time = time_msec - mob->last_dmg_hit;
 
 	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
@@ -328,30 +352,11 @@ void render_enemy(struct enemy *mob)
 	glMatrixMode(GL_MODELVIEW);
 	glPopMatrix();
 
-	if((expl_time = time_msec - mob->last_dmg_hit) < EXPL_DUR) {
-		int frm = expl_time / EXPL_FRAME_DUR;
-		float tx = (float)frm / NUM_EXPL_FRAMES;
-
-		glPushAttrib(GL_ENABLE_BIT);
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glDisable(GL_LIGHTING);
-		glDisable(GL_DEPTH_TEST);
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, tex_expl->texid);
-
-		glMatrixMode(GL_TEXTURE);
-		glLoadIdentity();
-		glTranslatef(tx, 0, 0);
-		glScalef(1.0 / NUM_EXPL_FRAMES, 1, 1);
-
-		draw_billboard(&mob->last_hit_pos, mob->rad * 0.5, cgm_wvec(1, 1, 1, 1));
-
-		glMatrixMode(GL_TEXTURE);
-		glLoadIdentity();
-		glMatrixMode(GL_MODELVIEW);
-
-		glPopAttrib();
+	if(time_msec - mob->last_dmg_hit < EXPL_DUR) {
+		struct explosion e = {
+			mob->last_dmg_hit, expl_time, mob->last_hit_pos, mob->rad * 0.5f
+		};
+		render_explosion(&e);
 
 	} else if(time_msec - mob->last_shield_hit < SHIELD_OVERLAY_DUR) {
 		glPushAttrib(GL_ENABLE_BIT);
@@ -377,6 +382,52 @@ void render_missile(struct missile *mis)
 
 	glMatrixMode(GL_MODELVIEW);
 	glPopMatrix();
+}
+
+void render_explosion(struct explosion *expl)
+{
+	int frm = expl->tm / EXPL_FRAME_DUR;
+	float tx = (float)frm / NUM_EXPL_FRAMES;
+
+	glPushAttrib(GL_ENABLE_BIT);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glDisable(GL_LIGHTING);
+	glDisable(GL_DEPTH_TEST);
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, tex_expl->texid);
+
+	glMatrixMode(GL_TEXTURE);
+	glLoadIdentity();
+	glTranslatef(tx, 0, 0);
+	glScalef(1.0 / NUM_EXPL_FRAMES, 1, 1);
+
+	draw_billboard(&expl->pos, expl->sz, cgm_wvec(1, 1, 1, 1));
+
+	glMatrixMode(GL_TEXTURE);
+	glLoadIdentity();
+	glMatrixMode(GL_MODELVIEW);
+
+	glPopAttrib();
+}
+
+int add_explosion(const cgm_vec3 *pos, float sz, long start_tm)
+{
+	int i;
+	struct explosion *expl;
+
+
+	for(i=0; i<MAX_EXPLOSIONS; i++) {
+		expl = explosions + i;
+		if(expl->start_time < 0) {
+			expl->start_time = start_tm;
+			expl->tm = 0;
+			expl->pos = *pos;
+			expl->sz = sz;
+			return 0;
+		}
+	}
+	return -1;
 }
 
 static int portal_frustum_test(struct portal *portal, const cgm_vec4 *frust)

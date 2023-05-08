@@ -6,6 +6,8 @@
 #include "mesh.h"
 #include "geom.h"
 #include "gfxutil.h"
+#include "darray.h"
+#include "rendlvl.h"
 
 #define MAX_MOB_HP	40
 #define MAX_MOB_SP	64
@@ -42,6 +44,10 @@ void enemy_update(struct enemy *mob)
 	mob->prev_targ = mob->targ;
 
 	mob->aifunc(mob);
+
+	if(fabs(cgm_vdot(&mob->fwd, &up)) > 0.9) {
+		cgm_vcons(&up, 0, 0, 1);
+	}
 
 	cgm_midentity(mob->matrix);
 	cgm_mtranslate(mob->matrix, mob->pos.x, mob->pos.y, mob->pos.z);
@@ -95,6 +101,34 @@ void enemy_shoot(struct enemy *mob, const cgm_vec3 *dir)
 	}
 }
 
+void enemy_move(struct enemy *mob, const cgm_vec3 *dir, float speed)
+{
+	int i, count;
+	struct collision col;
+	struct room *room = mob->room;
+
+	cgm_vec3 vel = *dir;
+	cgm_vscale(&vel, speed);
+
+	if(lvl_collision_rad(mob->lvl, room, &mob->pos, &vel, mob->rad, &col)) {
+		return;
+	}
+
+	count = darr_size(room->enemies);
+	for(i=0; i<count; i++) {
+		struct enemy *other = room->enemies[i];
+		if(other == mob) continue;
+
+		if(sph_sph_test(&mob->pos, mob->rad, &other->pos, other->rad)) {
+			float s = mob->rad + other->rad;
+			cgm_vec3 push = mob->pos; cgm_vsub(&push, &other->pos);
+			cgm_vadd_scaled(&vel, &push, speed / s);
+		}
+	}
+
+	cgm_vadd(&mob->pos, &vel);
+}
+
 void enemy_ai_flying1(struct enemy *mob)
 {
 	enemy_ai_flying2(mob);
@@ -120,6 +154,22 @@ void enemy_ai_flying2(struct enemy *mob)
 
 void enemy_ai_spike(struct enemy *mob)
 {
-	enemy_ai_flying2(mob);
+	float sumrad;
+
+	if(player->room == mob->room && player->hp > 0.0f) {
+		mob->fwd = player->pos; cgm_vsub(&mob->fwd, &mob->pos);
+
+		sumrad = mob->rad + COL_RADIUS;
+		if(cgm_vlength_sq(&mob->fwd) <= sumrad * sumrad) {
+			mob->hp = 0;
+			player_damage(player, SPIKEMOB_DAMAGE);
+			/* spawn explosion */
+			add_explosion(&mob->pos, mob->rad, time_msec);
+		}
+
+		cgm_vnormalize(&mob->fwd);
+
+		enemy_move(mob, &mob->fwd, SPIKEMOB_SPEED);
+	}
 }
 
