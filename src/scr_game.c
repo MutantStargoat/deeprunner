@@ -100,6 +100,7 @@ static long start_time;
 static char timertext[64];
 
 static int gameover;
+static int victory;
 
 
 static int ginit(void)
@@ -296,7 +297,7 @@ static void gstop(void)
 
 static void gupdate(void)
 {
-	int i, count;
+	int i, count, num_enemies;
 	float viewproj[16];
 	cgm_ray ray;
 	struct enemy *mob;
@@ -309,13 +310,26 @@ static void gupdate(void)
 		gameover = 1;
 	}
 
+	num_enemies = 0;
+	count = darr_size(lvl.enemies);
+	for(i=0; i<count; i++) {
+		if(lvl.enemies[i]->hp > 0.0f) {
+			num_enemies++;
+			break;
+		}
+	}
+	if(num_enemies == 0) {
+		victory = 1;
+	}
+
+
 	tm_min = time_left / 60000;
 	tm_min_rem = time_left % 60000;
 	tm_sec = tm_min_rem / 1000;
 	tm_msec = tm_min_rem % 1000;
 	sprintf(timertext, "%02ld:%02ld:%02ld", tm_min, tm_sec, tm_msec / 10);
 
-	if(gameover) goto end;
+	if(gameover || victory) goto end;
 
 	if(inpstate & INP_MOVE_BITS) {
 		if(inpstate & INP_FWD_BIT) {
@@ -724,6 +738,18 @@ static void draw_ui(void)
 		glPopMatrix();
 	}
 
+	if(victory) {
+		glPushMatrix();
+		dtx_use_font(font_menu, font_menu_sz);
+		glTranslatef(x - dtx_string_width("VICTORY!") / 2, 240, 0);
+		glScalef(1, -1, 1);
+		glColor3f(1, 1, 1);
+		dtx_printf("VICTORY!");
+		glTranslatef(-80, -50, 0);
+		dtx_printf("SECRET: %s", player->items & ITEM_SECRET ? "FOUND" : "NOT FOUND");
+		glPopMatrix();
+	}
+
 	end2d();
 }
 
@@ -743,6 +769,8 @@ static void greshape(int x, int y)
 	glFogf(GL_FOG_START, zfar * 0.75);
 	glFogf(GL_FOG_END, zfar);
 }
+
+void dbg_getkey();
 
 static void gkeyb(int key, int press)
 {
@@ -769,6 +797,10 @@ static void gkeyb(int key, int press)
 			if(!fullscr) {
 				game_grabmouse(-1);	/* toggle */
 			}
+			break;
+
+		case GKEY_F5:
+			dbg_getkey();
 			break;
 
 		case GKEY_F2:

@@ -194,9 +194,16 @@ void player_view_matrix(struct player *p, float *view_mat)
 	cgm_mmul(view_mat, rotmat);
 }
 
+void dbg_getkey(void)
+{
+	struct action act = {"key", ACT_PICKUP, 0};
+	activate(player, &act);
+}
 
 static void activate(struct player *p, struct action *act)
 {
+	struct object *obj;
+
 	switch(act->type) {
 	case ACT_DAMAGE:
 		player_damage(p, act->value);
@@ -223,6 +230,13 @@ static void activate(struct player *p, struct action *act)
 		} else if(strcmp(act->name, "key") == 0) {
 			p->items |= ITEM_KEY;
 			au_play_sample(sfx_gling1, AU_CRITICAL);
+
+			if((obj = lvl_find_dynobj(player->lvl, "dyn_slide_l"))) {
+				cgm_vcons(&obj->pos, 0, -10000, 0);
+			}
+			if((obj = lvl_find_dynobj(player->lvl, "dyn_slide_r"))) {
+				cgm_vcons(&obj->pos, 0, -10000, 0);
+			}
 		}
 		act->type = ACT_NONE;
 		break;

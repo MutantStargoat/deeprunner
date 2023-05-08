@@ -52,6 +52,9 @@ int game_init(void)
 	load_options(GAME_CFG_FILE);
 	game_resize(opt.xres, opt.yres);
 	game_vsync(opt.vsync);
+	if(opt.fullscreen) {
+		game_fullscreen(1);
+	}
 
 	if(iman_init() == -1) {
 		return -1;

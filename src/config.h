@@ -20,9 +20,10 @@
 #define SPIKEMOB_DAMAGE		128
 #define CLOSE_DIST			8.0f
 
-#define DBG_NOSEED
-#define DBG_ESCQUIT
+#undef DBG_NOSEED
+#undef DBG_ESCQUIT
 
+#define DBG_NOPSYS
 #define DBG_NO_OCTREE
 #undef DBG_SHOW_COLPOLY
 #define DBG_FREEZEVIS
