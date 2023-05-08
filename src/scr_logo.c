@@ -69,7 +69,7 @@ static int logo_start(void)
 	}
 	mesh_compile(&mesh_sgi);
 
-	if(!(tex_o2boot = tex_load("data/o2boot.tga"))) {
+	if(!(tex_o2boot = tex_load("data/o2boot.png"))) {
 		return 0;
 	}
 	if(!(tex_env = tex_load("data/refmap1.jpg"))) {
