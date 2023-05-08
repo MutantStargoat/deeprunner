@@ -315,7 +315,7 @@ static void gupdate(void)
 	tm_msec = tm_min_rem % 1000;
 	sprintf(timertext, "%02ld:%02ld:%02ld", tm_min, tm_sec, tm_msec / 10);
 
-	if(gameover) return;
+	if(gameover) goto end;
 
 	if(inpstate & INP_MOVE_BITS) {
 		if(inpstate & INP_FWD_BIT) {
@@ -420,13 +420,16 @@ static void gupdate(void)
 			if((mob = lvl_check_enemy_hit(&lvl, player->room, &ray))) {
 				enemy_damage(mob, MISSILE_DAMAGE);
 				lvl_despawn_missile(mis);
+				add_explosion(&mis->pos, 1, time_msec);
 			}
 			if(ray_sphere(&ray, &player->pos, COL_RADIUS, 0)) {
 				player_damage(player, MISSILE_DAMAGE);
 				lvl_despawn_missile(mis);
+				add_explosion(&mis->pos, 1, time_msec);
 			}
 			if(lvl_collision(&lvl, player->room, &mis->pos, &mis->vel, &missile_hit)) {
 				lvl_despawn_missile(mis);
+				add_explosion(&mis->pos, 1, time_msec);
 			}
 
 			cgm_vadd(&mis->pos, &mis->vel);
@@ -438,6 +441,8 @@ static void gupdate(void)
 
 	cgm_mcopy(viewproj, view_mat);
 	cgm_mmul(viewproj, proj_mat);
+
+end:
 
 #ifdef DBG_FREEZEVIS
 	if(!dbg_freezevis) {
