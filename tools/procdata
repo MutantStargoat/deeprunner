@@ -21,6 +21,9 @@ genglyphmap()
 [ ! -e data/bomb.g3d -o data/src/bomb.gltf -nt data/bomb.g3d ] && \
 	ass2goat data/src/bomb.gltf && mv data/src/bomb.goat3d data/bomb.g3d
 
+[ ! -e data/key.g3d -o data/src/key.gltf -nt data/key.g3d ] && \
+	ass2goat data/src/key.gltf && mv data/src/key.goat3d data/key.g3d
+
 genglyphmap data/src/impact.ttf data/hpfont.gmp 42 48-58
 genglyphmap data/src/nulshockb.ttf data/menufont.gmp 28 32-91
 
