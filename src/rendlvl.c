@@ -353,9 +353,11 @@ void render_enemy(struct enemy *mob)
 	glPopMatrix();
 
 	if(time_msec - mob->last_dmg_hit < EXPL_DUR) {
-		struct explosion e = {
-			mob->last_dmg_hit, expl_time, mob->last_hit_pos, mob->rad * 0.5f
-		};
+		struct explosion e;
+		e.start_time = mob->last_dmg_hit;
+		e.tm = expl_time;
+		e.pos = mob->last_hit_pos;
+		e.sz = mob->rad * 0.5f;
 		render_explosion(&e);
 
 	} else if(time_msec - mob->last_shield_hit < SHIELD_OVERLAY_DUR) {
