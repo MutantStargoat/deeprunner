@@ -340,6 +340,11 @@ int lvl_load(struct level *lvl, const char *fname)
 	}
 	printf("level diameter: %g\n", lvl->maxdist);
 
+	/* cache missile mesh for easy access */
+	if(!(lvl->missile_mesh = lvl_find_dynmesh(lvl, "missile"))) {
+		return -1;
+	}
+
 	mesh_tex_loader(0, 0);
 	ts_free_tree(ts);
 	return 0;
@@ -1128,4 +1133,61 @@ static struct enemy *check_enemy_hit(struct level *lvl, struct room *room,
 	}
 
 	return 0;
+}
+
+
+#define MAX_TOTAL_MISSILES		(MAX_ROOM_MISSILES * 4)
+static struct missile mispool[MAX_TOTAL_MISSILES];
+static int num_free_missiles = MAX_TOTAL_MISSILES;
+
+static struct missile *alloc_missile(void)
+{
+	int i;
+
+	if(!num_free_missiles) return 0;
+
+	for(i=0; i<MAX_TOTAL_MISSILES; i++) {
+		if(!mispool[i].used) {
+			mispool[i].used = 1;
+			return mispool + i;
+		}
+	}
+	return 0;
+}
+
+int lvl_spawn_missile(struct level *lvl, struct room *room, const cgm_vec3 *pos,
+		const cgm_vec3 *dir, const cgm_quat *rot)
+{
+	struct missile *missile;
+
+	if(!(missile = alloc_missile()) || room->num_missiles >= MAX_ROOM_MISSILES) {
+		return -1;
+	}
+
+	missile->mesh = lvl->missile_mesh;
+	missile->room = room;
+	missile->pos = *pos;
+	missile->rot = *rot;
+	missile->vel = *dir;
+	cgm_vscale(&missile->vel, MISSILE_SPEED);
+	missile->psys = 0;	/* TODO */
+
+	room->missiles[room->num_missiles++] = missile;
+	return 0;
+}
+
+void lvl_despawn_missile(struct missile *mis)
+{
+	int i, last;
+	struct room *room = mis->room;
+
+	mis->used = 0;
+
+	last = --room->num_missiles;
+	for(i=0; i<last; i++) {
+		if(room->missiles[i] == mis) {
+			room->missiles[i] = room->missiles[last];
+			break;
+		}
+	}
 }

@@ -127,9 +127,6 @@ static void update_room(struct room *room, const cgm_vec4 *frust)
 		cgm_minverse(obj->invmatrix);
 	}
 
-	/* update enemies */
-	/* TODO */
-
 #if !defined(DBG_ONLY_CUR_ROOM) && !defined(DBG_ALL_ROOMS)
 	/* recursively visit all rooms reachable through visible portals */
 	room->vis_frm = updateno;
@@ -207,6 +204,11 @@ static void render_room(struct room *room)
 		if(mob->hp > 0.0f) {
 			render_enemy(mob);
 		}
+	}
+
+	/* render missiles */
+	for(i=0; i<room->num_missiles; i++) {
+		render_missile(room->missiles[i]);
 	}
 
 	/* mark this room as visited in the current frame */
@@ -365,6 +367,17 @@ void render_enemy(struct enemy *mob)
 	}
 }
 
+void render_missile(struct missile *mis)
+{
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glMultMatrixf(mis->matrix);
+
+	render_level_mesh(mis->mesh);
+
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+}
 
 static int portal_frustum_test(struct portal *portal, const cgm_vec4 *frust)
 {

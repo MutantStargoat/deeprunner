@@ -25,8 +25,25 @@ void init_player(struct player *p)
 
 	p->hp = MAX_HP;
 	p->sp = MAX_SP;
+	p->num_missiles = MAX_MISSILES;
 
 	p->last_dmg = -DMG_OVERLAY_DUR;
+	p->last_missile_time = -MISSILE_COOLDOWN;
+}
+
+void player_damage(struct player *p, float dmg)
+{
+	p->sp -= dmg;
+	if(p->sp < 0.0f) {
+		p->hp += p->sp;
+		p->sp = 0.0f;
+		if(p->hp < 0.0f) p->hp = 0.0f;
+		if(p->hp > MAX_HP) p->hp = MAX_HP;
+
+		p->last_dmg = time_msec;
+	} else if(p->sp > MAX_SP) {
+		p->sp = MAX_SP;
+	}
 }
 
 void update_player_mouse(struct player *p)
@@ -178,17 +195,7 @@ static void activate(struct player *p, struct action *act)
 {
 	switch(act->type) {
 	case ACT_DAMAGE:
-		p->sp -= act->value;
-		if(p->sp < 0.0f) {
-			p->hp += p->sp;
-			p->sp = 0.0f;
-			if(p->hp < 0.0f) p->hp = 0.0f;
-			if(p->hp > MAX_HP) p->hp = MAX_HP;
-
-			p->last_dmg = time_msec;
-		} else if(p->sp > MAX_SP) {
-			p->sp = MAX_SP;
-		}
+		player_damage(p, act->value);
 		break;
 
 	case ACT_HPDAMAGE:
@@ -255,4 +262,3 @@ static int check_collision(struct player *p, const cgm_vec3 *vel, struct collisi
 
 	return 0;
 }
-

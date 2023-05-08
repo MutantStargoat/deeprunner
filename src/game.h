@@ -1,6 +1,7 @@
 #ifndef GAME_H_
 #define GAME_H_
 
+#include "player.h"
 #include "audio.h"
 
 #define GAME_CFG_FILE	"game.cfg"

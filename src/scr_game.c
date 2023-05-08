@@ -91,7 +91,7 @@ static int lasers;
 static int laser_dlist;
 static unsigned int laser_tex;
 static struct texture *tex_flare;
-static struct collision lasers_hit;
+static struct collision lasers_hit, missile_hit;
 
 static struct texture *tex_damage;
 
@@ -299,6 +299,9 @@ static void gupdate(void)
 {
 	int i, count;
 	float viewproj[16];
+	cgm_ray ray;
+	struct enemy *mob;
+	struct room *room;
 
 	if(inpstate & INP_MOVE_BITS) {
 		if(inpstate & INP_FWD_BIT) {
@@ -328,20 +331,40 @@ static void gupdate(void)
 	}
 
 	lasers = 0;
-	if(inpstate & INP_FIRE_BIT) {
-		if(player->hp >= 0.0f && player->sp >= 0.0f) {
-			static long last_laser_sfx;
-			lasers = 1;
-			if(time_msec - last_laser_sfx > 100) {
-				au_play_sample(sfx_laser, 0);
-				last_laser_sfx = time_msec;
-			}
-		}
-	}
-
 	if(player->hp > 0) {
 		update_player_sball(player);
 		update_player(player);
+
+		if(inpstate & INP_FIRE_BIT) {
+			if(player->sp > 0.0f) {
+				static long last_laser_sfx;
+				lasers = 1;
+				if(time_msec - last_laser_sfx > 100) {
+					au_play_sample(sfx_laser, 0);
+					last_laser_sfx = time_msec;
+				}
+			}
+		}
+		if(inpstate & INP_FIRE2_BIT) {
+			if(player->num_missiles > 0 && time_msec - player->last_missile_time > MISSILE_COOLDOWN) {
+				cgm_vec3 up = {0, 1, 0};
+				cgm_vec3 pos;
+				cgm_quat rot;
+
+				rot = player->rot;
+				cgm_qinvert(&rot);
+				cgm_vrotate_quat(&up, &rot);
+
+				pos = player->pos;
+				cgm_vadd_scaled(&pos, &player->fwd, COL_RADIUS);
+				cgm_vsub(&pos, &up);
+
+				if(lvl_spawn_missile(player->lvl, player->room, &pos, &player->fwd, &rot) != -1) {
+					player->last_missile_time = time_msec;
+					/* TODO au_play_sample(sfx_missile, 0); */
+				}
+			}
+		}
 	}
 
 	/* update enemies */
@@ -354,8 +377,6 @@ static void gupdate(void)
 	}
 
 	if(lasers) {
-		cgm_ray ray;
-		struct enemy *mob;
 		cgm_vec3 dir = player->fwd;
 
 		cgm_vscale(&dir, lvl.maxdist);
@@ -371,6 +392,33 @@ static void gupdate(void)
 		ray.origin = player->pos;
 		if((mob = lvl_check_enemy_hit(&lvl, player->room, &ray))) {
 			enemy_damage(mob, LASER_DAMAGE);
+		}
+	}
+
+	/* update missiles */
+	room = player->room;
+	if(room) {
+		for(i=0; i<room->num_missiles; i++) {
+			struct missile *mis = room->missiles[i];
+			cgm_ray ray;
+
+			ray.origin = mis->pos;
+			ray.dir = mis->vel;
+
+			if((mob = lvl_check_enemy_hit(&lvl, player->room, &ray))) {
+				enemy_damage(mob, MISSILE_DAMAGE);
+				lvl_despawn_missile(mis);
+			}
+			if(ray_sphere(&ray, &player->pos, COL_RADIUS, 0)) {
+				player_damage(player, MISSILE_DAMAGE);
+				lvl_despawn_missile(mis);
+			}
+			if(lvl_collision(&lvl, player->room, &mis->pos, &mis->vel, &missile_hit)) {
+				lvl_despawn_missile(mis);
+			}
+
+			cgm_vadd(&mis->pos, &mis->vel);
+			calc_posrot_matrix(mis->matrix, &mis->pos, &mis->rot);
 		}
 	}
 
@@ -700,24 +748,6 @@ static void gkeyb(int key, int press)
 				player->rot = visrot;
 			}
 			greshape(win_width, win_height);	/* to change the far clip */
-			break;
-
-		case ';':
-			player->hp -= 8;
-			if(player->hp < 0) player->hp = 0;
-			player->last_dmg = time_msec;
-			break;
-		case '\'':
-			player->hp += 8;
-			if(player->hp > MAX_HP) player->hp = MAX_HP;
-			break;
-		case '[':
-			player->sp -= 8;
-			if(player->sp < 0) player->sp = 0;
-			break;
-		case ']':
-			player->sp += 8;
-			if(player->sp > MAX_SP) player->sp = MAX_SP;
 			break;
 
 		case GKEY_F1:

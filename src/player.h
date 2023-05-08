@@ -6,6 +6,7 @@
 
 #define MAX_HP	256
 #define MAX_SP	256
+#define MAX_MISSILES	10
 
 enum {
 	ITEM_KEY	= 1,
@@ -18,6 +19,7 @@ struct player {
 
 	float hp, sp;	/* health and shields */
 	unsigned int items;
+	int num_missiles;
 
 	cgm_vec3 pos, prevpos;
 	cgm_quat rot;
@@ -31,10 +33,12 @@ struct player {
 	cgm_vec2 mouse_input;
 	cgm_vec3 sball_mov, sball_rot;
 
-	long last_dmg;
+	long last_dmg, last_missile_time;
 };
 
 void init_player(struct player *p);
+
+void player_damage(struct player *p, float dmg);
 
 void update_player_mouse(struct player *p);
 void update_player_sball(struct player *p);

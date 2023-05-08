@@ -9,7 +9,7 @@ struct enemy {
 
 	float hp, sp;
 
-	cgm_vec3 pos;
+	cgm_vec3 pos, targ, prev_targ;
 	cgm_quat rot;
 	cgm_vec3 fwd;
 	float rad;
@@ -17,7 +17,7 @@ struct enemy {
 	struct mesh *mesh;
 	float matrix[16];
 
-	long last_shield_hit, last_dmg_hit;
+	long last_shield_hit, last_dmg_hit, last_shot;
 	cgm_vec3 last_hit_pos;
 
 	void (*aifunc)(struct enemy *mob);

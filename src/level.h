@@ -1,6 +1,8 @@
 #ifndef LEVEL_H_
 #define LEVEL_H_
 
+#include "config.h"
+
 #include "mesh.h"
 #include "octree.h"
 #include "enemy.h"
@@ -50,6 +52,18 @@ struct object {
 	struct object *next;
 };
 
+struct missile {
+	int used;
+	struct mesh *mesh;
+	struct room *room;
+	cgm_vec3 pos, vel;
+	cgm_quat rot;
+
+	struct psys_emitter *psys;
+
+	float matrix[16];
+};
+
 struct room {
 	char *name;
 	struct mesh *meshes;	/* darr */
@@ -62,6 +76,9 @@ struct room {
 
 	struct object **objects;	/* darr */
 	struct enemy **enemies;	/* darr (no ownership) */
+
+	struct missile *missiles[MAX_ROOM_MISSILES];
+	int num_missiles;
 
 	struct psys_emitter **emitters;
 
@@ -94,6 +111,8 @@ struct level {
 
 	int max_enemies;
 	struct enemy **enemies;		/* darr */
+
+	struct mesh *missile_mesh;
 };
 
 struct collision {
@@ -128,5 +147,9 @@ int lvl_collision_rad(const struct level *lvl, const struct room *room, const cg
 
 void lvl_spawn_enemies(struct level *lvl);
 struct enemy *lvl_check_enemy_hit(struct level *lvl, struct room *room, const cgm_ray *ray);
+
+int lvl_spawn_missile(struct level *lvl, struct room *room, const cgm_vec3 *pos,
+		const cgm_vec3 *dir, const cgm_quat *rot);
+void lvl_despawn_missile(struct missile *mis);
 
 #endif	/* LEVEL_H_ */
