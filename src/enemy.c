@@ -143,6 +143,10 @@ void enemy_ai_flying2(struct enemy *mob)
 		mob->fwd = mob->targ; cgm_vsub(&mob->fwd, &mob->pos);
 		cgm_vnormalize(&mob->fwd);
 
+		if(cgm_vdist_sq(&mob->pos, &player->pos) > CLOSE_DIST * CLOSE_DIST) {
+			enemy_move(mob, &mob->fwd, FLYER_SPEED);
+		}
+
 		pdir = player->pos; cgm_vsub(&pdir, &mob->pos);
 		cgm_vnormalize(&pdir);
 
