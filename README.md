@@ -10,8 +10,6 @@ Supported platforms:
   - FreeBSD
   - MS Windows
 
-Status: project just started.
-
  - Website: http://nuclear.mutantstargoat.com/sw/games/deeprunner
  - Game page on itch.io: https://nuclear.itch.io/deeprunner
  - Source code repo: https://github.com/MutantStargoat/deeprunner
@@ -20,8 +18,8 @@ Controls
 --------
 
 ### 6DoF Spaceball/Spacemouse
-The game support 6DoF spacemouse input on SGI IRIX and other UNIX systems (like
-GNU/Linux, FreeBSD, etc). Make sure the spacemouse driver is running and has
+The game supports 6DoF spacemouse input on SGI IRIX and other UNIX systems
+(GNU/Linux, FreeBSD, etc). Make sure the spacemouse driver is running and has
 detected your 6dof device, before starting the game. You can use either the free
 spacenav driver (https://spacenav.sf.net) or the official 3Dconnexion driver.
 
@@ -35,8 +33,16 @@ start navigating; press it again to release the mouse.
 Keybindings:
 
   - W/A/S/D: move forward/back and strafe left/right.
+  - 2/X: move up/down.
   - Q and E: roll left/right.
+  - ~: Capture/release the mouse (toggle mouselook).
+  - Left mouse button: shoot lasers.
+  - Right mouse button: shoot missiles.
   - +/-: adjust sound volume.
+  - Alt-Enter: toggle between fullscreen/windowed.
+  - Esc: quit game and return to the menu.
+
+In future versions of the game, these will be re-bindable from an in-game menu.
 
 Options
 -------
@@ -80,12 +86,26 @@ Control options:
 
 License
 -------
+### Code
 Copyright (C) 2023 John Tsiombikas <nuclear@mutantstargoat.com>
 
 This program is free software. Feel free to use, modify and/or redistribute it
 under the terms of the GNU General Public License v3, or at your option any
 later version published by the Free Software Foundation. See COPYING for
 details.
+
+### Graphics & levels
+Copyright (C) 2023 dstar <dstar64@proton.me>
+
+Game assets are released under the Creative Commons Attribution Share-Alike
+license (CC BY-SA). See LICENSE.assets for details.
+
+### Music
+Copyright (C) 2023 Robin Agani <hello@robinagani.com>
+
+Game music is released under the Creative Commons Attribution Share-Alike
+license (CC BY-SA). See LICENSE.assets for details.
+
 
 Build instructions
 ------------------
