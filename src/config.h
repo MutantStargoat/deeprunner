@@ -1,6 +1,8 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
+#define TIME_LIMIT	240000
+
 #define COL_RADIUS	0.25f
 #define LASER_DAMAGE	8
 #define MISSILE_DAMAGE	64

@@ -57,13 +57,15 @@ static float view_mat[16], proj_mat[16];
 struct player *player;
 
 static struct level lvl;
-static unsigned int dbgtex;
-static struct texture *uitex;
+static struct texture *uitex, *timertex;
 static struct mesh adidome;
 
 static struct dtx_font *font_hp;
 static int font_hp_size;
 static struct texture *font_hp_tex;
+
+static struct dtx_font *font_timer;
+static int font_timer_size;
 
 extern struct dtx_font *font_menu;
 extern int font_menu_sz;
@@ -94,62 +96,25 @@ static struct texture *tex_flare;
 static struct collision lasers_hit, missile_hit;
 
 static struct texture *tex_damage;
+static long start_time;
+static char timertext[64];
+
+static int gameover;
 
 
 static int ginit(void)
 {
 	int i;
 
-	{
-		int j;
-		unsigned char *pix, *pptr;
-
-		pptr = pix = malloc(256 * 256);
-
-		for(i=0; i<256; i++) {
-			for(j=0; j<256; j++) {
-				*pptr++ = (i ^ j) | 0x80;
-			}
-		}
-
-		glGenTextures(1, &dbgtex);
-		glBindTexture(GL_TEXTURE_2D, dbgtex);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		gluBuild2DMipmaps(GL_TEXTURE_2D, 1, 256, 256, GL_LUMINANCE, GL_UNSIGNED_BYTE, pix);
-
-		pptr = pix + 7 * 4;
-		for(i=0; i<4; i++) {
-			int blue = ((float)i / 3.0f) * 512.0f;
-			int rest = (int)(pow((float)i / 3.0f, 4) * 200.0f);
-			int r = rest;
-			int g = rest + blue / 4;
-			int b = blue;
-			int a = i * 255 / 3;
-			if(r > 255) r = 255;
-			if(g > 255) g = 255;
-			if(b > 255) b = 255;
-			pix[i * 4] = pptr[0] = r;
-			pix[i * 4 + 1] = pptr[1] = g;
-			pix[i * 4 + 2] = pptr[2] = b;
-			pix[i * 4 + 3] = pptr[3] = a;
-			pptr -= 4;
-		}
-		glGenTextures(1, &laser_tex);
-		glBindTexture(GL_TEXTURE_1D, laser_tex);
-		glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, 8, 0, GL_RGBA, GL_UNSIGNED_BYTE, pix);
-
-		free(pix);
-	}
-
 	if(!(uitex = tex_load("data/uibars.png"))) {
+		return -1;
+	}
+	if(!(timertex = tex_load("data/timer.png"))) {
 		return -1;
 	}
 
 	if(!(font_hp = dtx_open_font_glyphmap("data/hpfont.gmp"))) {
-		fprintf(stderr, "failed to open glyphmap: data/impact14.gmp\n");
+		fprintf(stderr, "failed to open glyphmap: data/hpfont.gmp\n");
 		return -1;
 	}
 	font_hp_size = dtx_get_glyphmap_ptsize(dtx_get_glyphmap(font_hp, 0));
@@ -161,6 +126,12 @@ static int ginit(void)
 	if((font_hp_tex = tex_load("data/hpfont-rgb.png"))) {
 		dtxhack_replace_texture(dtx_get_glyphmap(font_hp, 0), font_hp_tex->texid);
 	}
+
+	if(!(font_timer = dtx_open_font_glyphmap("data/timefont.gmp"))) {
+		fprintf(stderr, "failed to open glyphmap: data/timefont.gmp\n");
+		return -1;
+	}
+	font_timer_size = dtx_get_glyphmap_ptsize(dtx_get_glyphmap(font_timer, 0));
 
 	gen_geosphere(&adidome, 8, 1, 1);
 	adidome.dlist = glGenLists(1);
@@ -277,6 +248,8 @@ static int gstart(void)
 
 	glClearColor(0, 0, 0, 1);
 	glFogfv(GL_FOG_COLOR, zero);
+
+	start_time = time_msec;
 	return 0;
 }
 
@@ -302,6 +275,21 @@ static void gupdate(void)
 	cgm_ray ray;
 	struct enemy *mob;
 	struct room *room;
+	long time_left = TIME_LIMIT - (time_msec - start_time);
+	long tm_min, tm_min_rem, tm_sec, tm_msec;
+
+	if(player->hp <= 0.0f || time_left <= 0) {
+		time_left = 0;
+		gameover = 1;
+	}
+
+	tm_min = time_left / 60000;
+	tm_min_rem = time_left % 60000;
+	tm_sec = tm_min_rem / 1000;
+	tm_msec = tm_min_rem % 1000;
+	sprintf(timertext, "%02ld:%02ld:%02ld", tm_min, tm_sec, tm_msec / 10);
+
+	if(gameover) return;
 
 	if(inpstate & INP_MOVE_BITS) {
 		if(inpstate & INP_FWD_BIT) {
@@ -330,39 +318,37 @@ static void gupdate(void)
 		}
 	}
 
-	lasers = 0;
-	if(player->hp > 0) {
-		update_player_sball(player);
-		update_player(player);
+	update_player_sball(player);
+	update_player(player);
 
-		if(inpstate & INP_FIRE_BIT) {
-			if(player->sp > 0.0f) {
-				static long last_laser_sfx;
-				lasers = 1;
-				if(time_msec - last_laser_sfx > 100) {
-					au_play_sample(sfx_laser, 0);
-					last_laser_sfx = time_msec;
-				}
+	lasers = 0;
+	if(inpstate & INP_FIRE_BIT) {
+		if(player->sp > 0.0f) {
+			static long last_laser_sfx;
+			lasers = 1;
+			if(time_msec - last_laser_sfx > 100) {
+				au_play_sample(sfx_laser, 0);
+				last_laser_sfx = time_msec;
 			}
 		}
-		if(inpstate & INP_FIRE2_BIT) {
-			if(player->num_missiles > 0 && time_msec - player->last_missile_time > MISSILE_COOLDOWN) {
-				cgm_vec3 up = {0, 1, 0};
-				cgm_vec3 pos;
-				cgm_quat rot;
+	}
+	if(inpstate & INP_FIRE2_BIT) {
+		if(player->num_missiles > 0 && time_msec - player->last_missile_time > MISSILE_COOLDOWN) {
+			cgm_vec3 up = {0, 1, 0};
+			cgm_vec3 pos;
+			cgm_quat rot;
 
-				rot = player->rot;
-				cgm_qinvert(&rot);
-				cgm_vrotate_quat(&up, &rot);
+			rot = player->rot;
+			cgm_qinvert(&rot);
+			cgm_vrotate_quat(&up, &rot);
 
-				pos = player->pos;
-				cgm_vadd_scaled(&pos, &player->fwd, COL_RADIUS);
-				cgm_vsub(&pos, &up);
+			pos = player->pos;
+			cgm_vadd_scaled(&pos, &player->fwd, COL_RADIUS);
+			cgm_vsub(&pos, &up);
 
-				if(lvl_spawn_missile(player->lvl, player->room, &pos, &player->fwd, &rot) != -1) {
-					player->last_missile_time = time_msec;
-					/* TODO au_play_sample(sfx_missile, 0); */
-				}
+			if(lvl_spawn_missile(player->lvl, player->room, &pos, &player->fwd, &rot) != -1) {
+				player->last_missile_time = time_msec;
+				/* TODO au_play_sample(sfx_missile, 0); */
 			}
 		}
 	}
@@ -590,6 +576,7 @@ static void draw_ui(void)
 	float yoffs, yscale;
 	float xform[16], *ptr;
 	float x, vwidth = win_aspect * 480.0f;
+	float timer_xoffs = vwidth - 125;
 
 	begin2d(480);
 
@@ -603,6 +590,7 @@ static void draw_ui(void)
 	}
 
 	blit_tex(0, 0, uitex, 1);
+	blit_tex(timer_xoffs, 0, timertex, 1);
 
 	glDisable(GL_BLEND);
 	glEnable(GL_ALPHA_TEST);
@@ -636,6 +624,17 @@ static void draw_ui(void)
 	glColor3f(0.725, 0.075, 0.173);
 	dtx_printf("%d", (int)player->hp * 100 / MAX_HP);
 	glPopMatrix();
+
+	/* draw timer */
+	dtx_use_font(font_timer, font_timer_size);
+	glPushMatrix();
+	glTranslatef(timer_xoffs + 10.5, 24.5, 0);
+	glScalef(0.3535, -0.3535, 0.3535);
+	glColor3f(0.8, 0.8, 1);
+	dtx_string(timertext);
+	dtx_flush();
+	glPopMatrix();
+
 
 	/* draw ADI */
 	glEnable(GL_CULL_FACE);
@@ -684,7 +683,7 @@ static void draw_ui(void)
 		glEnd();
 	}
 
-	if(player->hp <= 0.0f) {
+	if(gameover) {
 		glPushMatrix();
 		dtx_use_font(font_menu, font_menu_sz);
 		glTranslatef(x - dtx_string_width("GAME OVER!") / 2, 240, 0);
