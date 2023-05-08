@@ -22,6 +22,7 @@
 
 #undef DBG_NOSEED
 #undef DBG_ESCQUIT
+#define DBG_FPEXCEPT
 
 #define DBG_NOPSYS
 #define DBG_NO_OCTREE

@@ -216,7 +216,7 @@ static void detect_defaults(void)
 
 	if(uname(&uts) == -1) {
 		printf("uname failed: assume O2\n");
-		gfxdefopt = gfxdef_o2;	/* on failure assume the worst */
+		gfxdefopt = gfxdef_lowest;	/* on failure assume the worst */
 		return;
 	}
 

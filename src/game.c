@@ -41,7 +41,8 @@ int game_init(void)
 	int i;
 	char *start_scr_name;
 
-#ifndef NDEBUG
+#if !defined(NDEBUG) && defined(DBG_FPEXCEPT)
+	printf("floating point exceptions enabled\n");
 	enable_fpexcept();
 #endif
 
