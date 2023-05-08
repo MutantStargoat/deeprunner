@@ -149,6 +149,10 @@ void update_player(struct player *p)
 		cgm_vadd(&p->pos, &vel);
 	}
 
+	/* regenerate energy */
+	p->sp += SP_REGEN;
+	if(p->sp > MAX_SP) p->sp = MAX_SP;
+
 	/* check for pickups and triggers */
 	count = darr_size(p->room->triggers);
 	for(i=0; i<count; i++) {

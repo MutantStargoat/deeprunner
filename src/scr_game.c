@@ -105,6 +105,32 @@ static int gameover;
 static int ginit(void)
 {
 	int i;
+	unsigned char pix[8 * 4];
+	unsigned char *pptr;
+
+	pptr = pix + 7 * 4;
+	for(i=0; i<4; i++) {
+		int blue = ((float)i / 3.0f) * 512.0f;
+		int rest = (int)(pow((float)i / 3.0f, 4) * 200.0f);
+		int r = rest;
+		int g = rest + blue / 4;
+		int b = blue;
+		int a = i * 255 / 3;
+		if(r > 255) r = 255;
+		if(g > 255) g = 255;
+		if(b > 255) b = 255;
+		pix[i * 4] = pptr[0] = r;
+		pix[i * 4 + 1] = pptr[1] = g;
+		pix[i * 4 + 2] = pptr[2] = b;
+		pix[i * 4 + 3] = pptr[3] = a;
+		pptr -= 4;
+	}
+	glGenTextures(1, &laser_tex);
+	glBindTexture(GL_TEXTURE_1D, laser_tex);
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, 8, 0, GL_RGBA, GL_UNSIGNED_BYTE, pix);
+
 
 	if(!(uitex = tex_load("data/uibars.png"))) {
 		return -1;

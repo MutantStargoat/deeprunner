@@ -4,9 +4,10 @@
 #include "level.h"
 #include "cgmath/cgmath.h"
 
-#define MAX_HP	256
-#define MAX_SP	256
+#define MAX_HP			256
+#define MAX_SP			256
 #define MAX_MISSILES	10
+#define SP_REGEN		0.25
 
 enum {
 	ITEM_KEY	= 1,
