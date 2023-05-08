@@ -7,6 +7,7 @@
 #include "darray.h"
 #include "enemy.h"
 #include "gfxutil.h"
+#include "psys/psys.h"
 
 static struct level *lvl;
 static struct room *cur_room;
@@ -33,6 +34,14 @@ static struct texture *tex_shield, *tex_expl;
 
 #define MAX_EXPLOSIONS	16
 static struct explosion explosions[MAX_EXPLOSIONS];
+
+#ifndef DBG_NOPSYS
+static struct psys_attributes psys_expl_attr, psys_trail_attr;
+
+#define MAX_EXPL_PSYS	(MAX_EXPLOSIONS * 2)
+static struct psys_emitter *expl_psys[MAX_EXPL_PSYS];
+static long expl_psys_start[MAX_EXPL_PSYS];
+#endif
 
 
 static int portal_frustum_test(struct portal *portal, const cgm_vec4 *frust);
@@ -72,6 +81,16 @@ int rendlvl_init(struct level *level)
 		return -1;
 	}
 
+#ifndef DBG_NOPSYS
+	if(psys_load_attr(&psys_expl_attr, "data/expl.psys") == -1) {
+		fprintf(stderr, "failed to load explosion particle system\n");
+		return -1;
+	}
+	if(psys_load_attr(&psys_trail_attr, "data/trail.psys") == -1) {
+		fprintf(stderr, "failed to load trail particle system\n");
+		return -1;
+	}
+#endif
 
 	return 0;
 }
@@ -80,6 +99,11 @@ void rendlvl_destroy(void)
 {
 	tex_free(tex_shield);
 	tex_free(tex_expl);
+
+#ifndef DBG_NOPSYS
+	psys_destroy_attr(&psys_expl_attr);
+	psys_destroy_attr(&psys_trail_attr);
+#endif
 }
 
 void rendlvl_setup(struct room *room, const cgm_vec3 *ppos, float *vp_matrix)
@@ -193,6 +217,25 @@ void rendlvl_update(void)
 			}
 		}
 	}
+
+#ifndef DBG_NOPSYS
+	/* update explosion particle systems */
+	for(i=0; i<MAX_EXPL_PSYS; i++) {
+		struct psys_emitter *psys = expl_psys[i];
+		if(psys) {
+			float rate;
+			long tm = time_msec - expl_psys_start[i];
+			psys_update(psys, tm);
+			rate = psys_get_value(&psys->attr.rate, tm);
+			if(tm > 0 && psys->pcount <= 0 && rate <= 0.0f) {
+				psys_free(psys);
+				expl_psys[i] = 0;
+				printf("psys died!\n");
+			}
+		}
+	}
+#endif
+
 }
 
 
@@ -292,6 +335,15 @@ void render_level(void)
 			render_explosion(explosions + i);
 		}
 	}
+
+	/* render explosion particle systems */
+#ifndef DBG_NOPSYS
+	for(i=0; i<MAX_EXPL_PSYS; i++) {
+		if(expl_psys[i]) {
+			psys_draw(expl_psys[i]);
+		}
+	}
+#endif
 
 	glMatrixMode(GL_TEXTURE);
 	glLoadIdentity();
@@ -413,9 +465,11 @@ void render_explosion(struct explosion *expl)
 
 int add_explosion(const cgm_vec3 *pos, float sz, long start_tm)
 {
-	int i;
+	int i, found = 0;
 	struct explosion *expl;
-
+#ifndef DBG_NOPSYS
+	struct psys_emitter *psys;
+#endif
 
 	for(i=0; i<MAX_EXPLOSIONS; i++) {
 		expl = explosions + i;
@@ -424,10 +478,29 @@ int add_explosion(const cgm_vec3 *pos, float sz, long start_tm)
 			expl->tm = 0;
 			expl->pos = *pos;
 			expl->sz = sz;
-			return 0;
+			found = 1;
+			break;
 		}
 	}
-	return -1;
+
+	if(!found) return -1;
+
+#ifndef DBG_NOPSYS
+	for(i=0; i<MAX_EXPL_PSYS; i++) {
+		if(expl_psys[i] == 0) {
+			if(!(psys = psys_create())) {
+				break;
+			}
+			psys_copy_attr(&psys->attr, &psys_expl_attr);
+			psys_set_pos3f(psys, pos->x, pos->y, pos->z, 0);
+			expl_psys[i] = psys;
+			expl_psys_start[i] = start_tm;
+			break;
+		}
+	}
+#endif
+
+	return 0;
 }
 
 static int portal_frustum_test(struct portal *portal, const cgm_vec4 *frust)

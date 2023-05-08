@@ -744,6 +744,8 @@ static void greshape(int x, int y)
 	glFogf(GL_FOG_END, zfar);
 }
 
+void dbg_getkey();
+
 static void gkeyb(int key, int press)
 {
 	int i;
@@ -769,6 +771,10 @@ static void gkeyb(int key, int press)
 			if(!fullscr) {
 				game_grabmouse(-1);	/* toggle */
 			}
+			break;
+
+		case GKEY_F5:
+			dbg_getkey();
 			break;
 
 		case GKEY_F2:
