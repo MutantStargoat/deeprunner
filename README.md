@@ -14,6 +14,12 @@ Supported platforms:
  - Game page on itch.io: https://nuclear.itch.io/deeprunner
  - Source code repo: https://github.com/MutantStargoat/deeprunner
 
+Credits
+-------
+ - Code: John Tsiombikas (Nuclear).
+ - Graphics/Levels: dstar.
+ - Music: Robin Agani.
+
 Controls
 --------
 
