@@ -1,6 +1,8 @@
 DeepRunner
 ==========
 
+![Deep Runner logo](http://nuclear.mutantstargoat.com/sw/games/deeprunner/img/banner-sm.jpg)
+
 A 3D 6DoF underground maze shooter for the Silicon Graphics O2 workstation, and
 other computer systems old and new.
 
