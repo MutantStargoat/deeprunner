@@ -109,9 +109,9 @@ int load_options(const char *fname)
 	opt.vol_sfx = ts_lookup_int(cfg, "options.audio.volsfx", DEF_VOL);
 	opt.music = ts_lookup_int(cfg, "options.audio.music", DEF_MUS);
 
-	opt.inv_mouse_y = ts_lookup_int(cfg, "options.ctl.invmousey", DEF_INVMOUSEY);
-	opt.mouse_speed = ts_lookup_int(cfg, "options.ctl.mousespeed", DEF_MOUSE_SPEED);
-	opt.sball_speed = ts_lookup_int(cfg, "options.ctl.sballspeed", DEF_SBALL_SPEED);
+	opt.inv_mouse_y = ts_lookup_int(cfg, "options.controls.invmousey", DEF_INVMOUSEY);
+	opt.mouse_speed = ts_lookup_int(cfg, "options.controls.mousespeed", DEF_MOUSE_SPEED);
+	opt.sball_speed = ts_lookup_int(cfg, "options.controls.sballspeed", DEF_SBALL_SPEED);
 
 	opt.gfx.blendui = ts_lookup_int(cfg, "options.gfx.blendui", gfxdefopt.blendui);
 	opt.gfx.drawdist = ts_lookup_num(cfg, "options.gfx.drawdist", gfxdefopt.drawdist);
