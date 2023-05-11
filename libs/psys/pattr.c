@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <ctype.h>
 #include <assert.h>
 
-#ifdef __MSVCRT__
+#if defined(WIN32) || defined(__WIN32)
 #include <malloc.h>
 #else
 #include <alloca.h>

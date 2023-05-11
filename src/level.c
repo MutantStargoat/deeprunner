@@ -1019,6 +1019,10 @@ static struct room *find_portal_link(struct level *lvl, struct portal *portal)
 #define MAX_OCT_DEPTH	8
 #define MAX_OCT_TRIS	16
 
+#ifdef _MSC_VER
+#define isnan _isnan
+#endif
+
 static void build_room_octree(struct room *room)
 {
 	int i, j, num_meshes, num_tris;

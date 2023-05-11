@@ -16,6 +16,11 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "imago2.h"
+
+#if defined(WIN32) || defined(__WIN32)
+#include <windows.h>
+#endif
+
 #include <GL/gl.h>
 
 #ifndef GL_GENERATE_MIPMAP_SGIS

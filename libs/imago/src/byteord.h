@@ -33,6 +33,18 @@ typedef short int16_t;
 typedef unsigned short uint16_t;
 typedef long int32_t;
 typedef unsigned long uint32_t;
+typedef long intptr_t;
+typedef unsigned long uintptr_t;
+#endif
+
+#if defined(_MSC_VER) && (_MSC_VER < 1600)
+typedef signed __int8 int8_t;
+typedef unsigned __int8 uint8_t;
+typedef __int16 int16_t;
+typedef unsigned __int16 uint16_t;
+typedef __int32 int32_t;
+typedef unsigned __int32 uint32_t;
+typedef long intptr_t;
 typedef unsigned long uintptr_t;
 #endif
 

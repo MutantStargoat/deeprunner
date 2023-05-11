@@ -83,6 +83,10 @@ void dtx_substring(const char *str, int start, int end)
 	}
 }
 
+#ifdef _MSC_VER
+#define vsnprintf _vsnprintf
+#endif
+
 void dtx_printf(const char *fmt, ...)
 {
 	va_list ap;

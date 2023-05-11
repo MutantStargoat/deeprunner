@@ -1,0 +1,119 @@
+Microsoft Developer Studio Workspace File, Format Version 6.00
+# WARNING: DO NOT EDIT OR DELETE THIS WORKSPACE FILE!
+
+###############################################################################
+
+Project: "deeprun"=.\deeprun.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name drawtext
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name goat3d
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name imago
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name mikmod
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name psys
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name treestor
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "drawtext"=.\LIBS\drawtext\drawtext.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "goat3d"=.\LIBS\goat3d\goat3d.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "imago"=.\LIBS\imago\imago.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "mikmod"=.\LIBS\mikmod\mikmod.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "psys"=.\LIBS\psys\psys.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "treestor"=.\LIBS\treestor\treestor.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Global:
+
+Package=<5>
+{{{
+}}}
+
+Package=<3>
+{{{
+}}}
+
+###############################################################################
+

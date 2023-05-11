@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define UTIL_H_
 
 #include <stdlib.h>
+#include "byteord.h"	/* from imago, to sort out the sized int types mess */
 
 #if defined(__WATCOMC__) || defined(_WIN32) || defined(__DJGPP__)
 #include <malloc.h>

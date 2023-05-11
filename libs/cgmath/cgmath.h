@@ -23,8 +23,16 @@
 #ifndef CGMATH_H_
 #define CGMATH_H_
 
+#if defined(_MSC_VER) && !defined(_USE_MATH_DEFINES)
+#define _USE_MATH_DEFINES
+#endif
+
 #include <math.h>
 #include <string.h>
+
+#ifndef M_PI
+#define M_PI	3.141592653589793
+#endif
 
 typedef struct {
 	float x, y;
