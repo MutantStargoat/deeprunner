@@ -13,7 +13,7 @@ obj = drivers/drv_alsa.o drivers/drv_ds.o drivers/drv_nos.o drivers/drv_oss.o \
 
 alib = ../unix/mikmod.a
 
-CFLAGS = -g -I. -Iinclude -DHAVE_CONFIG_H -DMIKMOD_STATIC
+CFLAGS = -O3 -I. -Iinclude -DHAVE_CONFIG_H -DMIKMOD_STATIC
 
 $(alib): $(obj)
 	$(AR) rcs $@ $(obj)
