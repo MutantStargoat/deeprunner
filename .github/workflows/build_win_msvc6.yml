@@ -1,0 +1,44 @@
+name: Windows MSVC 6.0 build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: cache toolchain
+      id: cache-tc
+      uses: actions/cache@v3
+      with:
+        path: |
+          msvc6lt
+          vc6varsgh.bat
+        key: msvc6lt-cache1
+
+    - name: install toolchain
+      if: steps.cache-tc.outputs.cache-hit != 'true'
+      run: |
+        C:\msys64\usr\bin\wget.exe -q http://mutantstargoat.com/~nuclear/msvc6.zip
+        7z x msvc6.zip
+        C:\msys64\usr\bin\wget.exe -q http://mutantstargoat.com/~nuclear/vc6fullvarsgh.bat
+
+    - name: build
+      shell: cmd
+      run: |
+        call vc6fullvarsgh.bat
+        msdev deeprun.dsp /MAKE "deeprun - Win32 Release"
+        mkdir game-win32-msvc6
+        copy Release\deeprun.exe game-win32-msvc6
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: game-win32-msvc6
+        path: game-win32-msvc6
+
+# vi:ts=2 sts=2 sw=2 expandtab:
