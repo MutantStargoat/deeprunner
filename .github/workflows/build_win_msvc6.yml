@@ -33,12 +33,17 @@ jobs:
       run: |
         call vc6fullvarsgh.bat
         msdev deeprun.dsp /MAKE "deeprun - Win32 Release"
-        mkdir game-win32-msvc6
-        copy Release\deeprun.exe game-win32-msvc6
+        copy Release\deeprun.exe game.exe
+
+    - name: prepare datafiles
+      run: |
+        svn export svn://mutantstargoat.com/datadirs/deeprunner data
 
     - uses: actions/upload-artifact@v3
       with:
         name: game-win32-msvc6
-        path: game-win32-msvc6
+        path: |
+          data/
+          game.exe
 
 # vi:ts=2 sts=2 sw=2 expandtab:
