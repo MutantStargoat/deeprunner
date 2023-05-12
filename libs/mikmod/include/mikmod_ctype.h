@@ -20,11 +20,6 @@
 #ifndef MIKMOD_CTYPE_H
 #define MIKMOD_CTYPE_H
 
-/* _COMPILER_VERSION is defined by the SGI MIPSPro compiler */
-#if (defined(_MSC_VER) && _MSC_VER < 1800) || (defined(__sgi) && defined(_COMPILER_VERSION))
-#define inline __inline
-#endif
-
 static inline int mik_isascii(int c) {
     return ((c & ~0x7f) == 0);
 }

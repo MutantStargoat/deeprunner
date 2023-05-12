@@ -63,13 +63,17 @@ int au_init(void)
 	vol_master = vol_mus = vol_sfx = 255;
 
 #if defined(__linux__)
+	MikMod_RegisterDriver(&drv_pulseaudio);
 	MikMod_RegisterDriver(&drv_alsa);
+	MikMod_RegisterDriver(&drv_oss);
 #elif defined(__FreeBSD__)
 	MikMod_RegisterDriver(&drv_oss);
 #elif defined(__sgi)
 	MikMod_RegisterDriver(&drv_sgi);
 #elif defined(_WIN32)
 	MikMod_RegisterDriver(&drv_ds);
+	MikMod_RegisterDriver(&drv_win);
+	/*MikMod_RegisterDriver(&drv_xaudio2);*/
 #else
 	MikMod_RegisterDriver(&drv_nos);
 #endif
@@ -102,7 +106,8 @@ int au_init(void)
 #endif
 	}
 
-	printf("MikMod driver: %s\n", MikMod_InfoDriver());
+	printf("Available MikMod drivers:\n%s\n", MikMod_InfoDriver());
+	printf("Using MikMod driver: %s\n", md_driver->Name);
 	MikMod_EnableOutput();
 	return 0;
 }

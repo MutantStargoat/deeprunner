@@ -57,7 +57,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <limits.h>
 
 #include "mikmod_internals.h"
 
