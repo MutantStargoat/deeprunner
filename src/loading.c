@@ -59,6 +59,8 @@ void loading_update(void)
 	glClearColor(0, 0, 0, 1);
 	glClear(GL_COLOR_BUFFER_BIT);
 
+	glDisable(GL_TEXTURE_2D);
+
 	begin2d(vheight);
 
 	x = (SCRX - MAXW) / 2;
