@@ -1,4 +1,4 @@
-src = $(wildcard src/*.c)
+src = $(wildcard src/*.c) $(wildcard src/gaw/*.c)
 obj = $(src:.c=.o)
 dep = $(src:.c=.d)
 bin = game

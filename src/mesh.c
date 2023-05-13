@@ -19,7 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include "opengl.h"
+#include "gaw/gaw.h"
 #include "goat3d.h"
 #include "util.h"
 #include "mesh.h"
@@ -46,7 +46,7 @@ void mesh_destroy(struct mesh *m)
 	free(m->idxarr);
 
 	if(m->dlist) {
-		glDeleteLists(m->dlist, 1);
+		gaw_free_compiled(m->dlist);
 	}
 }
 
@@ -132,26 +132,13 @@ void mesh_draw(struct mesh *m)
 {
 	if(!m || !m->vcount) return;
 
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(3, GL_FLOAT, 0, m->varr);
-	if(m->narr) {
-		glEnableClientState(GL_NORMAL_ARRAY);
-		glNormalPointer(GL_FLOAT, 0, m->narr);
-	}
-	if(m->uvarr) {
-		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-		glTexCoordPointer(2, GL_FLOAT, 0, m->uvarr);
-	}
+	gaw_setupdraw(m->varr, m->narr, m->uvarr);
 
 	if(m->idxarr) {
-		glDrawElements(GL_TRIANGLES, m->icount, GL_UNSIGNED_INT, m->idxarr);
+		gaw_draw_indexed(GAW_TRIANGLES, m->idxarr, m->icount);
 	} else {
-		glDrawArrays(GL_TRIANGLES, 0, m->vcount);
+		gaw_draw(GAW_TRIANGLES, m->vcount);
 	}
-
-	glDisableClientState(GL_VERTEX_ARRAY);
-	glDisableClientState(GL_NORMAL_ARRAY);
-	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 }
 
 void mesh_compile(struct mesh *m)
@@ -159,13 +146,11 @@ void mesh_compile(struct mesh *m)
 	if(!m || !m->vcount) return;
 
 	if(m->dlist) {
-		glDeleteLists(m->dlist, 1);
+		gaw_free_compiled(m->dlist);
 	}
-	m->dlist = glGenLists(1);
-
-	glNewList(m->dlist, GL_COMPILE);
+	m->dlist = gaw_compile_begin();
 	mesh_draw(m);
-	glEndList();
+	gaw_compile_end();
 }
 
 
