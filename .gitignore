@@ -8,3 +8,8 @@ data/
 *.cfg
 *.exe
 core
+*.ncb
+*.opt
+*.plg
+*Debug/
+*Release/
