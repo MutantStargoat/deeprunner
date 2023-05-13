@@ -20,7 +20,7 @@ ifeq ($(sys), mingw)
 	bin = game.exe
 
 	ldsys_pre = -static-libgcc -lmingw32 -mconsole
-	ldsys = -lopengl32 -lglu32 -lgdi32 -lwinmm -ldsound
+	ldsys = -lopengl32 -lglu32 -lgdi32 -lwinmm
 else
 	ldsys = -lGL -lGLU -lX11 -lasound -lm
 endif

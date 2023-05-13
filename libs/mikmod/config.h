@@ -56,7 +56,7 @@
 #endif
 
 #ifdef _WIN32
-#define DRV_DS		1
+/*#define DRV_DS		1*/
 #define DRV_WIN		1
 /*#define DRV_XAUDIO2	1*/
 #endif
