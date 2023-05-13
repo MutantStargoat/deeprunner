@@ -261,6 +261,10 @@ SOURCE=.\src\util.c
 
 SOURCE=.\src\util.h
 # End Source File
+# Begin Source File
+
+SOURCE=.\src\gaw\gaw_gl.c
+# End Source File
 # End Group
 # Begin Group "cgmath"
 
