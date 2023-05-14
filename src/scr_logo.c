@@ -15,8 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#include "miniglut.h"
-#include "opengl.h"
+#include "gaw/gaw.h"
 #include "game.h"
 #include "mtltex.h"
 #include "gfxutil.h"
@@ -69,11 +68,11 @@ static int logo_start(void)
 {
 	float matrix[16];
 
-	glClearColor(0, 0, 0, 1);
+	gaw_clear_color(0, 0, 0, 1);
 
-	glDisable(GL_LIGHTING);
-	glDisable(GL_CULL_FACE);
-	glDisable(GL_DEPTH_TEST);
+	gaw_disable(GAW_LIGHTING);
+	gaw_disable(GAW_CULL_FACE);
+	gaw_disable(GAW_DEPTH_TEST);
 
 	if(mesh_load(&mesh_logo, "data/msglogo.g3d", 0) == -1) {
 		return 0;
@@ -121,13 +120,13 @@ static void msglogo(void)
 	float vwidth = win_aspect * 480.0f;
 	float x, y;
 
-	glClear(GL_COLOR_BUFFER_BIT);
+	gaw_clear(GAW_COLORBUF);
 
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	glTranslatef(0, 0, -10);
+	gaw_matrix_mode(GAW_MODELVIEW);
+	gaw_load_identity();
+	gaw_translate(0, 0, -10);
 
-	glColor3f(1, 1, 1);
+	gaw_color3f(1, 1, 1);
 	mesh_draw(&mesh_logo);
 
 	begin2d(480);
@@ -135,17 +134,16 @@ static void msglogo(void)
 	x = (vwidth - TEXTW) / 2.0f;
 	y = 360;
 
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	gaw_enable(GAW_BLEND);
+	gaw_blend_func(GAW_SRC_ALPHA, GAW_ONE_MINUS_SRC_ALPHA);
 
-	glBindTexture(GL_TEXTURE_2D, tex_msg->texid);
-	glEnable(GL_TEXTURE_2D);
-	glBegin(GL_QUADS);
-	glTexCoord2f(0, 0); glVertex2f(x, y);
-	glTexCoord2f(1, 0); glVertex2f(x + TEXTW, y);
-	glTexCoord2f(1, 1); glVertex2f(x + TEXTW, y + TEXTH);
-	glTexCoord2f(0, 1); glVertex2f(x, y + TEXTH);
-	glEnd();
+	gaw_set_tex2d(tex_msg->texid);
+	gaw_begin(GAW_QUADS);
+	gaw_texcoord2f(0, 0); gaw_vertex2f(x, y);
+	gaw_texcoord2f(1, 0); gaw_vertex2f(x + TEXTW, y);
+	gaw_texcoord2f(1, 1); gaw_vertex2f(x + TEXTW, y + TEXTH);
+	gaw_texcoord2f(0, 1); gaw_vertex2f(x, y + TEXTH);
+	gaw_end();
 
 	end2d();
 }
@@ -174,60 +172,59 @@ static void sgiscr(void)
 		played_chime = 1;
 	}
 
-	glDisable(GL_DEPTH_TEST);
+	gaw_disable(GAW_DEPTH_TEST);
 
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	glMatrixMode(GL_PROJECTION);
-	glPushMatrix();
-	glLoadIdentity();
+	gaw_matrix_mode(GAW_MODELVIEW);
+	gaw_load_identity();
+	gaw_matrix_mode(GAW_PROJECTION);
+	gaw_push_matrix();
+	gaw_load_identity();
 
-	glBegin(GL_QUADS);
-	glColor3ub(95, 95, 143);
-	glVertex2f(-1, -1);
-	glVertex2f(1, -1);
-	glColor3ub(175, 209, 254);
-	glVertex2f(1, 1);
-	glVertex2f(-1, 1);
-	glEnd();
+	gaw_begin(GAW_QUADS);
+	gaw_color3ub(95, 95, 143);
+	gaw_vertex2f(-1, -1);
+	gaw_vertex2f(1, -1);
+	gaw_color3ub(175, 209, 254);
+	gaw_vertex2f(1, 1);
+	gaw_vertex2f(-1, 1);
+	gaw_end();
 
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, tex_o2boot->texid);
-	glBegin(GL_QUADS);
-	glColor3f(1, 1, 1);
-	glTexCoord2f(0, 1); glVertex2f(-aspect, -1);
-	glTexCoord2f(1, 1); glVertex2f(aspect, -1);
-	glTexCoord2f(1, 0); glVertex2f(aspect, MAXV * 2.0 - 1.0);
-	glTexCoord2f(0, 0); glVertex2f(-aspect, MAXV * 2.0 - 1.0);
-	glEnd();
+	gaw_set_tex2d(tex_o2boot->texid);
+	gaw_begin(GAW_QUADS);
+	gaw_color3f(1, 1, 1);
+	gaw_texcoord2f(0, 1); gaw_vertex2f(-aspect, -1);
+	gaw_texcoord2f(1, 1); gaw_vertex2f(aspect, -1);
+	gaw_texcoord2f(1, 0); gaw_vertex2f(aspect, MAXV * 2.0 - 1.0);
+	gaw_texcoord2f(0, 0); gaw_vertex2f(-aspect, MAXV * 2.0 - 1.0);
+	gaw_end();
 
 	alpha = clamp(tsec - 5.5, 0, 1);
-	glTranslatef(0, 0.34, 0);
-	glScalef(WAYSCALE / win_aspect, WAYSCALE, 1);
-	glBindTexture(GL_TEXTURE_2D, tex_way->texid);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glBegin(GL_QUADS);
-	glColor4f(1, 1, 1, alpha);
-	glTexCoord2f(0, 1); glVertex2f(-1, -1);
-	glTexCoord2f(1, 1); glVertex2f(1, -1);
-	glTexCoord2f(1, 0); glVertex2f(1, 1);
-	glTexCoord2f(0, 0); glVertex2f(-1, 1);
-	glEnd();
+	gaw_translate(0, 0.34, 0);
+	gaw_scale(WAYSCALE / win_aspect, WAYSCALE, 1);
+	gaw_set_tex2d(tex_way->texid);
+	gaw_enable(GAW_BLEND);
+	gaw_blend_func(GAW_SRC_ALPHA, GAW_ONE_MINUS_SRC_ALPHA);
+	gaw_begin(GAW_QUADS);
+	gaw_color4f(1, 1, 1, alpha);
+	gaw_texcoord2f(0, 1); gaw_vertex2f(-1, -1);
+	gaw_texcoord2f(1, 1); gaw_vertex2f(1, -1);
+	gaw_texcoord2f(1, 0); gaw_vertex2f(1, 1);
+	gaw_texcoord2f(0, 0); gaw_vertex2f(-1, 1);
+	gaw_end();
 
-	glDisable(GL_BLEND);
-	glDisable(GL_TEXTURE_2D);
+	gaw_disable(GAW_BLEND);
+	gaw_set_tex2d(0);
 
-	glPopMatrix();
+	gaw_pop_matrix();
 
-	glClear(GL_DEPTH_BUFFER_BIT);
+	gaw_clear(GAW_DEPTHBUF);
 
 	/* SGI logo */
-	glPushAttrib(GL_ENABLE_BIT | GL_VIEWPORT_BIT);
-	glEnable(GL_DEPTH_TEST);
-	glDisable(GL_LIGHTING);
-	glEnable(GL_LIGHT0);
-	glEnable(GL_CULL_FACE);
+	gaw_save();	/* XXX had viewport bit here too, is it necessary? */
+	gaw_enable(GAW_DEPTH_TEST);
+	gaw_disable(GAW_LIGHTING);
+	gaw_enable(GAW_LIGHT0);
+	gaw_enable(GAW_CULL_FACE);
 
 	trot = cgm_smoothstep(0, 6, tsec) * 360 * 2.0f;
 	//z = cgm_logerp(100, 50, clamp(tsec - 1.0f, 0, 1));
@@ -235,32 +232,32 @@ static void sgiscr(void)
 	//z = 100.0f - cgm_smoothstep(-5, 5, tsec - 1.0f) * 50.0;
 	alpha = clamp((tsec / 2) - 0.5, 0, 1);
 
-	glViewport(win_width / 4, win_height * 0.43, win_width / 2, win_height / 2);
-	glMatrixMode(GL_MODELVIEW);
-	glTranslatef(0, 0, -z);
+	gaw_viewport(win_width / 4, win_height * 0.43, win_width / 2, win_height / 2);
+	gaw_matrix_mode(GAW_MODELVIEW);
+	gaw_translate(0, 0, -z);
 
-	glTranslatef(0, 0, 10);
-	glRotatef(trot, 0, 1, 0);
-	glRotatef(35, 1, 0, 0);
-	glRotatef(-45, 0, 1, 0);
+	gaw_translate(0, 0, 10);
+	gaw_rotate(trot, 0, 1, 0);
+	gaw_rotate(35, 1, 0, 0);
+	gaw_rotate(-45, 0, 1, 0);
 
-	glColor4f(1, 1, 1, alpha);
-	set_mtl_diffuse(0.1, 0.1, 0.1, alpha);
-	set_mtl_specular(1, 1, 1, 60.0f);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	gaw_color4f(1, 1, 1, alpha);
+	gaw_mtl_diffuse(0.1, 0.1, 0.1, alpha);
+	gaw_mtl_specular(1, 1, 1, 60.0f);
+	gaw_enable(GAW_BLEND);
+	gaw_blend_func(GAW_SRC_ALPHA, GAW_ONE_MINUS_SRC_ALPHA);
 	if(alpha < 0.8) {
-		glDepthMask(0);
+		gaw_depth_mask(0);
 	}
 
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, tex_env->texid);
-	texenv_sphmap(1);
+	gaw_set_tex2d(tex_env->texid);
+	gaw_texenv_sphmap(1);
 
-	glCallList(mesh_sgi.dlist);
+	gaw_draw_compiled(mesh_sgi.dlist);
 
-	glPopAttrib();
-	glDepthMask(1);
+	gaw_viewport(0, 0, win_width, win_height);
+	gaw_restore();
+	gaw_depth_mask(1);
 }
 
 static void logo_display(void)
@@ -292,32 +289,32 @@ static void logo_display(void)
 	if(tmsec >= FADEOUT_START) {
 		float alpha = clamp((tmsec - FADEOUT_START) / (float)FADEOUT_DUR, 0, 1);
 
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-		glMatrixMode(GL_PROJECTION);
-		glPushMatrix();
-		glLoadIdentity();
+		gaw_matrix_mode(GAW_MODELVIEW);
+		gaw_load_identity();
+		gaw_matrix_mode(GAW_PROJECTION);
+		gaw_push_matrix();
+		gaw_load_identity();
 
-		glPushAttrib(GL_ENABLE_BIT);
-		glDisable(GL_DEPTH_TEST);
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glDisable(GL_TEXTURE_2D);
-		glColor4f(0, 0, 0, alpha);
-		glRectf(-1, -1, 1, 1);
+		gaw_save();
+		gaw_disable(GAW_DEPTH_TEST);
+		gaw_enable(GAW_BLEND);
+		gaw_blend_func(GAW_SRC_ALPHA, GAW_ONE_MINUS_SRC_ALPHA);
+		gaw_set_tex2d(0);
+		gaw_color4f(0, 0, 0, alpha);
+		gaw_rect(-1, -1, 1, 1);
 
-		glPopAttrib();
+		gaw_restore();
 
-		glPopMatrix();
-		glMatrixMode(GL_MODELVIEW);
+		gaw_pop_matrix();
+		gaw_matrix_mode(GAW_MODELVIEW);
 	}
 }
 
 static void logo_reshape(int x, int y)
 {
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluPerspective(50, win_aspect, 0.5, 100.0);
+	gaw_matrix_mode(GAW_PROJECTION);
+	gaw_load_identity();
+	gaw_perspective(50, win_aspect, 0.5, 100.0);
 }
 
 static void logo_keyb(int key, int press)

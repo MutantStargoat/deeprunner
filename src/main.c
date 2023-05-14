@@ -91,6 +91,11 @@ int main(int argc, char **argv)
 	return 0;
 }
 
+long game_getmsec(void)
+{
+	return glutGet(GLUT_ELAPSED_TIME);
+}
+
 void game_swap_buffers(void)
 {
 	glutSwapBuffers();

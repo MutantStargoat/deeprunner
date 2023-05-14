@@ -20,9 +20,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include "opengl.h"
+#include "gaw/gaw.h"
 #include "imago2.h"
-#include "miniglut.h"
 #include "game.h"
 #include "util.h"
 #include "level.h"
@@ -51,9 +50,6 @@ static void gmotion(int x, int y);
 static void gsball_motion(int x, int y, int z);
 static void gsball_rotate(int x, int y, int z);
 static void gsball_button(int bn, int state);
-
-static void set_light_dir(int idx, float x, float y, float z);
-static void set_light_color(int idx, float r, float g, float b, float s);
 
 #ifdef DBG_SHOW_FRUST
 static void draw_frustum(const cgm_vec4 *frust);
@@ -107,7 +103,6 @@ static cgm_vec3 vispos;
 static cgm_quat visrot;
 
 static int lasers;
-static int laser_dlist;
 static unsigned int laser_tex;
 static struct texture *tex_flare;
 static struct collision lasers_hit, missile_hit;
@@ -125,6 +120,7 @@ static int ginit(void)
 	int i;
 	unsigned char pix[8 * 4];
 	unsigned char *pptr;
+	float matrix[16];
 
 	pptr = pix + 7 * 4;
 	for(i=0; i<4; i++) {
@@ -143,11 +139,8 @@ static int ginit(void)
 		pix[i * 4 + 3] = pptr[3] = a;
 		pptr -= 4;
 	}
-	glGenTextures(1, &laser_tex);
-	glBindTexture(GL_TEXTURE_1D, laser_tex);
-	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, 8, 0, GL_RGBA, GL_UNSIGNED_BYTE, pix);
+	laser_tex = gaw_create_tex1d(GAW_BILINEAR);
+	gaw_tex1d(GAW_RGBA, 8, GAW_RGBA, pix);
 
 
 	if(!(uitex = tex_load("data/uibars.png"))) {
@@ -178,27 +171,14 @@ static int ginit(void)
 	font_timer_size = dtx_get_glyphmap_ptsize(dtx_get_glyphmap(font_timer, 0));
 
 	gen_geosphere(&adidome, 8, 1, 1);
-	adidome.dlist = glGenLists(1);
-	glNewList(adidome.dlist, GL_COMPILE);
-	glColor3f(0.153, 0.153, 0.467);
+	adidome.dlist = gaw_compile_begin();
+	gaw_color3f(0.153, 0.153, 0.467);
 	mesh_draw(&adidome);
-	glRotatef(180, 1, 0, 0);
-	glColor3f(0.467, 0.467, 0.745);
+	cgm_mrotation(matrix, cgm_deg_to_rad(180), 1, 0, 0);
+	mesh_transform(&adidome, matrix);
+	gaw_color3f(0.467, 0.467, 0.745);
 	mesh_draw(&adidome);
-	glEndList();
-
-	laser_dlist = glGenLists(1);
-	glNewList(laser_dlist, GL_COMPILE);
-	glBegin(GL_QUADS);
-	for(i=0; i<2; i++) {
-		float x = i ? -1 : 1;
-		glTexCoord1f(0); glVertex3f(x - 0.25, -1, 0);
-		glTexCoord1f(1); glVertex3f(x + 0.25, -1, 0);
-		glTexCoord1f(1); glVertex3f(x + 0.25, -1, -200);
-		glTexCoord1f(0); glVertex3f(x - 0.25, -1, -200);
-	}
-	glEnd();
-	glEndList();
+	gaw_compile_end();
 
 	if(!(tex_flare = tex_load("data/blspstar.png"))) {
 		return -1;
@@ -212,7 +192,7 @@ static int ginit(void)
 
 static void gdestroy(void)
 {
-	glDeleteTextures(1, &laser_tex);
+	gaw_destroy_tex(laser_tex);
 	tex_free(tex_flare);
 	tex_free(tex_damage);
 }
@@ -220,8 +200,6 @@ static void gdestroy(void)
 static int gstart(void)
 {
 	char *env;
-	float amb[] = {0.25, 0.25, 0.25, 1};
-	float zero[] = {0, 0, 0, 1};
 
 	if(win_height) {
 		greshape(win_width, win_height);
@@ -272,26 +250,23 @@ static int gstart(void)
 
 	loading_step();
 
-	glLightModelfv(GL_LIGHT_MODEL_AMBIENT, amb);
-	glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, 0);
-	glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, 0);
+	gaw_lighting_fast();
+	gaw_fog_fast();
 
-	glHint(GL_FOG_HINT, GL_FASTEST);
+	gaw_enable(GAW_DEPTH_TEST);
+	gaw_enable(GAW_CULL_FACE);
+	gaw_depth_func(GAW_LEQUAL);
 
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
-	glDepthFunc(GL_LEQUAL);
+	gaw_enable(GAW_LIGHTING);
+	gaw_enable(GAW_LIGHT0);
+	gaw_enable(GAW_LIGHT1);
+	gaw_enable(GAW_LIGHT2);
+	gaw_light_color(0, 1, 1, 1, 1);
+	gaw_light_color(1, 1, 1, 1, 0.6);
+	gaw_light_color(2, 1, 1, 1, 0.5);
 
-	glEnable(GL_LIGHTING);
-	set_light_color(0, 1, 1, 1, 1);
-	glEnable(GL_LIGHT0);
-	set_light_color(1, 1, 1, 1, 0.6);
-	glEnable(GL_LIGHT1);
-	set_light_color(2, 1, 1, 1, 0.5);
-	glEnable(GL_LIGHT2);
-
-	glClearColor(0, 0, 0, 1);
-	glFogfv(GL_FOG_COLOR, zero);
+	gaw_clear_color(0, 0, 0, 1);
+	gaw_fog_color(0, 0, 0);
 
 	start_time = time_msec;
 	return 0;
@@ -498,12 +473,12 @@ static void gdisplay(void)
 
 #ifdef DBG_FREEZEVIS
 	if(dbg_freezevis) {
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		gaw_clear(GAW_COLORBUF | GAW_DEPTHBUF);
 	} else
 #endif
-	glClear(GL_DEPTH_BUFFER_BIT);
+	gaw_clear(GAW_DEPTHBUF);
 
-	msec = glutGet(GLUT_ELAPSED_TIME);
+	msec = game_getmsec();
 	tm_acc += (float)(msec - prev_msec) / 1000.0f;
 	prev_msec = msec;
 
@@ -516,92 +491,92 @@ static void gdisplay(void)
 		tm_acc -= TSTEP;
 	}
 
-	glMatrixMode(GL_MODELVIEW);
-	glLoadMatrixf(view_mat);
+	gaw_matrix_mode(GAW_MODELVIEW);
+	gaw_load_matrix(view_mat);
 
-	set_light_dir(0, -1, 1, 5);
-	set_light_dir(1, 5, 0, 3);
-	set_light_dir(2, -0.5, -2, -3);
+	gaw_light_dir(0, -1, 1, 5);
+	gaw_light_dir(1, 5, 0, 3);
+	gaw_light_dir(2, -0.5, -2, -3);
 
-	glEnable(GL_FOG);
+	gaw_enable(GAW_FOG);
 
 	render_level();
 
-	glDisable(GL_FOG);
+	gaw_disable(GAW_FOG);
 
-	glPushAttrib(GL_ENABLE_BIT);
-	glDisable(GL_LIGHTING);
-	glDisable(GL_TEXTURE_2D);
+	gaw_save();
+	gaw_disable(GAW_LIGHTING);
+	gaw_set_tex2d(0);
 
 	if(lasers) {
 		int i;
 		float s = 1.0 + sin(time_msec / 100.0f) * 0.01;
 		float sz = 0.18 + sin(time_msec / 50.0f) * 0.008;
 
-		glEnable(GL_BLEND);
-		glDisable(GL_DEPTH_TEST);
+		gaw_enable(GAW_BLEND);
+		gaw_disable(GAW_DEPTH_TEST);
 
 		if(lasers_hit.depth >= 0.0f) {
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			glEnable(GL_TEXTURE_2D);
-			glBindTexture(GL_TEXTURE_2D, tex_flare->texid);
+			gaw_blend_func(GAW_SRC_ALPHA, GAW_ONE_MINUS_SRC_ALPHA);
+			gaw_set_tex2d(tex_flare->texid);
 			draw_billboard(&lasers_hit.pos, 3, cgm_wvec(0.7, 0.8, 1, 1));
-			glDisable(GL_TEXTURE_2D);
+			gaw_set_tex2d(0);
 		}
 
-		glBlendFunc(GL_ONE, GL_ONE);
-		/*glEnable(GL_ALPHA_TEST);
-		glAlphaFunc(GL_GREATER, 0.5);*/
-		glEnable(GL_TEXTURE_1D);
-		glBindTexture(GL_TEXTURE_1D, laser_tex);
-		glLoadIdentity();
-		glColor3f(1, 1, 1);
-		glBegin(GL_QUADS);
+		gaw_blend_func(GAW_ONE, GAW_ONE);
+		/*gaw_enable(GAW_ALPHA_TEST);
+		gaw_alpha_func(GAW_GREATER, 0.5);*/
+		gaw_set_tex1d(laser_tex);
+		gaw_load_identity();
+		gaw_color3f(1, 1, 1);
+		gaw_begin(GAW_QUADS);
 		for(i=0; i<2; i++) {
 			float x = (i ? -1 : 1) * s;
-			glTexCoord1f(0); glVertex3f(x - sz, -1, 0);
-			glTexCoord1f(1); glVertex3f(x + sz, -1, 0);
-			glTexCoord1f(1); glVertex3f(x + sz, -1, -opt.gfx.drawdist);
-			glTexCoord1f(0); glVertex3f(x - sz, -1, -opt.gfx.drawdist);
+			gaw_texcoord1f(0); gaw_vertex3f(x - sz, -1, 0);
+			gaw_texcoord1f(1); gaw_vertex3f(x + sz, -1, 0);
+			gaw_texcoord1f(1); gaw_vertex3f(x + sz, -1, -opt.gfx.drawdist);
+			gaw_texcoord1f(0); gaw_vertex3f(x - sz, -1, -opt.gfx.drawdist);
 		}
-		glEnd();
-		glDisable(GL_TEXTURE_1D);
-		/*glDisable(GL_ALPHA_TEST);*/
+		gaw_end();
+		gaw_set_tex1d(0);
+		/*gaw_disable(GAW_ALPHA_TEST);*/
 	}
 
 #ifdef DBG_SHOW_COLPOLY
 	if(dbg_hitpoly) {
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_ONE, GL_ONE);
+		gaw_enable(GAW_BLEND);
+		gaw_blend_func(GAW_ONE, GAW_ONE);
 
-		glBegin(GL_TRIANGLES);
-		glColor3f(0.1, 0.1, 0.4);
-		glVertex3fv(&dbg_hitpoly->v[0].x);
-		glVertex3fv(&dbg_hitpoly->v[1].x);
-		glVertex3fv(&dbg_hitpoly->v[2].x);
-		glEnd();
+		gaw_begin(GAW_TRIANGLES);
+		gaw_color3f(0.1, 0.1, 0.4);
+		gaw_vertex3fv(&dbg_hitpoly->v[0].x);
+		gaw_vertex3fv(&dbg_hitpoly->v[1].x);
+		gaw_vertex3fv(&dbg_hitpoly->v[2].x);
+		gaw_end();
 
-		glDisable(GL_BLEND);
+		gaw_disable(GAW_BLEND);
 	}
 #endif
 
 #ifdef DBG_FREEZEVIS
 	if(dbg_freezevis) {
-		glBegin(GL_LINES);
-		glColor3f(0, 1, 0);
-		glVertex3f(vispos.x - 100, vispos.y, vispos.z);
-		glVertex3f(vispos.x + 100, vispos.y, vispos.z);
-		glVertex3f(vispos.x, vispos.y - 100, vispos.z);
-		glVertex3f(vispos.x, vispos.y + 100, vispos.z);
-		glVertex3f(vispos.x, vispos.y, vispos.z - 100);
-		glVertex3f(vispos.x, vispos.y, vispos.z + 100);
-		glEnd();
+		gaw_begin(GAW_LINES);
+		gaw_color3f(0, 1, 0);
+		gaw_vertex3f(vispos.x - 100, vispos.y, vispos.z);
+		gaw_vertex3f(vispos.x + 100, vispos.y, vispos.z);
+		gaw_vertex3f(vispos.x, vispos.y - 100, vispos.z);
+		gaw_vertex3f(vispos.x, vispos.y + 100, vispos.z);
+		gaw_vertex3f(vispos.x, vispos.y, vispos.z - 100);
+		gaw_vertex3f(vispos.x, vispos.y, vispos.z + 100);
+		gaw_end();
 
-		glPushMatrix();
-		glColor3f(0.2, 0.2, 0.2);
-		glTranslatef(vispos.x, vispos.y, vispos.z);
+		/*
+		gaw_push_matrix();
+		gaw_color3f(0.2, 0.2, 0.2);
+		gaw_translate(vispos.x, vispos.y, vispos.z);
 		glutSolidSphere(COL_RADIUS, 10, 5);
-		glPopMatrix();
+		gaw_pop_matrix();
+		*/
 	}
 #endif
 
@@ -616,7 +591,7 @@ static void gdisplay(void)
 	}
 #endif
 
-	glPopAttrib();
+	gaw_restore();
 
 #ifdef DBG_FREEZEVIS
 	if(!dbg_freezevis)
@@ -643,128 +618,127 @@ static void draw_ui(void)
 	begin2d(480);
 
 	if(opt.gfx.blendui) {
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glAlphaFunc(GL_GREATER, 0.01);
+		gaw_enable(GAW_BLEND);
+		gaw_blend_func(GAW_SRC_ALPHA, GAW_ONE_MINUS_SRC_ALPHA);
+		gaw_alpha_func(GAW_GREATER, 0.01);
 	} else {
-		glEnable(GL_ALPHA_TEST);
-		glAlphaFunc(GL_GREATER, 0.25);
+		gaw_enable(GAW_ALPHA_TEST);
+		gaw_alpha_func(GAW_GREATER, 0.25);
 	}
 
 	blit_tex(0, 0, uitex, 1);
 	blit_tex(timer_xoffs, 0, timertex, 1);
 
-	glDisable(GL_BLEND);
-	glEnable(GL_ALPHA_TEST);
-	glDisable(GL_TEXTURE_2D);
+	gaw_disable(GAW_BLEND);
+	gaw_enable(GAW_ALPHA_TEST);
+	gaw_set_tex2d(0);
 
-	glAlphaFunc(GL_GREATER, (float)player->sp / MAX_SP);
+	gaw_alpha_func(GAW_GREATER, (float)player->sp / MAX_SP);
 
 	yoffs = 0.0f;
 	yscale = 1.0f;
 	for(j=0; j<2; j++) {
-		glBegin(GL_QUAD_STRIP);
+		gaw_begin(GAW_QUAD_STRIP);
 		for(i=0; i<sizeof barcover / sizeof barcover[0]; i++) {
-			glColor4f(0.075, 0.075, 0.149, barcover[i].z);
-			glVertex2f(barcover[i].x, barcover[i].y * yscale + yoffs);
+			gaw_color4f(0.075, 0.075, 0.149, barcover[i].z);
+			gaw_vertex2f(barcover[i].x, barcover[i].y * yscale + yoffs);
 		}
-		glEnd();
+		gaw_end();
 		yoffs = 71;
 		yscale = -1;
-		glAlphaFunc(GL_GREATER, player->hp / MAX_HP);
+		gaw_alpha_func(GAW_GREATER, player->hp / MAX_HP);
 	}
-	glDisable(GL_ALPHA_TEST);
+	gaw_disable(GAW_ALPHA_TEST);
 
 	dtx_use_font(font_hp, font_hp_size);
-	glPushMatrix();
-	glTranslatef(162, 26, 0);
-	glScalef(0.4, -0.4, 0.4);
-	glColor3f(0.008, 0.396, 0.678);
+	gaw_push_matrix();
+	gaw_translate(162, 26, 0);
+	gaw_scale(0.4, -0.4, 0.4);
+	gaw_color3f(0.008, 0.396, 0.678);
 	dtx_printf("%d", (int)player->sp * 100 / MAX_SP);
 
-	glTranslatef(0, -85, 0);
-	glColor3f(0.725, 0.075, 0.173);
+	gaw_translate(0, -85, 0);
+	gaw_color3f(0.725, 0.075, 0.173);
 	dtx_printf("%d", (int)player->hp * 100 / MAX_HP);
-	glPopMatrix();
+	gaw_pop_matrix();
 
 	/* draw timer */
 	dtx_use_font(font_timer, font_timer_size);
-	glPushMatrix();
-	glTranslatef(timer_xoffs + 10.5, 24.5, 0);
-	glScalef(0.3535, -0.3535, 0.3535);
-	glColor3f(0.8, 0.8, 1);
+	gaw_push_matrix();
+	gaw_translate(timer_xoffs + 10.5, 24.5, 0);
+	gaw_scale(0.3535, -0.3535, 0.3535);
+	gaw_color3f(0.8, 0.8, 1);
 	dtx_string(timertext);
 	dtx_flush();
-	glPopMatrix();
+	gaw_pop_matrix();
 
 
 	/* draw ADI */
-	glEnable(GL_CULL_FACE);
-	glPushMatrix();
-	glTranslatef(41, 36, 0);
+	gaw_enable(GAW_CULL_FACE);
+	gaw_push_matrix();
+	gaw_translate(41, 36, 0);
 	ptr = player->rotmat;
 	for(i=0; i<4; i++) {
 		for(j=0; j<4; j++) {
 			xform[(j << 2) + i] = *ptr++;
 		}
 	}
-	glMultMatrixf(xform);
+	gaw_mult_matrix(xform);
 
-	glDisable(GL_TEXTURE_2D);
-	glCallList(adidome.dlist);
+	gaw_set_tex2d(0);
+	gaw_draw_compiled(adidome.dlist);
 
-	glPopMatrix();
+	gaw_pop_matrix();
 
 	/* crosshair */
 	x = vwidth * 0.5f;
-	glBegin(GL_LINES);
-	glColor3f(0.5, 0.8, 0.5);
-	glVertex2f(x - 6, 240);
-	glVertex2f(x - 2, 240);
-	glVertex2f(x + 2, 240);
-	glVertex2f(x + 6, 240);
-	glVertex2f(x, 240 - 6);
-	glVertex2f(x, 240 - 2);
-	glVertex2f(x, 240 + 6);
-	glVertex2f(x, 240 + 2);
-	glEnd();
+	gaw_begin(GAW_LINES);
+	gaw_color3f(0.5, 0.8, 0.5);
+	gaw_vertex2f(x - 6, 240);
+	gaw_vertex2f(x - 2, 240);
+	gaw_vertex2f(x + 2, 240);
+	gaw_vertex2f(x + 6, 240);
+	gaw_vertex2f(x, 240 - 6);
+	gaw_vertex2f(x, 240 - 2);
+	gaw_vertex2f(x, 240 + 6);
+	gaw_vertex2f(x, 240 + 2);
+	gaw_end();
 
 	if(time_msec - player->last_dmg < DMG_OVERLAY_DUR) {
-		glEnable(GL_TEXTURE_2D);
-		glDisable(GL_CULL_FACE);
-		glBindTexture(GL_TEXTURE_2D, tex_damage->texid);
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		gaw_disable(GAW_CULL_FACE);
+		gaw_set_tex2d(tex_damage->texid);
+		gaw_enable(GAW_BLEND);
+		gaw_blend_func(GAW_SRC_ALPHA, GAW_ONE_MINUS_SRC_ALPHA);
 
-		glBegin(GL_QUADS);
-		glColor3f(1, 1, 1);
-		glTexCoord2f(0, 0); glVertex2f(0, 0);
-		glTexCoord2f(1, 0);	glVertex2f(vwidth, 0);
-		glTexCoord2f(1, 1); glVertex2f(vwidth, 480);
-		glTexCoord2f(0, 1); glVertex2f(0, 480);
-		glEnd();
+		gaw_begin(GAW_QUADS);
+		gaw_color3f(1, 1, 1);
+		gaw_texcoord2f(0, 0); gaw_vertex2f(0, 0);
+		gaw_texcoord2f(1, 0); gaw_vertex2f(vwidth, 0);
+		gaw_texcoord2f(1, 1); gaw_vertex2f(vwidth, 480);
+		gaw_texcoord2f(0, 1); gaw_vertex2f(0, 480);
+		gaw_end();
 	}
 
 	if(gameover) {
-		glPushMatrix();
+		gaw_push_matrix();
 		dtx_use_font(font_menu, font_menu_sz);
-		glTranslatef(x - dtx_string_width("GAME OVER!") / 2, 240, 0);
-		glScalef(1, -1, 1);
-		glColor3f(1, 1, 1);
+		gaw_translate(x - dtx_string_width("GAME OVER!") / 2, 240, 0);
+		gaw_scale(1, -1, 1);
+		gaw_color3f(1, 1, 1);
 		dtx_printf("GAME OVER!");
-		glPopMatrix();
+		gaw_pop_matrix();
 	}
 
 	if(victory) {
-		glPushMatrix();
+		gaw_push_matrix();
 		dtx_use_font(font_menu, font_menu_sz);
-		glTranslatef(x - dtx_string_width("VICTORY!") / 2, 240, 0);
-		glScalef(1, -1, 1);
-		glColor3f(1, 1, 1);
+		gaw_translate(x - dtx_string_width("VICTORY!") / 2, 240, 0);
+		gaw_scale(1, -1, 1);
+		gaw_color3f(1, 1, 1);
 		dtx_printf("VICTORY!");
-		glTranslatef(-80, -50, 0);
+		gaw_translate(-80, -50, 0);
 		dtx_printf("SECRET: %s", player->items & ITEM_SECRET ? "FOUND" : "NOT FOUND");
-		glPopMatrix();
+		gaw_pop_matrix();
 	}
 
 	end2d();
@@ -779,12 +753,10 @@ static void greshape(int x, int y)
 	}
 #endif
 	cgm_mperspective(proj_mat, cgm_deg_to_rad(60), win_aspect, 0.1, zfar);
-	glMatrixMode(GL_PROJECTION);
-	glLoadMatrixf(proj_mat);
+	gaw_matrix_mode(GAW_PROJECTION);
+	gaw_load_matrix(proj_mat);
 
-	glFogi(GL_FOG_MODE, GL_LINEAR);
-	glFogf(GL_FOG_START, zfar * 0.75);
-	glFogf(GL_FOG_END, zfar);
+	gaw_fog_linear(zfar * 0.75, zfar);
 }
 
 void dbg_getkey();
@@ -901,28 +873,6 @@ static void gsball_button(int bn, int press)
 	printf("rot: %g %g %g %g\n", player->rot.x, player->rot.y, player->rot.z, player->rot.w);
 }
 
-static void set_light_dir(int idx, float x, float y, float z)
-{
-	float pos[4];
-	pos[0] = x;
-	pos[1] = y;
-	pos[2] = z;
-	pos[3] = 0;
-	glLightfv(GL_LIGHT0 + idx, GL_POSITION, pos);
-}
-
-static void set_light_color(int idx, float r, float g, float b, float s)
-{
-	float color[4];
-	color[0] = r * s;
-	color[1] = g * s;
-	color[2] = b * s;
-	color[3] = 1;
-	glLightfv(GL_LIGHT0 + idx, GL_DIFFUSE, color);
-	glLightfv(GL_LIGHT0 + idx, GL_SPECULAR, color);
-}
-
-
 #ifdef DBG_SHOW_FRUST
 static void draw_frustum(const cgm_vec4 *frust)
 {
@@ -933,9 +883,9 @@ static void draw_frustum(const cgm_vec4 *frust)
 		{0.5, 0, 0}, {0.5, 0, 0.5}, {0, 0.5, 0}, {0, 0.5, 0.5}};
 
 	for(i=0; i<4; i++) {
-		glPointSize(5);
-		glBegin(GL_LINES);
-		glColor3fv(col[i]);
+		gaw_pointsize(5);
+		gaw_begin(GAW_LINES);
+		gaw_color3fv(col[i]);
 		for(j=0; j<128; j++) {
 			tries = 0;
 reject:
@@ -964,10 +914,10 @@ reject:
 				if(plane_point_sdist(frust + k, &pt) < 0) goto reject;
 			}
 
-			glVertex3f(vispos.x, vispos.y, vispos.z);
-			glVertex3f(pt.x, pt.y, pt.z);
+			gaw_vertex3f(vispos.x, vispos.y, vispos.z);
+			gaw_vertex3f(pt.x, pt.y, pt.z);
 		}
-		glEnd();
+		gaw_end();
 	}
 }
 #endif

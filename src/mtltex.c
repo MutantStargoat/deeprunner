@@ -20,7 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "opengl.h"
+#include "gaw/gaw.h"
 #include "mtltex.h"
 #include "rbtree.h"
 #include "util.h"
@@ -36,35 +36,6 @@ struct texture *tex_load(const char *fname)
 	}
 
 	return tex_image(img);
-}
-
-static unsigned int glminfilt(int opt)
-{
-	switch(opt) {
-	case GFXOPT_TEX_NEAREST:
-		return GL_NEAREST;
-	case GFXOPT_TEX_BILINEAR:
-		return GL_LINEAR;
-	case GFXOPT_TEX_TRILINEAR:
-		return GL_LINEAR_MIPMAP_LINEAR;
-	default:
-		break;
-	}
-	return GL_LINEAR;
-}
-
-static unsigned int glmagfilt(int opt)
-{
-	switch(opt) {
-	case GFXOPT_TEX_NEAREST:
-		return GL_NEAREST;
-	case GFXOPT_TEX_BILINEAR:
-	case GFXOPT_TEX_TRILINEAR:
-		return GL_LINEAR;
-	default:
-		break;
-	}
-	return GL_LINEAR;
 }
 
 struct texture *tex_image(struct img_pixmap *img)
@@ -85,18 +56,16 @@ struct texture *tex_image(struct img_pixmap *img)
 	tex->tex_height = nextpow2(img->height);
 
 	if(alpha) {
-		ifmt = GL_RGBA;
-		fmt = GL_RGBA;
+		ifmt = GAW_RGBA;
+		fmt = GAW_RGBA;
 		pixsz = 4;
 	} else {
-		ifmt = GL_RGBA;
-		fmt = GL_RGB;
+		ifmt = GAW_RGBA;
+		fmt = GAW_RGB;
 		pixsz = 3;
 	}
 
-	glGenTextures(1, &tex->texid);
-	glBindTexture(GL_TEXTURE_2D, tex->texid);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, glmagfilt(opt.gfx.texfilter));
+	tex->texid = gaw_create_tex2d(opt.gfx.texfilter);
 
 	if(tex->tex_width != img->width || tex->tex_height != img->height) {
 		cgm_mscaling(tex->matrix, (float)img->width / (float)tex->tex_width,
@@ -110,20 +79,18 @@ struct texture *tex_image(struct img_pixmap *img)
 			memset(zerobuf, 0, sz);
 		}
 
-		/* using the same as the magnification filter, to avoid using mipmaps */
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, glmagfilt(opt.gfx.texfilter));
-		glTexImage2D(GL_TEXTURE_2D, 0, ifmt, tex->tex_width, tex->tex_height, 0,
-				fmt, GL_UNSIGNED_BYTE, zerobuf);
-
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, img->width, img->height,
-				fmt, GL_UNSIGNED_BYTE, img->pixels);
+		/* avoid using mipmaps */
+		if(opt.gfx.texfilter == GFXOPT_TEX_TRILINEAR) {
+			gaw_texfilter2d(GAW_BILINEAR);
+		}
+		gaw_tex2d(ifmt, tex->tex_width, tex->tex_height, fmt, zerobuf);
+		gaw_subtex2d(0, 0, 0, img->width, img->height, fmt, img->pixels);
 	} else {
 		cgm_midentity(tex->matrix);
 		tex->use_matrix = 0;
 
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, glminfilt(opt.gfx.texfilter));
-		gluBuild2DMipmaps(GL_TEXTURE_2D, ifmt, img->width, img->height, fmt,
-				GL_UNSIGNED_BYTE, img->pixels);
+		gaw_texfilter2d(opt.gfx.texfilter);
+		gaw_tex2d(ifmt, img->width, img->height, fmt,img->pixels);
 	}
 
 #ifdef DBG_NO_IMAN
@@ -138,7 +105,7 @@ void tex_free(struct texture *tex)
 	if(!tex) return;
 
 	if(tex->texid) {
-		glDeleteTextures(1, &tex->texid);
+		gaw_destroy_tex(tex->texid);
 	}
 #ifdef DBG_NO_IMAN
 	img_free(tex->img);
@@ -157,16 +124,15 @@ static int last_envmap;
 
 static void setup_envmap(unsigned int envmap)
 {
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, envmap);
-	texenv_sphmap(1);
+	gaw_set_tex2d(envmap);
+	gaw_texenv_sphmap(1);
 	last_envmap = 1;
 }
 
 #define stop_envmap()	\
 	do { \
 		if(last_envmap) { \
-			texenv_sphmap(0); \
+			gaw_texenv_sphmap(0); \
 			last_envmap = 0; \
 		} \
 	} while(0)
@@ -174,49 +140,43 @@ static void setup_envmap(unsigned int envmap)
 
 int mtl_apply(struct material *mtl, int pass)
 {
-	static float black[] = {0, 0, 0, 1};
-	static float white[] = {1, 1, 1, 1};
-
 	switch(pass) {
 	case 0:
-		glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, &mtl->kd.x);
-		glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, &mtl->ks.x);
-		glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, mtl->shin);
+		gaw_mtl_diffuse(mtl->kd.x, mtl->kd.y, mtl->kd.z, mtl->kd.w);
+		gaw_mtl_specular(mtl->ks.x, mtl->ks.y, mtl->ks.z, mtl->shin);
 		if(mtl->emissive) {
-			glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, &mtl->kd.x);
+			gaw_mtl_emission(mtl->kd.x, mtl->kd.y, mtl->kd.z);
 		} else {
-			glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, black);
+			gaw_mtl_emission(0, 0, 0);
 		}
 
 		if(mtl->texmap) {
 			stop_envmap();
-			glBindTexture(GL_TEXTURE_2D, mtl->texmap->texid);
-			glEnable(GL_TEXTURE_2D);
+			gaw_set_tex2d(mtl->texmap->texid);
 
-			glMatrixMode(GL_TEXTURE);
-			glLoadIdentity();
+			gaw_matrix_mode(GAW_TEXTURE);
+			gaw_load_identity();
 			if(mtl->uvanim) {
-				glTranslatef(mtl->uvoffs.x, mtl->uvoffs.y, 0);
+				gaw_translate(mtl->uvoffs.x, mtl->uvoffs.y, 0);
 			}
-			glMatrixMode(GL_MODELVIEW);
+			gaw_matrix_mode(GAW_MODELVIEW);
 
 			if(mtl->envmap) return 1;
 		} else if(mtl->envmap) {
 			setup_envmap(mtl->envmap->texid);
 		} else {
-			glDisable(GL_TEXTURE_2D);
+			gaw_set_tex2d(0);
 		}
 		break;
 
 	case 1:
 		if(mtl->uvanim) {
-			glMatrixMode(GL_TEXTURE);
-			glLoadIdentity();
-			glMatrixMode(GL_MODELVIEW);
+			gaw_matrix_mode(GAW_TEXTURE);
+			gaw_load_identity();
+			gaw_matrix_mode(GAW_MODELVIEW);
 		}
-		glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, black);
-		glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, white);
-		glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, mtl->shin);
+		gaw_mtl_diffuse(0, 0, 0, 1);
+		gaw_mtl_specular(1, 1, 1, mtl->shin);
 		assert(mtl->envmap);
 		setup_envmap(mtl->envmap->texid);
 		break;

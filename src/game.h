@@ -92,6 +92,7 @@ void game_sball_button(int bn, int st);
 void game_chscr(struct game_screen *scr);
 
 /* defined in main.c */
+long game_getmsec(void);
 void game_swap_buffers(void);
 void game_quit(void);
 void game_resize(int x, int y);

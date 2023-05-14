@@ -17,7 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include "config.h"
 
-#include "opengl.h"
+#include "gaw/gaw.h"
 #include "miniglut.h"
 #include "game.h"
 #include "rendlvl.h"
@@ -305,14 +305,14 @@ static void render_room(struct room *room)
 		}
 #endif
 #ifdef DBG_SHOW_PORTALS
-		glPushAttrib(GL_ENABLE_BIT);
-		glDisable(GL_LIGHTING);
-		glDisable(GL_TEXTURE_2D);
-		glPushMatrix();
-		glTranslatef(room->portals[i].pos.x, room->portals[i].pos.y, room->portals[i].pos.z);
-		glutWireSphere(room->portals[i].rad, 10, 5);
-		glPopMatrix();
-		glPopAttrib();
+		gaw_save();
+		gaw_disable(GAW_LIGHTING);
+		gaw_disable(GAW_TEXTURE_2D);
+		gaw_push_matrix();
+		gaw_translate(room->portals[i].pos.x, room->portals[i].pos.y, room->portals[i].pos.z);
+		/*glutWireSphere(room->portals[i].rad, 10, 5);*/
+		gaw_pop_matrix();
+		gaw_restore();
 #endif
 	}
 }
@@ -362,9 +362,9 @@ void render_level(void)
 	}
 #endif
 
-	glMatrixMode(GL_TEXTURE);
-	glLoadIdentity();
-	glMatrixMode(GL_MODELVIEW);
+	gaw_matrix_mode(GAW_TEXTURE);
+	gaw_load_identity();
+	gaw_matrix_mode(GAW_MODELVIEW);
 }
 
 void render_level_mesh(struct mesh *mesh)
@@ -378,17 +378,17 @@ void render_level_mesh(struct mesh *mesh)
 
 #ifdef DBG_SHOW_CUR_ROOM
 		if(dbg_cur_room) {
-			glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, red);
+			gaw_mtl_diffuse(1, 0, 0, 1);
 		}
 #endif
 
-		glCallList(mesh->dlist);
+		gaw_draw_compiled(mesh->dlist);
 
 		if(more) {
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			gaw_enable(GAW_BLEND);
+			gaw_blend_func(GAW_SRC_ALPHA, GAW_ONE_MINUS_SRC_ALPHA);
 		} else {
-			if(pass > 0) glDisable(GL_BLEND);
+			if(pass > 0) gaw_disable(GL_BLEND);
 			break;
 		}
 	}
@@ -398,28 +398,28 @@ void render_level_mesh(struct mesh *mesh)
 
 void render_dynobj(struct object *obj)
 {
-	glMatrixMode(GL_MODELVIEW);
-	glPushMatrix();
-	glMultMatrixf(obj->matrix);
+	gaw_matrix_mode(GAW_MODELVIEW);
+	gaw_push_matrix();
+	gaw_mult_matrix(obj->matrix);
 
 	render_level_mesh(obj->mesh);
 
-	glMatrixMode(GL_MODELVIEW);
-	glPopMatrix();
+	gaw_matrix_mode(GAW_MODELVIEW);
+	gaw_pop_matrix();
 }
 
 void render_enemy(struct enemy *mob)
 {
 	long expl_time = time_msec - mob->last_dmg_hit;
 
-	glMatrixMode(GL_MODELVIEW);
-	glPushMatrix();
-	glMultMatrixf(mob->matrix);
+	gaw_matrix_mode(GL_MODELVIEW);
+	gaw_push_matrix();
+	gaw_mult_matrix(mob->matrix);
 
 	render_level_mesh(mob->mesh);
 
-	glMatrixMode(GL_MODELVIEW);
-	glPopMatrix();
+	gaw_matrix_mode(GL_MODELVIEW);
+	gaw_pop_matrix();
 
 	if(time_msec - mob->last_dmg_hit < EXPL_DUR) {
 		struct explosion e;
@@ -430,29 +430,28 @@ void render_enemy(struct enemy *mob)
 		render_explosion(&e);
 
 	} else if(time_msec - mob->last_shield_hit < SHIELD_OVERLAY_DUR) {
-		glPushAttrib(GL_ENABLE_BIT);
+		gaw_save();
 
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glDisable(GL_LIGHTING);
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, tex_shield->texid);
+		gaw_enable(GAW_BLEND);
+		gaw_blend_func(GAW_SRC_ALPHA, GAW_ONE_MINUS_SRC_ALPHA);
+		gaw_disable(GAW_LIGHTING);
+		gaw_set_tex2d(tex_shield->texid);
 		draw_billboard(&mob->pos, mob->rad, cgm_wvec(0.2, 0.4, 1, 0.8));
 
-		glPopAttrib();
+		gaw_restore();
 	}
 }
 
 void render_missile(struct missile *mis)
 {
-	glMatrixMode(GL_MODELVIEW);
-	glPushMatrix();
-	glMultMatrixf(mis->matrix);
+	gaw_matrix_mode(GL_MODELVIEW);
+	gaw_push_matrix();
+	gaw_mult_matrix(mis->matrix);
 
 	render_level_mesh(mis->mesh);
 
-	glMatrixMode(GL_MODELVIEW);
-	glPopMatrix();
+	gaw_matrix_mode(GL_MODELVIEW);
+	gaw_pop_matrix();
 }
 
 void render_explosion(struct explosion *expl)
@@ -460,26 +459,25 @@ void render_explosion(struct explosion *expl)
 	int frm = expl->tm / EXPL_FRAME_DUR;
 	float tx = (float)frm / NUM_EXPL_FRAMES;
 
-	glPushAttrib(GL_ENABLE_BIT);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glDisable(GL_LIGHTING);
-	glDisable(GL_DEPTH_TEST);
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, tex_expl->texid);
+	gaw_save();
+	gaw_enable(GAW_BLEND);
+	gaw_blend_func(GAW_SRC_ALPHA, GAW_ONE_MINUS_SRC_ALPHA);
+	gaw_disable(GAW_LIGHTING);
+	gaw_disable(GAW_DEPTH_TEST);
+	gaw_set_tex2d(tex_expl->texid);
 
-	glMatrixMode(GL_TEXTURE);
-	glLoadIdentity();
-	glTranslatef(tx, 0, 0);
-	glScalef(1.0 / NUM_EXPL_FRAMES, 1, 1);
+	gaw_matrix_mode(GAW_TEXTURE);
+	gaw_load_identity();
+	gaw_translate(tx, 0, 0);
+	gaw_scale(1.0 / NUM_EXPL_FRAMES, 1, 1);
 
 	draw_billboard(&expl->pos, expl->sz, cgm_wvec(1, 1, 1, 1));
 
-	glMatrixMode(GL_TEXTURE);
-	glLoadIdentity();
-	glMatrixMode(GL_MODELVIEW);
+	gaw_matrix_mode(GAW_TEXTURE);
+	gaw_load_identity();
+	gaw_matrix_mode(GAW_MODELVIEW);
 
-	glPopAttrib();
+	gaw_restore();
 }
 
 int add_explosion(const cgm_vec3 *pos, float sz, long start_tm)

@@ -15,8 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#include "miniglut.h"
-#include "opengl.h"
+#include "gaw/gaw.h"
 #include "game.h"
 #include "mtltex.h"
 #include "gfxutil.h"
@@ -103,7 +102,7 @@ static void menu_destroy(void)
 
 static int menu_start(void)
 {
-	glClearColor(0, 0, 0, 1);
+	gaw_clear_color(0, 0, 0, 1);
 
 	dtx_set(DTX_GL_BLEND, 1);
 	dtx_set(DTX_GL_ALPHATEST, 0);
@@ -122,55 +121,54 @@ static void menu_display(void)
 	float x, y, alpha;
 	float tsec = (float)time_msec / 1000.0f;
 
-	glClear(GL_COLOR_BUFFER_BIT);
+	gaw_clear(GAW_COLORBUF);
 
 	begin2d(480);
 
 	blit_tex_rect(xoffs, 0, 640, 480 * 0.9, gamelogo, 1, 0, 0, 1, 0.9);
 
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, startex->texid);
+	gaw_set_tex2d(startex->texid);
 
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_ONE, GL_ONE);
+	gaw_enable(GAW_BLEND);
+	gaw_blend_func(GAW_ONE, GAW_ONE);
 
-	glPushMatrix();
-	glTranslatef(xoffs + 316, 310, 0);
-	glRotatef(tsec * 10.0f, 0, 0, 1);
+	gaw_push_matrix();
+	gaw_translate(xoffs + 316, 310, 0);
+	gaw_rotate(tsec * 10.0f, 0, 0, 1);
 	alpha = (sin(tsec) + 0.6) * 0.2;
 
-	glBegin(GL_QUADS);
-	glColor3f(alpha, alpha, alpha);
-	glTexCoord2f(0, 0); glVertex2f(-STAR_RAD, -STAR_RAD);
-	glTexCoord2f(0, 1); glVertex2f(-STAR_RAD, STAR_RAD);
-	glTexCoord2f(1, 1); glVertex2f(STAR_RAD, STAR_RAD);
-	glTexCoord2f(1, 0); glVertex2f(STAR_RAD, -STAR_RAD);
-	glEnd();
+	gaw_begin(GAW_QUADS);
+	gaw_color3f(alpha, alpha, alpha);
+	gaw_texcoord2f(0, 0); gaw_vertex2f(-STAR_RAD, -STAR_RAD);
+	gaw_texcoord2f(0, 1); gaw_vertex2f(-STAR_RAD, STAR_RAD);
+	gaw_texcoord2f(1, 1); gaw_vertex2f(STAR_RAD, STAR_RAD);
+	gaw_texcoord2f(1, 0); gaw_vertex2f(STAR_RAD, -STAR_RAD);
+	gaw_end();
 
-	glPopMatrix();
+	gaw_pop_matrix();
 
 	dtx_use_font(font_menu, font_menu_sz);
 
-	glMatrixMode(GL_MODELVIEW);
+	gaw_matrix_mode(GAW_MODELVIEW);
 
 	for(i=0; i<NUM_MENU_ITEMS; i++) {
-		glPushMatrix();
+		gaw_push_matrix();
 		if(sel == i) {
-			glColor3f(0.694, 0.753, 1.000);
+			gaw_color3f(0.694, 0.753, 1.000);
 		} else {
-			glColor3f(0.133, 0.161, 0.271);
+			gaw_color3f(0.133, 0.161, 0.271);
 		}
 		x = xoffs + itemrect[i].x;
 		y = itemrect[i].y + itemrect[i].height - font_baseline;
 
-		glTranslatef(x, y, 0);
-		glScalef(FONT_SCALE, -FONT_SCALE, FONT_SCALE);
+		gaw_translate(x, y, 0);
+		gaw_scale(FONT_SCALE, -FONT_SCALE, FONT_SCALE);
 		dtx_printf(menustr[i]);
-		glPopMatrix();
+		gaw_pop_matrix();
 
 		if(sel == i) {
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_ONE, GL_ONE);
+			gaw_enable(GAW_BLEND);
+			gaw_blend_func(GAW_ONE, GAW_ONE);
 			blit_tex_rect(x - 25, y - 16, 16, 16, gamelogo, 1, 0.00469, 0.9604, 0.025, 0.033333);
 			blit_tex_rect(x + itemrect[i].width + 25 - 16, y - 16, 16, 16, gamelogo, 1, 0.00469, 0.9604, 0.025, 0.033333);
 		}

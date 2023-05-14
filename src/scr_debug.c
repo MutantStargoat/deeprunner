@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include <stdio.h>
-#include "opengl.h"
+#include "gaw/gaw.h"
 #include "game.h"
 #include "geom.h"
 
@@ -83,16 +83,16 @@ static int dbg_start(void)
 	cgm_vcons(&box.vmin, -1, -1, -1);
 	cgm_vcons(&box.vmax, 1, 1, 1);
 
-	glDisable(GL_LIGHTING);
-	glDepthFunc(GL_LEQUAL);
-	glLineWidth(3);
+	gaw_disable(GAW_LIGHTING);
+	gaw_depth_func(GAW_LEQUAL);
+	gaw_linewidth(3);
 
 	return 0;
 }
 
 static void dbg_stop(void)
 {
-	glEnable(GL_CULL_FACE);
+	gaw_enable(GAW_CULL_FACE);
 }
 
 static void dbg_display(void)
@@ -102,7 +102,7 @@ static void dbg_display(void)
 	float mat[16];
 	struct triangle xtri;
 
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	gaw_clear(GAW_COLORBUF | GAW_DEPTHBUF);
 
 	cgm_mrotation_quat(mat, &prot);
 	cgm_mtranslate(mat, ppos.x, ppos.y, ppos.z);
@@ -112,20 +112,20 @@ static void dbg_display(void)
 	cgm_vmul_m4v3(xtri.v + 2, mat);
 	tri_calc_normal(&xtri);
 
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	glTranslatef(0, 0, -cam_dist);
-	glRotatef(cam_phi, 1, 0, 0);
-	glRotatef(cam_theta, 0, 1, 0);
+	gaw_matrix_mode(GAW_MODELVIEW);
+	gaw_load_identity();
+	gaw_translate(0, 0, -cam_dist);
+	gaw_rotate(cam_phi, 1, 0, 0);
+	gaw_rotate(cam_theta, 0, 1, 0);
 
 	for(i=0; i<2; i++) {
 		if(i == 0) {
-			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+			gaw_poly_wire();
 		} else {
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_ONE, GL_ONE);
+			gaw_enable(GAW_BLEND);
+			gaw_blend_func(GAW_ONE, GAW_ONE);
 			col = 0.15;
-			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+			gaw_poly_filled();
 		}
 
 		/* plane */
@@ -138,33 +138,33 @@ static void dbg_display(void)
 		glDisable(GL_CULL_FACE);
 
 		glBegin(GL_QUADS);
-		glColor3f(0, col, 0);
-		glVertex3f(5, 0, 5);
-		glVertex3f(5, 0, -5);
-		glVertex3f(-5, 0, -5);
-		glVertex3f(-5, 0, 5);
+		gaw_color3f(0, col, 0);
+		gaw_vertex3f(5, 0, 5);
+		gaw_vertex3f(5, 0, -5);
+		gaw_vertex3f(-5, 0, -5);
+		gaw_vertex3f(-5, 0, 5);
 		glEnd();
 
 		glPopMatrix();
 
 		if(i == 0) {
 			glBegin(GL_LINES);
-			glColor3f(0, col, 0);
-			glVertex3f(plane.norm.x * plane.d, plane.norm.y * plane.d, plane.norm.z * plane.d);
-			glVertex3f(plane.norm.x * (plane.d + 1), plane.norm.y * (plane.d + 1), plane.norm.z * (plane.d + 1));
+			gaw_color3f(0, col, 0);
+			gaw_vertex3f(plane.norm.x * plane.d, plane.norm.y * plane.d, plane.norm.z * plane.d);
+			gaw_vertex3f(plane.norm.x * (plane.d + 1), plane.norm.y * (plane.d + 1), plane.norm.z * (plane.d + 1));
 			glEnd();
 		}
 		*/
 
 		/* triangle */
-		glDisable(GL_CULL_FACE);
+		gaw_disable(GAW_CULL_FACE);
 
-		glBegin(GL_TRIANGLES);
-		glColor3f(0, col, 0);
-		glVertex3f(xtri.v[0].x, xtri.v[0].y, xtri.v[0].z);
-		glVertex3f(xtri.v[1].x, xtri.v[1].y, xtri.v[1].z);
-		glVertex3f(xtri.v[2].x, xtri.v[2].y, xtri.v[2].z);
-		glEnd();
+		gaw_begin(GAW_TRIANGLES);
+		gaw_color3f(0, col, 0);
+		gaw_vertex3f(xtri.v[0].x, xtri.v[0].y, xtri.v[0].z);
+		gaw_vertex3f(xtri.v[1].x, xtri.v[1].y, xtri.v[1].z);
+		gaw_vertex3f(xtri.v[2].x, xtri.v[2].y, xtri.v[2].z);
+		gaw_end();
 
 		if(i == 0) {
 			cgm_vec3 c;
@@ -174,65 +174,65 @@ static void dbg_display(void)
 			cgm_vadd(&c, xtri.v + 2);
 			cgm_vscale(&c, 1.0f / 3.0f);
 
-			glBegin(GL_LINES);
-			glVertex3f(c.x, c.y, c.z);
-			glVertex3f(c.x + xtri.norm.x, c.y + xtri.norm.y, c.z + xtri.norm.z);
-			glEnd();
+			gaw_begin(GAW_LINES);
+			gaw_vertex3f(c.x, c.y, c.z);
+			gaw_vertex3f(c.x + xtri.norm.x, c.y + xtri.norm.y, c.z + xtri.norm.z);
+			gaw_end();
 		}
 
 
 		/* box */
-		glEnable(GL_CULL_FACE);
+		gaw_enable(GAW_CULL_FACE);
 
-		glBegin(GL_QUADS);
+		gaw_begin(GAW_QUADS);
 		/*if(aabox_plane_test(&box, &plane)) {*/
 		if(aabox_tri_test(&box, &xtri)) {
-			glColor3f(col, 0, 0);
+			gaw_color3f(col, 0, 0);
 		} else {
-			glColor3f(0, 0, col);
+			gaw_color3f(0, 0, col);
 		}
 		/* +z */
-		glVertex3f(box.vmin.x, box.vmin.y, box.vmax.z);
-		glVertex3f(box.vmax.x, box.vmin.y, box.vmax.z);
-		glVertex3f(box.vmax.x, box.vmax.y, box.vmax.z);
-		glVertex3f(box.vmin.x, box.vmax.y, box.vmax.z);
+		gaw_vertex3f(box.vmin.x, box.vmin.y, box.vmax.z);
+		gaw_vertex3f(box.vmax.x, box.vmin.y, box.vmax.z);
+		gaw_vertex3f(box.vmax.x, box.vmax.y, box.vmax.z);
+		gaw_vertex3f(box.vmin.x, box.vmax.y, box.vmax.z);
 		/* +x */
-		glVertex3f(box.vmax.x, box.vmin.y, box.vmax.z);
-		glVertex3f(box.vmax.x, box.vmin.y, box.vmin.z);
-		glVertex3f(box.vmax.x, box.vmax.y, box.vmin.z);
-		glVertex3f(box.vmax.x, box.vmax.y, box.vmax.z);
+		gaw_vertex3f(box.vmax.x, box.vmin.y, box.vmax.z);
+		gaw_vertex3f(box.vmax.x, box.vmin.y, box.vmin.z);
+		gaw_vertex3f(box.vmax.x, box.vmax.y, box.vmin.z);
+		gaw_vertex3f(box.vmax.x, box.vmax.y, box.vmax.z);
 		/* -z */
-		glVertex3f(box.vmax.x, box.vmin.y, box.vmin.z);
-		glVertex3f(box.vmin.x, box.vmin.y, box.vmin.z);
-		glVertex3f(box.vmin.x, box.vmax.y, box.vmin.z);
-		glVertex3f(box.vmax.x, box.vmax.y, box.vmin.z);
+		gaw_vertex3f(box.vmax.x, box.vmin.y, box.vmin.z);
+		gaw_vertex3f(box.vmin.x, box.vmin.y, box.vmin.z);
+		gaw_vertex3f(box.vmin.x, box.vmax.y, box.vmin.z);
+		gaw_vertex3f(box.vmax.x, box.vmax.y, box.vmin.z);
 		/* -x */
-		glVertex3f(box.vmin.x, box.vmin.y, box.vmin.z);
-		glVertex3f(box.vmin.x, box.vmin.y, box.vmax.z);
-		glVertex3f(box.vmin.x, box.vmax.y, box.vmax.z);
-		glVertex3f(box.vmin.x, box.vmax.y, box.vmin.z);
+		gaw_vertex3f(box.vmin.x, box.vmin.y, box.vmin.z);
+		gaw_vertex3f(box.vmin.x, box.vmin.y, box.vmax.z);
+		gaw_vertex3f(box.vmin.x, box.vmax.y, box.vmax.z);
+		gaw_vertex3f(box.vmin.x, box.vmax.y, box.vmin.z);
 		/* -y */
-		glVertex3f(box.vmin.x, box.vmin.y, box.vmin.z);
-		glVertex3f(box.vmax.x, box.vmin.y, box.vmin.z);
-		glVertex3f(box.vmax.x, box.vmin.y, box.vmax.z);
-		glVertex3f(box.vmin.x, box.vmin.y, box.vmax.z);
+		gaw_vertex3f(box.vmin.x, box.vmin.y, box.vmin.z);
+		gaw_vertex3f(box.vmax.x, box.vmin.y, box.vmin.z);
+		gaw_vertex3f(box.vmax.x, box.vmin.y, box.vmax.z);
+		gaw_vertex3f(box.vmin.x, box.vmin.y, box.vmax.z);
 		/* +y */
-		glVertex3f(box.vmin.x, box.vmax.y, box.vmax.z);
-		glVertex3f(box.vmax.x, box.vmax.y, box.vmax.z);
-		glVertex3f(box.vmax.x, box.vmax.y, box.vmin.z);
-		glVertex3f(box.vmin.x, box.vmax.y, box.vmin.z);
+		gaw_vertex3f(box.vmin.x, box.vmax.y, box.vmax.z);
+		gaw_vertex3f(box.vmax.x, box.vmax.y, box.vmax.z);
+		gaw_vertex3f(box.vmax.x, box.vmax.y, box.vmin.z);
+		gaw_vertex3f(box.vmin.x, box.vmax.y, box.vmin.z);
 
-		glEnd();
+		gaw_end();
 	}
 
-	glDisable(GL_BLEND);
+	gaw_disable(GAW_BLEND);
 }
 
 static void dbg_reshape(int x, int y)
 {
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluPerspective(50, win_aspect, 0.5, 500);
+	gaw_matrix_mode(GAW_PROJECTION);
+	gaw_load_identity();
+	gaw_perspective(50, win_aspect, 0.5, 500);
 }
 
 static void dbg_keyb(int key, int press)
