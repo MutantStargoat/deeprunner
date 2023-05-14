@@ -21,8 +21,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <float.h>
 #include <assert.h>
 #include "psys.h"
-#include "psys_gl.h"
 /*
+#include "psys_gl.h"
 #include <pthread.h>
 */
 
@@ -72,9 +72,10 @@ int psys_init(struct psys_emitter *em)
 	em->spawn = 0;	/* no custom spawning, just the defaults */
 	em->update = update_particle;
 
-	em->draw = psys_gl_draw;
+	/*em->draw = psys_gl_draw;
 	em->draw_start = psys_gl_draw_start;
 	em->draw_end = psys_gl_draw_end;
+	*/
 	return 0;
 }
 

@@ -109,14 +109,6 @@ SOURCE=.\psys.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\psys_gl.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\psys_gl.h
-# End Source File
-# Begin Source File
-
 SOURCE=.\rndval.c
 # End Source File
 # Begin Source File

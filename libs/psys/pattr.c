@@ -30,7 +30,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #endif
 
 #include "pattr.h"
+/*
 #include "psys_gl.h"
+*/
 
 enum {
 	OPT_STR,
@@ -55,8 +57,8 @@ static void release_cfg_opt(struct cfgopt *opt);
 static char *stripspace(char *str);
 
 static void *tex_cls;
-static unsigned int (*load_texture)(const char*, void*) = psys_gl_load_texture;
-static void (*unload_texture)(unsigned int, void*) = psys_gl_unload_texture;
+static unsigned int (*load_texture)(const char*, void*);/* = psys_gl_load_texture;*/
+static void (*unload_texture)(unsigned int, void*);/* = psys_gl_unload_texture;*/
 
 
 void psys_texture_loader(unsigned int (*load)(const char*, void*), void (*unload)(unsigned int, void*), void *cls)
