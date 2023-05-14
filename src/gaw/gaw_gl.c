@@ -126,6 +126,9 @@ void gaw_enable(int st)
 	case GAW_FOG:
 		glEnable(GL_FOG);
 		break;
+	case GAW_DITHER:
+		glEnable(GL_DITHER);
+		break;
 	case GAW_LIGHTING:
 		glEnable(GL_LIGHTING);
 		break;
@@ -160,6 +163,9 @@ void gaw_disable(int st)
 		break;
 	case GAW_FOG:
 		glDisable(GL_FOG);
+		break;
+	case GAW_DITHER:
+		glDisable(GL_DITHER);
 		break;
 	case GAW_LIGHTING:
 		glDisable(GL_LIGHTING);

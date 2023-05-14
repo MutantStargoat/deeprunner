@@ -21,8 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include "miniglut.h"
-#include <GL/glu.h>
+#include "gaw/gaw.h"
 #include "game.h"
 #include "input.h"
 #include "audio.h"
@@ -101,13 +100,13 @@ int game_init(void)
 
 	init_input();
 
-	glClearColor(0.1, 0.1, 0.1, 1);
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
+	gaw_clear_color(0.1, 0.1, 0.1, 1);
+	gaw_enable(GAW_DEPTH_TEST);
+	gaw_enable(GAW_CULL_FACE);
 	if(opt.gfx.dither) {
-		glEnable(GL_DITHER);
+		gaw_enable(GAW_DITHER);
 	} else {
-		glDisable(GL_DITHER);
+		gaw_disable(GAW_DITHER);
 	}
 
 	for(i=0; i<num_screens; i++) {
@@ -154,7 +153,7 @@ void game_display(void)
 {
 	static long nframes, interv, prev_msec;
 
-	time_msec = glutGet(GLUT_ELAPSED_TIME);
+	time_msec = game_getmsec();
 
 	au_update();
 
@@ -182,7 +181,7 @@ void game_reshape(int x, int y)
 	win_width = x;
 	win_height = y;
 	win_aspect = (float)x / (float)y;
-	glViewport(0, 0, x, y);
+	gaw_viewport(0, 0, x, y);
 
 	if(cur_scr && cur_scr->reshape) {
 		cur_scr->reshape(x, y);
@@ -279,7 +278,7 @@ void game_sball_rotate(int x, int y, int z)
 void game_sball_button(int bn, int st)
 {
 	if(cur_scr->sball_button) {
-		cur_scr->sball_button(bn, st == GLUT_DOWN);
+		cur_scr->sball_button(bn, st);
 	}
 }
 
@@ -308,94 +307,95 @@ static void draw_volume_bar(void)
 	int i;
 
 	if(time_msec - last_vol_chg < 3000) {
-		glPushAttrib(GL_ENABLE_BIT | GL_POLYGON_BIT);
+		gaw_save();
 
-		glMatrixMode(GL_PROJECTION);
-		glPushMatrix();
-		glLoadIdentity();
-		glOrtho(0, 640, 0, 480, -1, 1);
+		gaw_matrix_mode(GAW_PROJECTION);
+		gaw_push_matrix();
+		gaw_load_identity();
+		gaw_ortho(0, 640, 0, 480, -1, 1);
 
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
+		gaw_matrix_mode(GAW_MODELVIEW);
+		gaw_load_identity();
 
-		glDisable(GL_TEXTURE_2D);
-		glDisable(GL_LIGHTING);
+		gaw_set_tex2d(0);
+		gaw_disable(GAW_LIGHTING);
 
 		/* draw speaker icon */
-		glTranslatef(520, 460, 0);
-		glScalef(3.2f, 2.8f, 3.2f);
-		glBegin(GL_QUADS);
-		glColor3ub(128, 240, 128);
-		glVertex3f(-5, -2, 0);
-		glVertex3f(-3.6f, -2, 0);
-		glVertex3f(-3.6f, 2, 0);
-		glVertex3f(-5, 2, 0);
-		glVertex3f(-3, -2, 0);
-		glVertex3f(0, -5, 0);
-		glVertex3f(0, 5, 0);
-		glVertex3f(-3, 2, 0);
+		gaw_translate(520, 460, 0);
+		gaw_scale(3.2f, 2.8f, 3.2f);
+		gaw_begin(GAW_QUADS);
+		gaw_color3ub(128, 240, 128);
+		gaw_vertex3f(-5, -2, 0);
+		gaw_vertex3f(-3.6f, -2, 0);
+		gaw_vertex3f(-3.6f, 2, 0);
+		gaw_vertex3f(-5, 2, 0);
+		gaw_vertex3f(-3, -2, 0);
+		gaw_vertex3f(0, -5, 0);
+		gaw_vertex3f(0, 5, 0);
+		gaw_vertex3f(-3, 2, 0);
 		if(opt.music) {
-			glVertex3f(0.9f, 3.7f, 0);
-			glVertex3f(1.9f, 1.9f, 0);
-			glVertex3f(2.5f, 2.3f, 0);
-			glVertex3f(1.3f, 4, 0);
-			glVertex3f(2.2f, 0, 0);
-			glVertex3f(3, 0, 0);
-			glVertex3f(2.5f, 2.3f, 0);
-			glVertex3f(1.9f, 1.9f, 0);
-			glVertex3f(1.9f, -1.9f, 0);
-			glVertex3f(2.5f, -2.3f, 0);
-			glVertex3f(3, 0, 0);
-			glVertex3f(2.2f, 0, 0);
-			glVertex3f(1.3f, -4, 0);
-			glVertex3f(2.5f, -2.3f, 0);
-			glVertex3f(1.9f, -1.9f, 0);
-			glVertex3f(0.9f, -3.7f, 0);
+			gaw_vertex3f(0.9f, 3.7f, 0);
+			gaw_vertex3f(1.9f, 1.9f, 0);
+			gaw_vertex3f(2.5f, 2.3f, 0);
+			gaw_vertex3f(1.3f, 4, 0);
+			gaw_vertex3f(2.2f, 0, 0);
+			gaw_vertex3f(3, 0, 0);
+			gaw_vertex3f(2.5f, 2.3f, 0);
+			gaw_vertex3f(1.9f, 1.9f, 0);
+			gaw_vertex3f(1.9f, -1.9f, 0);
+			gaw_vertex3f(2.5f, -2.3f, 0);
+			gaw_vertex3f(3, 0, 0);
+			gaw_vertex3f(2.2f, 0, 0);
+			gaw_vertex3f(1.3f, -4, 0);
+			gaw_vertex3f(2.5f, -2.3f, 0);
+			gaw_vertex3f(1.9f, -1.9f, 0);
+			gaw_vertex3f(0.9f, -3.7f, 0);
 
-			glVertex3f(3.6f, 2.8f, 0);
-			glVertex3f(4.3f, 3.2f, 0);
-			glVertex3f(2.9f, 5.5f, 0);
-			glVertex3f(2.2f, 5, 0);
-			glVertex3f(4.1f, 0, 0);
-			glVertex3f(5, 0, 0);
-			glVertex3f(4.3f, 3.2f, 0);
-			glVertex3f(3.6f, 2.8f, 0);
-			glVertex3f(3.6f, -2.8f, 0);
-			glVertex3f(4.3f, -3.2f, 0);
-			glVertex3f(5, 0, 0);
-			glVertex3f(4.1f, 0, 0);
-			glVertex3f(2.2f, -5, 0);
-			glVertex3f(2.9f, -5.5f, 0);
-			glVertex3f(4.3f, -3.2f, 0);
-			glVertex3f(3.6f, -2.8f, 0);
+			gaw_vertex3f(3.6f, 2.8f, 0);
+			gaw_vertex3f(4.3f, 3.2f, 0);
+			gaw_vertex3f(2.9f, 5.5f, 0);
+			gaw_vertex3f(2.2f, 5, 0);
+			gaw_vertex3f(4.1f, 0, 0);
+			gaw_vertex3f(5, 0, 0);
+			gaw_vertex3f(4.3f, 3.2f, 0);
+			gaw_vertex3f(3.6f, 2.8f, 0);
+			gaw_vertex3f(3.6f, -2.8f, 0);
+			gaw_vertex3f(4.3f, -3.2f, 0);
+			gaw_vertex3f(5, 0, 0);
+			gaw_vertex3f(4.1f, 0, 0);
+			gaw_vertex3f(2.2f, -5, 0);
+			gaw_vertex3f(2.9f, -5.5f, 0);
+			gaw_vertex3f(4.3f, -3.2f, 0);
+			gaw_vertex3f(3.6f, -2.8f, 0);
 		} else {
-			glVertex3f(-7, -5, 0);
-			glVertex3f(-6, -6, 0);
-			glVertex3f(4, 5, 0);
-			glVertex3f(3, 6, 0);
+			gaw_vertex3f(-7, -5, 0);
+			gaw_vertex3f(-6, -6, 0);
+			gaw_vertex3f(4, 5, 0);
+			gaw_vertex3f(3, 6, 0);
 		}
 
 		if(opt.music) {
 			for(i=0; i<VOL_BARS; i++) {
 				float x = 8 + i * 3.5;
 				if(opt.vol_master < 255 && i >= opt.vol_master >> 5) {
-					glEnd();
-					glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-					glBegin(GL_QUADS);
+					gaw_end();
+					gaw_poly_wire();
+					gaw_begin(GAW_QUADS);
 				}
-				glVertex3f(x, -3.5, 0);
-				glVertex3f(x + 1.5, -3.5, 0);
-				glVertex3f(x + 1.5, 3.5, 0);
-				glVertex3f(x, 3.5, 0);
+				gaw_vertex3f(x, -3.5, 0);
+				gaw_vertex3f(x + 1.5, -3.5, 0);
+				gaw_vertex3f(x + 1.5, 3.5, 0);
+				gaw_vertex3f(x, 3.5, 0);
 			}
 		}
-		glEnd();
+		gaw_end();
 
-		glMatrixMode(GL_PROJECTION);
-		glPopMatrix();
-		glMatrixMode(GL_MODELVIEW);
+		gaw_matrix_mode(GAW_PROJECTION);
+		gaw_pop_matrix();
+		gaw_matrix_mode(GAW_MODELVIEW);
 
-		glPopAttrib();
+		gaw_poly_filled();
+		gaw_restore();
 	}
 }
 

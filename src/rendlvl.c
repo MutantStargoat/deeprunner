@@ -307,7 +307,7 @@ static void render_room(struct room *room)
 #ifdef DBG_SHOW_PORTALS
 		gaw_save();
 		gaw_disable(GAW_LIGHTING);
-		gaw_disable(GAW_TEXTURE_2D);
+		gaw_set_tex2d(0);
 		gaw_push_matrix();
 		gaw_translate(room->portals[i].pos.x, room->portals[i].pos.y, room->portals[i].pos.z);
 		/*glutWireSphere(room->portals[i].rad, 10, 5);*/
@@ -388,7 +388,7 @@ void render_level_mesh(struct mesh *mesh)
 			gaw_enable(GAW_BLEND);
 			gaw_blend_func(GAW_SRC_ALPHA, GAW_ONE_MINUS_SRC_ALPHA);
 		} else {
-			if(pass > 0) gaw_disable(GL_BLEND);
+			if(pass > 0) gaw_disable(GAW_BLEND);
 			break;
 		}
 	}
@@ -412,13 +412,13 @@ void render_enemy(struct enemy *mob)
 {
 	long expl_time = time_msec - mob->last_dmg_hit;
 
-	gaw_matrix_mode(GL_MODELVIEW);
+	gaw_matrix_mode(GAW_MODELVIEW);
 	gaw_push_matrix();
 	gaw_mult_matrix(mob->matrix);
 
 	render_level_mesh(mob->mesh);
 
-	gaw_matrix_mode(GL_MODELVIEW);
+	gaw_matrix_mode(GAW_MODELVIEW);
 	gaw_pop_matrix();
 
 	if(time_msec - mob->last_dmg_hit < EXPL_DUR) {
@@ -444,13 +444,13 @@ void render_enemy(struct enemy *mob)
 
 void render_missile(struct missile *mis)
 {
-	gaw_matrix_mode(GL_MODELVIEW);
+	gaw_matrix_mode(GAW_MODELVIEW);
 	gaw_push_matrix();
 	gaw_mult_matrix(mis->matrix);
 
 	render_level_mesh(mis->mesh);
 
-	gaw_matrix_mode(GL_MODELVIEW);
+	gaw_matrix_mode(GAW_MODELVIEW);
 	gaw_pop_matrix();
 }
 
