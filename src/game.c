@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "drawtext.h"
 #include "gaw/gaw.h"
 #include "game.h"
 #include "input.h"
@@ -30,6 +31,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "mtltex.h"
 
 static void draw_volume_bar(void);
+static void txdraw(struct dtx_vertex *v, int vcount, struct dtx_pixmap *pixmap, void *cls);
 
 int mouse_x, mouse_y, mouse_state[3];
 int mouse_grabbed;
@@ -76,6 +78,8 @@ int game_init(void)
 	if(iman_init() == -1) {
 		return -1;
 	}
+
+	dtx_target_user(txdraw, 0);
 
 	if(au_init() == -1) {
 		return -1;
@@ -399,3 +403,56 @@ static void draw_volume_bar(void)
 	}
 }
 
+
+static void txdraw(struct dtx_vertex *v, int vcount, struct dtx_pixmap *pixmap, void *cls)
+{
+	int i, aref, npix;
+	unsigned char *src, *dest;
+	struct texture *tex = pixmap->udata;
+
+	if(!tex) {
+		struct img_pixmap *img = img_create();
+		img_set_pixels(img, pixmap->width, pixmap->height, IMG_FMT_RGBA32, 0);
+
+		npix = pixmap->width * pixmap->height;
+		src = pixmap->pixels;
+		dest = img->pixels;
+		for(i=0; i<npix; i++) {
+			dest[0] = dest[1] = dest[2] = 0xff;
+			dest[3] = *src++;
+			dest += 4;
+		}
+
+		if(!(tex = tex_image(img))) {
+			return;
+		}
+		pixmap->udata = tex;
+	}
+
+	gaw_save();
+	if(dtx_get(DTX_GL_BLEND)) {
+		gaw_enable(GAW_BLEND);
+		gaw_blend_func(GAW_SRC_ALPHA, GAW_ONE_MINUS_SRC_ALPHA);
+	} else {
+		gaw_disable(GAW_BLEND);
+	}
+	if((aref = dtx_get(DTX_GL_ALPHATEST))) {
+		gaw_enable(GAW_ALPHA_TEST);
+		gaw_alpha_func(GAW_GREATER, aref);
+	} else {
+		gaw_disable(GAW_ALPHA_TEST);
+	}
+
+	gaw_set_tex2d(tex->texid);
+
+	gaw_begin(GAW_TRIANGLES);
+	for(i=0; i<vcount; i++) {
+		gaw_texcoord2f(v->s, v->t);
+		gaw_vertex2f(v->x, v->y);
+		v++;
+	}
+	gaw_end();
+
+	gaw_restore();
+	gaw_set_tex2d(0);
+}

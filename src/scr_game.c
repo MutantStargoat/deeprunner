@@ -160,9 +160,11 @@ static int ginit(void)
 		dtx_set(DTX_GL_ALPHATEST, 128);
 	}
 
+	/*
 	if((font_hp_tex = tex_load("data/hpfont-rgb.png"))) {
 		dtxhack_replace_texture(dtx_get_glyphmap(font_hp, 0), font_hp_tex->texid);
 	}
+	*/
 
 	if(!(font_timer = dtx_open_font_glyphmap("data/timefont.gmp"))) {
 		fprintf(stderr, "failed to open glyphmap: data/timefont.gmp\n");
