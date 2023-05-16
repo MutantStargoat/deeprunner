@@ -132,13 +132,19 @@ void mesh_draw(struct mesh *m)
 {
 	if(!m || !m->vcount) return;
 
-	gaw_setupdraw(m->varr, m->narr, m->uvarr);
+	gaw_vertex_array(3, 0, m->varr);
+	gaw_normal_array(0, m->narr);
+	gaw_texcoord_array(2, 0, m->uvarr);
 
 	if(m->idxarr) {
 		gaw_draw_indexed(GAW_TRIANGLES, m->idxarr, m->icount);
 	} else {
 		gaw_draw(GAW_TRIANGLES, m->vcount);
 	}
+
+	gaw_vertex_array(0, 0, 0);
+	gaw_normal_array(0, 0);
+	gaw_texcoord_array(0, 0, 0);
 }
 
 void mesh_compile(struct mesh *m)

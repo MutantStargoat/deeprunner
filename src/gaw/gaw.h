@@ -57,6 +57,8 @@ enum {
 	GAW_LIGHT1,
 	GAW_LIGHT2,
 	GAW_LIGHT3,
+	GAW_TEXTURE_1D,
+	GAW_TEXTURE_2D
 };
 
 enum {
@@ -93,8 +95,8 @@ void gaw_viewport(int x, int y, int w, int h);
 
 void gaw_matrix_mode(int mode);
 void gaw_load_identity(void);
-void gaw_load_matrix(float *m);
-void gaw_mult_matrix(float *m);
+void gaw_load_matrix(const float *m);
+void gaw_mult_matrix(const float *m);
 void gaw_push_matrix(void);
 void gaw_pop_matrix(void);
 void gaw_get_modelview(float *m);
@@ -104,6 +106,7 @@ void gaw_translate(float x, float y, float z);
 void gaw_rotate(float angle, float x, float y, float z);
 void gaw_scale(float sx, float sy, float sz);
 void gaw_ortho(float l, float r, float b, float t, float n, float f);
+void gaw_frustum(float l, float r, float b, float t, float n, float f);
 void gaw_perspective(float vfov, float aspect, float znear, float zfar);
 
 void gaw_save(void);
@@ -119,9 +122,12 @@ void gaw_clear_color(float r, float g, float b, float a);
 void gaw_clear(unsigned int flags);
 void gaw_depth_mask(int mask);
 
-void gaw_setupdraw(void *varr, void *narr, void *uvarr);
+void gaw_vertex_array(int nelem, int stride, const void *ptr);
+void gaw_normal_array(int stride, const void *ptr);
+void gaw_texcoord_array(int nelem, int stride, const void *ptr);
+void gaw_color_array(int nelem, int stride, const void *ptr);
 void gaw_draw(int prim, int nverts);
-void gaw_draw_indexed(int prim, unsigned int *idxarr, int nidx);
+void gaw_draw_indexed(int prim, const unsigned int *idxarr, int nidx);
 
 void gaw_begin(int prim);
 void gaw_end(void);
@@ -172,7 +178,8 @@ void gaw_fog_color(float r, float g, float b);
 void gaw_fog_linear(float z0, float z1);
 void gaw_fog_fast(void);
 
-void gaw_poly_filled(void);
 void gaw_poly_wire(void);
+void gaw_poly_flat(void);
+void gaw_poly_gouraud(void);
 
 #endif	/* GRAPHICS_API_WRAPPER_H_ */

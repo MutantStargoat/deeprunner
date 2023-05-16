@@ -1,4 +1,13 @@
-src = $(wildcard src/*.c) $(wildcard src/gaw/*.c)
+# --- build options ---
+# rend = <gl|sw>
+rend = gl
+# ---------------------
+
+gawsrc_gl = $(wildcard src/opengl/*.c) src/gaw/gaw_gl.c
+gawsrc_sw = $(wildcard src/swsdl/*.c) src/gaw/gaw_sw.c src/gaw/polyfill.c \
+			src/gaw/polyclip.c
+
+src = $(wildcard src/*.c) $(gawsrc_$(rend))
 obj = $(src:.c=.o)
 dep = $(src:.c=.d)
 bin = game
@@ -7,22 +16,29 @@ warn = -pedantic -Wall
 dbg = -g
 #opt = -O3
 def = -DMINIGLUT_USE_LIBC -DMIKMOD_STATIC
-inc = -Ilibs -Ilibs/imago/src -Ilibs/treestor/include -Ilibs/goat3d/include \
+inc = -Isrc -Ilibs -Ilibs/imago/src -Ilibs/treestor/include -Ilibs/goat3d/include \
 	  -Ilibs/drawtext -Ilibs/mikmod/include
 libs = libs/unix/imago.a libs/unix/goat3d.a libs/unix/treestor.a \
 	   libs/unix/drawtext.a libs/unix/psys.a libs/unix/mikmod.a
 
-CFLAGS = $(warn) $(dbg) $(opt) $(inc) $(def) -MMD
+CFLAGS = $(warn) $(dbg) $(opt) $(inc) $(def) $(cflags_$(rend)) -MMD
 LDFLAGS = $(ldsys_pre) $(libs) $(ldsys)
+
+cflags_gl = -Isrc/opengl
+cflags_sw = -Isrc/swsdl `sdl2-config --cflags`
+
+ldflags_sw = `sdl2-config --ldflags`
 
 sys := $(shell uname -s | sed 's/MINGW.*/mingw/')
 ifeq ($(sys), mingw)
 	bin = game.exe
 
+	ldflags_gl = -lopengl32 -lglu32 -lgdi32 -lwinmm
 	ldsys_pre = -static-libgcc -lmingw32 -mconsole
-	ldsys = -lopengl32 -lglu32 -lgdi32 -lwinmm
+	ldsys = $(ldflags_$(rend))
 else
-	ldsys = -lGL -lGLU -lX11 -lasound -lm
+	ldflags_gl = -lGL -lGLU -lX11
+	ldsys = $(ldflags_$(rend)) -lasound -lm
 endif
 
 $(bin): $(obj) libs

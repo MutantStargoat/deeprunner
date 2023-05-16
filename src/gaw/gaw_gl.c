@@ -25,7 +25,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <GL/glu.h>
 
 
-static float *vertex_ptr, *normal_ptr, *texcoord_ptr;
+static const float *vertex_ptr, *normal_ptr, *texcoord_ptr, *color_ptr;
+static int vertex_nelem, texcoord_nelem, color_nelem;
+static int vertex_stride, normal_stride, texcoord_stride, color_stride;
 
 void gaw_viewport(int x, int y, int w, int h)
 {
@@ -43,12 +45,12 @@ void gaw_load_identity(void)
 	glLoadIdentity();
 }
 
-void gaw_load_matrix(float *m)
+void gaw_load_matrix(const float *m)
 {
 	glLoadMatrixf(m);
 }
 
-void gaw_mult_matrix(float *m)
+void gaw_mult_matrix(const float *m)
 {
 	glMultMatrixf(m);
 }
@@ -91,6 +93,11 @@ void gaw_scale(float sx, float sy, float sz)
 void gaw_ortho(float l, float r, float b, float t, float n, float f)
 {
 	glOrtho(l, r, b, t, n, f);
+}
+
+void gaw_frustum(float l, float r, float b, float t, float n, float f)
+{
+	glFrustum(l, r, b, t, n, f);
 }
 
 void gaw_perspective(float vfov, float aspect, float znear, float zfar)
@@ -141,6 +148,15 @@ void gaw_enable(int st)
 	case GAW_LIGHT2:
 		glEnable(GL_LIGHT2);
 		break;
+	case GAW_LIGHT3:
+		glEnable(GL_LIGHT3);
+		break;
+	case GAW_TEXTURE_1D:
+		glEnable(GL_TEXTURE_1D);
+		break;
+	case GAW_TEXTURE_2D:
+		glEnable(GL_TEXTURE_2D);
+		break;
 	default:
 		break;
 	}
@@ -178,6 +194,15 @@ void gaw_disable(int st)
 		break;
 	case GAW_LIGHT2:
 		glDisable(GL_LIGHT2);
+		break;
+	case GAW_LIGHT3:
+		glDisable(GL_LIGHT3);
+		break;
+	case GAW_TEXTURE_1D:
+		glDisable(GL_TEXTURE_1D);
+		break;
+	case GAW_TEXTURE_2D:
+		glDisable(GL_TEXTURE_2D);
 		break;
 	default:
 		break;
@@ -225,11 +250,31 @@ void gaw_depth_mask(int mask)
 	glDepthMask(mask);
 }
 
-void gaw_setupdraw(void *varr, void *narr, void *uvarr)
+void gaw_vertex_array(int nelem, int stride, const void *ptr)
 {
-	vertex_ptr = varr;
-	normal_ptr = narr;
-	texcoord_ptr = uvarr;
+	vertex_nelem = nelem;
+	vertex_stride = stride;
+	vertex_ptr = ptr;
+}
+
+void gaw_normal_array(int stride, const void *ptr)
+{
+	normal_stride = stride;
+	normal_ptr = ptr;
+}
+
+void gaw_texcoord_array(int nelem, int stride, const void *ptr)
+{
+	texcoord_nelem = nelem;
+	texcoord_stride = stride;
+	texcoord_ptr = ptr;
+}
+
+void gaw_color_array(int nelem, int stride, const void *ptr)
+{
+	color_nelem = nelem;
+	color_stride = stride;
+	color_ptr = ptr;
 }
 
 static int glprim[] = {GL_POINTS, GL_LINES, GL_TRIANGLES, GL_QUADS, GL_QUAD_STRIP};
@@ -237,14 +282,18 @@ static int glprim[] = {GL_POINTS, GL_LINES, GL_TRIANGLES, GL_QUADS, GL_QUAD_STRI
 void gaw_draw(int prim, int nverts)
 {
 	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(3, GL_FLOAT, 0, vertex_ptr);
+	glVertexPointer(vertex_nelem, GL_FLOAT, vertex_stride, vertex_ptr);
 	if(normal_ptr) {
 		glEnableClientState(GL_NORMAL_ARRAY);
-		glNormalPointer(GL_FLOAT, 0, normal_ptr);
+		glNormalPointer(GL_FLOAT, normal_stride, normal_ptr);
 	}
 	if(texcoord_ptr) {
 		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-		glTexCoordPointer(2, GL_FLOAT, 0, texcoord_ptr);
+		glTexCoordPointer(texcoord_nelem, GL_FLOAT, texcoord_stride, texcoord_ptr);
+	}
+	if(color_ptr) {
+		glEnableClientState(GL_COLOR_ARRAY);
+		glTexCoordPointer(color_nelem, GL_FLOAT, color_stride, color_ptr);
 	}
 
 	glDrawArrays(glprim[prim], 0, nverts);
@@ -252,9 +301,10 @@ void gaw_draw(int prim, int nverts)
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisableClientState(GL_NORMAL_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+	glDisableClientState(GL_COLOR_ARRAY);
 }
 
-void gaw_draw_indexed(int prim, unsigned int *idxarr, int nidx)
+void gaw_draw_indexed(int prim, const unsigned int *idxarr, int nidx)
 {
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, vertex_ptr);
@@ -266,12 +316,17 @@ void gaw_draw_indexed(int prim, unsigned int *idxarr, int nidx)
 		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 		glTexCoordPointer(2, GL_FLOAT, 0, texcoord_ptr);
 	}
+	if(color_ptr) {
+		glEnableClientState(GL_COLOR_ARRAY);
+		glTexCoordPointer(color_nelem, GL_FLOAT, color_stride, color_ptr);
+	}
 
 	glDrawElements(glprim[prim], nidx, GL_UNSIGNED_INT, idxarr);
 
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisableClientState(GL_NORMAL_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+	glDisableClientState(GL_COLOR_ARRAY);
 }
 
 void gaw_begin(int prim)
@@ -572,12 +627,19 @@ void gaw_fog_fast(void)
 	glHint(GL_FOG_HINT, GL_FASTEST);
 }
 
-void gaw_poly_filled(void)
-{
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-}
-
 void gaw_poly_wire(void)
 {
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+}
+
+void gaw_poly_flat(void)
+{
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glShadeModel(GL_FLAT);
+}
+
+void gaw_poly_gouraud(void)
+{
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glShadeModel(GL_SMOOTH);
 }

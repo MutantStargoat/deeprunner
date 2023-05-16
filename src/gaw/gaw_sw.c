@@ -1,0 +1,1140 @@
+/*
+Deep Runner - 6dof shooter game for the SGI O2.
+Copyright (C) 2023  John Tsiombikas <nuclear@mutantstargoat.com>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
+#include "gaw.h"
+#include "polyfill.h"
+#include "polyclip.h"
+
+enum {
+	GAW_SPHEREMAP	= 24
+};
+
+/* modelview, projection, texture */
+#define NUM_MATRICES	3
+#define STACK_SIZE	8
+typedef float gaw_matrix[16];
+
+#define MAX_LIGHTS		4
+#define MAX_TEXTURES	256
+
+#define IMM_VBUF_SIZE	256
+
+#define NORMALIZE(v) \
+	do { \
+		float len = sqrt((v)[0] * (v)[0] + (v)[1] * (v)[1] + (v)[2] * (v)[2]); \
+		if(len != 0.0) { \
+			float s = 1.0 / len; \
+			(v)[0] *= s; \
+			(v)[1] *= s; \
+			(v)[2] *= s; \
+		} \
+	} while(0)
+
+enum {LT_POS, LT_DIR};
+struct light {
+	int type;
+	float x, y, z;
+	float r, g, b;
+};
+
+struct material {
+	float kd[4];
+	float ks[3];
+	float ke[3];
+	float shin;
+};
+
+struct gaw_state {
+	uint32_t opt;
+	uint32_t savopt;
+	int frontface;
+	int polymode;
+
+	const float *varr, *narr, *uvarr;
+
+	gaw_matrix mat[NUM_MATRICES][STACK_SIZE];
+	int mtop[NUM_MATRICES];
+	int mmode;
+
+	gaw_matrix norm_mat;
+
+	float ambient[3];
+	struct light lt[MAX_LIGHTS];
+	struct material mtl;
+
+	int bsrc, bdst;
+
+	int width, height;
+	gaw_pixel *pixels;
+
+	int vport[4];
+
+	uint32_t clear_color, clear_depth;
+
+	const float *vertex_ptr, *normal_ptr, *texcoord_ptr, *color_ptr;
+	int vertex_nelem, texcoord_nelem, color_nelem;
+	int vertex_stride, normal_stride, texcoord_stride, color_stride;
+
+	/* immediate mode */
+	int imm_prim;
+	int imm_numv, imm_pcount;
+	struct vertex imm_curv;
+	float imm_curcol[4];
+	struct vertex imm_vbuf[IMM_VBUF_SIZE];
+	float imm_cbuf[IMM_VBUF_SIZE * 4];
+
+	/* textures */
+	int cur_tex;
+	int textypes[MAX_TEXTURES];
+	struct pimage textures[MAX_TEXTURES];
+};
+
+
+static void imm_flush(void);
+static __inline void xform4_vec3(const float *mat, float *vec);
+static __inline void xform3_vec3(const float *mat, float *vec);
+static void shade(struct vertex *v);
+
+/* TODO */
+#define cround64(x)		(int)(x)
+
+static struct gaw_state st;
+static const float idmat[] = {
+	1, 0, 0, 0,
+	0, 1, 0, 0,
+	0, 0, 1, 0,
+	0, 0, 0, 1
+};
+
+
+void gaw_sw_reset(void)
+{
+	int i;
+
+	free(pfill_zbuf);
+	memset(&st, 0, sizeof st);
+
+	for(i=0; i<NUM_MATRICES; i++) {
+		gaw_matrix_mode(i);
+		gaw_load_identity();
+	}
+
+	for(i=0; i<MAX_LIGHTS; i++) {
+		gaw_light_dir(i, 0, 0, 1);
+		gaw_light_color(i, 1, 1, 1, 1);
+	}
+	gaw_ambient(0.1, 0.1, 0.1);
+	gaw_mtl_diffuse(1, 1, 1, 1);
+
+	st.clear_depth = 0xffffff;
+}
+
+void gaw_sw_init(void)
+{
+	gaw_sw_reset();
+}
+
+void gaw_sw_destroy(void)
+{
+	free(pfill_zbuf);
+}
+
+
+void gaw_sw_framebuffer(int width, int height, void *pixels)
+{
+	static int max_height;
+	static int max_npixels;
+	int npixels = width * height;
+
+	if(npixels > max_npixels) {
+		free(pfill_zbuf);
+		pfill_zbuf = malloc_nf(npixels * sizeof *pfill_zbuf);
+		max_npixels = npixels;
+	}
+
+	if(height > max_height) {
+		polyfill_fbheight(height);
+		max_height = height;
+	}
+
+	st.width = width;
+	st.height = height;
+
+	pfill_fb.pixels = pixels;
+	pfill_fb.width = width;
+	pfill_fb.height = height;
+
+	gaw_viewport(0, 0, width, height);
+}
+
+/* set the framebuffer pointer, without resetting the size */
+void gaw_sw_framebuffer_addr(void *pixels)
+{
+	pfill_fb.pixels = pixels;
+}
+
+void gaw_viewport(int x, int y, int w, int h)
+{
+	st.vport[0] = x;
+	st.vport[1] = y;
+	st.vport[2] = w;
+	st.vport[3] = h;
+}
+
+void gaw_matrix_mode(int mode)
+{
+	st.mmode = mode;
+}
+
+void gaw_load_identity(void)
+{
+	int top = st.mtop[st.mmode];
+	memcpy(st.mat[st.mmode][top], idmat, 16 * sizeof(float));
+}
+
+void gaw_load_matrix(const float *m)
+{
+	int top = st.mtop[st.mmode];
+	memcpy(st.mat[st.mmode][top], m, 16 * sizeof(float));
+}
+
+#define M(i,j)	(((i) << 2) + (j))
+void gaw_mult_matrix(const float *m2)
+{
+	int i, j, top = st.mtop[st.mmode];
+	float m1[16];
+	float *dest = st.mat[st.mmode][top];
+
+	memcpy(m1, dest, sizeof m1);
+
+	for(i=0; i<4; i++) {
+		for(j=0; j<4; j++) {
+			*dest++ = m1[M(0,j)] * m2[M(i,0)] +
+				m1[M(1,j)] * m2[M(i,1)] +
+				m1[M(2,j)] * m2[M(i,2)] +
+				m1[M(3,j)] * m2[M(i,3)];
+		}
+	}
+}
+
+void gaw_push_matrix(void)
+{
+	int top = st.mtop[st.mmode];
+	if(top >= STACK_SIZE) {
+		fprintf(stderr, "push_matrix overflow\n");
+		return;
+	}
+	memcpy(st.mat[st.mmode][top + 1], st.mat[st.mmode][top], 16 * sizeof(float));
+	st.mtop[st.mmode] = top + 1;
+}
+
+void gaw_pop_matrix(void)
+{
+	if(st.mtop[st.mmode] <= 0) {
+		fprintf(stderr, "pop_matrix underflow\n");
+		return;
+	}
+	--st.mtop[st.mmode];
+}
+
+void gaw_get_modelview(float *m)
+{
+	int top = st.mtop[GAW_MODELVIEW];
+	memcpy(m, st.mat[GAW_MODELVIEW][top], 16 * sizeof(float));
+}
+
+void gaw_get_projection(float *m)
+{
+	int top = st.mtop[GAW_PROJECTION];
+	memcpy(m, st.mat[GAW_PROJECTION][top], 16 * sizeof(float));
+}
+
+void gaw_translate(float x, float y, float z)
+{
+	static float m[16];
+	m[0] = m[5] = m[10] = m[15] = 1.0f;
+	m[12] = x;
+	m[13] = y;
+	m[14] = z;
+	gaw_mult_matrix(m);
+}
+
+void gaw_rotate(float deg, float x, float y, float z)
+{
+	static float m[16];
+
+	float angle = M_PI * deg / 180.0f;
+	float sina = sin(angle);
+	float cosa = cos(angle);
+	float one_minus_cosa = 1.0f - cosa;
+	float nxsq = x * x;
+	float nysq = y * y;
+	float nzsq = z * z;
+
+	m[0] = nxsq + (1.0f - nxsq) * cosa;
+	m[4] = x * y * one_minus_cosa - z * sina;
+	m[8] = x * z * one_minus_cosa + y * sina;
+	m[1] = x * y * one_minus_cosa + z * sina;
+	m[5] = nysq + (1.0 - nysq) * cosa;
+	m[9] = y * z * one_minus_cosa - x * sina;
+	m[2] = x * z * one_minus_cosa - y * sina;
+	m[6] = y * z * one_minus_cosa + x * sina;
+	m[10] = nzsq + (1.0 - nzsq) * cosa;
+	m[15] = 1.0f;
+
+	gaw_mult_matrix(m);
+}
+
+void gaw_scale(float sx, float sy, float sz)
+{
+	static float m[16];
+	m[0] = sx;
+	m[5] = sy;
+	m[10] = sz;
+	m[15] = 1.0f;
+	gaw_mult_matrix(m);
+}
+
+void gaw_ortho(float l, float r, float b, float t, float n, float f)
+{
+	static float m[16];
+
+	float dx = r - l;
+	float dy = t - b;
+	float dz = f - n;
+
+	m[0] = 2.0 / dx;
+	m[5] = 2.0 / dy;
+	m[10] = -2.0 / dz;
+	m[12] = -(r + l) / dx;
+	m[13] = -(t + b) / dy;
+	m[14] = -(f + n) / dz;
+	m[15] = 1.0f;
+
+	gaw_mult_matrix(m);
+}
+
+void gaw_frustum(float left, float right, float bottom, float top, float zn, float zf)
+{
+	static float m[16];
+
+	float dx = right - left;
+	float dy = top - bottom;
+	float dz = zf - zn;
+
+	float a = (right + left) / dx;
+	float b = (top + bottom) / dy;
+	float c = -(zf + zn) / dz;
+	float d = -2.0 * zf * zn / dz;
+
+	m[0] = 2.0 * zn / dx;
+	m[5] = 2.0 * zn / dy;
+	m[8] = a;
+	m[9] = b;
+	m[10] = c;
+	m[11] = -1.0f;
+	m[14] = d;
+
+	gaw_mult_matrix(m);
+}
+
+void gaw_perspective(float vfov_deg, float aspect, float znear, float zfar)
+{
+	static float m[16];
+
+	float vfov = M_PI * vfov_deg / 180.0f;
+	float s = 1.0f / tan(vfov * 0.5f);
+	float range = znear - zfar;
+
+	m[0] = s / aspect;
+	m[5] = s;
+	m[10] = (znear + zfar) / range;
+	m[11] = -1.0f;
+	m[14] = 2.0f * znear * zfar / range;
+
+	gaw_mult_matrix(m);
+}
+
+void gaw_save(void)
+{
+	st.savopt = st.opt;
+}
+
+void gaw_restore(void)
+{
+	st.opt = st.savopt;
+}
+
+void gaw_enable(int what)
+{
+	st.opt |= 1 << what;
+}
+
+void gaw_disable(int what)
+{
+	st.opt &= ~(1 << what);
+}
+
+void gaw_depth_func(int func)
+{
+	/* TODO */
+}
+
+void gaw_blend_func(int src, int dest)
+{
+	st.bsrc = src;
+	st.bdst = dest;
+}
+
+void gaw_alpha_func(int func, float ref)
+{
+	/* TODO */
+}
+
+#define CLAMP(x, a, b)		((x) < (a) ? (a) : ((x) > (b) ? (b) : (x)))
+
+void gaw_clear_color(float r, float g, float b, float a)
+{
+	int ir = (int)(r * 255.0f);
+	int ig = (int)(g * 255.0f);
+	int ib = (int)(b * 255.0f);
+
+	ir = CLAMP(ir, 0, 255);
+	ig = CLAMP(ig, 0, 255);
+	ib = CLAMP(ib, 0, 255);
+
+	st.clear_color = PACK_RGB(ir, ig, ib);
+}
+
+void gaw_clear_depth(float z)
+{
+	int iz = (int)(z * (float)0xffffff);
+
+	st.clear_depth = CLAMP(iz, 0, 0xffffff);
+}
+
+void gaw_clear(unsigned int flags)
+{
+	int i, npix = pfill_fb.width * pfill_fb.height;
+
+	if(flags & GAW_COLORBUF) {
+		for(i=0; i<npix; i++) {
+			pfill_fb.pixels[i] = st.clear_color;
+		}
+	}
+
+	if(flags & GAW_DEPTHBUF) {
+		for(i=0; i<npix; i++) {
+			pfill_zbuf[i] = st.clear_depth;
+		}
+	}
+}
+
+void gaw_depth_mask(int mask)
+{
+	/* TODO */
+}
+
+void gaw_vertex_array(int nelem, int stride, const void *ptr)
+{
+	st.vertex_nelem = nelem;
+	st.vertex_stride = stride;
+	st.vertex_ptr = ptr;
+}
+
+void gaw_normal_array(int stride, const void *ptr)
+{
+	st.normal_stride = stride;
+	st.normal_ptr = ptr;
+}
+
+void gaw_texcoord_array(int nelem, int stride, const void *ptr)
+{
+	st.texcoord_nelem = nelem;
+	st.texcoord_stride = stride;
+	st.texcoord_ptr = ptr;
+}
+
+void gaw_color_array(int nelem, int stride, const void *ptr)
+{
+	st.color_nelem = nelem;
+	st.color_stride = stride;
+	st.color_ptr = ptr;
+}
+
+void gaw_draw(int prim, int nverts)
+{
+	gaw_draw_indexed(prim, 0, nverts);
+}
+
+#define NEED_NORMALS \
+	(st.opt & (GAW_LIGHTING | GAW_SPHEREMAP))
+
+static int prim_vcount[] = {1, 2, 3, 4, 0};
+
+void gaw_draw_indexed(int prim, const unsigned int *idxarr, int nidx)
+{
+	int i, j, vidx, vnum, nfaces, fill_mode;
+	struct pvertex pv[16];
+	struct vertex v[16];
+	int mvtop = st.mtop[GAW_MODELVIEW];
+	int ptop = st.mtop[GAW_PROJECTION];
+	struct vertex *tmpv;
+	const float *vptr;
+
+	if(prim == GAW_QUAD_STRIP) return;	/* TODO */
+
+	tmpv = alloca(prim * 6 * sizeof *tmpv);
+
+	/* calc the normal matrix */
+	if(NEED_NORMALS) {
+		memcpy(st.norm_mat, st.mat[GAW_MODELVIEW][mvtop], 16 * sizeof(float));
+		st.norm_mat[12] = st.norm_mat[13] = st.norm_mat[14] = 0.0f;
+	}
+
+	vidx = 0;
+	nfaces = nidx / prim_vcount[prim];
+
+	for(j=0; j<nfaces; j++) {
+		vnum = prim_vcount[prim];	/* reset vnum for each iteration */
+
+		for(i=0; i<vnum; i++) {
+			if(idxarr) {
+				vidx = *idxarr++;
+			}
+			vptr = (const float*)((char*)st.vertex_ptr + vidx * st.vertex_stride);
+			v[i].x = vptr[0];
+			v[i].y = vptr[1];
+			v[i].z = st.vertex_nelem > 2 ? vptr[2] : 0.0f;
+			v[i].w = st.vertex_nelem > 3 ? vptr[3] : 1.0f;
+
+			if(st.normal_ptr) {
+				vptr = (const float*)((char*)st.normal_ptr + vidx * st.normal_stride);
+			} else {
+				vptr = &st.imm_curv.nx;
+			}
+			v[i].nx = vptr[0];
+			v[i].ny = vptr[1];
+			v[i].nz = vptr[2];
+
+			if(st.texcoord_ptr) {
+				vptr = (const float*)((char*)st.texcoord_ptr + vidx * st.texcoord_stride);
+			} else {
+				vptr = &st.imm_curv.u;
+			}
+			v[i].u = vptr[0];
+			v[i].v = vptr[1];
+
+			if(st.color_ptr) {
+				vptr = (const float*)((char*)st.color_ptr + vidx * st.color_stride);
+				v[i].r = (int)(vptr[0] * 255.0f);
+				v[i].g = (int)(vptr[1] * 255.0f);
+				v[i].b = (int)(vptr[2] * 255.0f);
+				v[i].a = st.color_nelem > 3 ? (int)(vptr[3] * 255.0f) : 255;
+			} else {
+				v[i].r = st.imm_curv.r;
+				v[i].g = st.imm_curv.g;
+				v[i].b = st.imm_curv.b;
+				v[i].a = st.imm_curv.a;
+			}
+			vidx++;
+
+			xform4_vec3(st.mat[GAW_MODELVIEW][mvtop], &v[i].x);
+
+			if(NEED_NORMALS) {
+				xform3_vec3(st.norm_mat, &v[i].nx);
+				if(st.opt & GAW_LIGHTING) {
+					shade(v + i);
+				}
+				if(st.opt & GAW_SPHEREMAP) {
+					v[i].u = v[i].nx * 0.5 + 0.5;
+					v[i].v = 0.5 - v[i].ny * 0.5;
+				}
+			}
+			{
+				float *mat = st.mat[GAW_TEXTURE][st.mtop[GAW_TEXTURE]];
+				float x = mat[0] * v[i].u + mat[4] * v[i].v + mat[12];
+				float y = mat[1] * v[i].u + mat[5] * v[i].v + mat[13];
+				float w = mat[3] * v[i].u + mat[7] * v[i].v + mat[15];
+				v[i].u = x / w;
+				v[i].v = y / w;
+			}
+			xform4_vec3(st.mat[GAW_PROJECTION][ptop], &v[i].x);
+		}
+
+		/* clipping */
+		for(i=0; i<6; i++) {
+			memcpy(tmpv, v, vnum * sizeof *v);
+
+			if(clip_frustum(v, &vnum, tmpv, vnum, i) < 0) {
+				/* polygon completely outside of view volume. discard */
+				vnum = 0;
+				break;
+			}
+		}
+
+		if(!vnum) continue;
+
+		for(i=0; i<vnum; i++) {
+			if(v[i].w != 0.0f) {
+				v[i].x /= v[i].w;
+				v[i].y /= v[i].w;
+				if(st.opt & GAW_DEPTH_TEST) {
+					v[i].z /= v[i].w;
+				}
+			}
+
+			/* viewport transformation */
+			v[i].x = (v[i].x * 0.5f + 0.5f) * (float)st.vport[2] + st.vport[0];
+			v[i].y = (0.5f - v[i].y * 0.5f) * (float)st.vport[3] + st.vport[1];
+
+			/* convert pos to 24.8 fixed point */
+			pv[i].x = cround64(v[i].x * 256.0f);
+			pv[i].y = cround64(v[i].y * 256.0f);
+
+			if(st.opt & GAW_DEPTH_TEST) {
+				/* after div/w z is in [-1, 1], remap it to [0, 0xffffff] */
+				pv[i].z = cround64(v[i].z * 8388607.5f + 8388607.5f);
+			}
+
+			/* convert tex coords to 16.16 fixed point */
+			pv[i].u = cround64(v[i].u * 65536.0f);
+			pv[i].v = cround64(v[i].v * 65536.0f);
+			/* pass the color through as is */
+			pv[i].r = v[i].r;
+			pv[i].g = v[i].g;
+			pv[i].b = v[i].b;
+			pv[i].a = v[i].a;
+		}
+
+		/* backface culling */
+#if 0	/* TODO fix culling */
+		if(vnum > 2 && st.opt & GAW_CULL_FACE) {
+			int32_t ax = pv[1].x - pv[0].x;
+			int32_t ay = pv[1].y - pv[0].y;
+			int32_t bx = pv[2].x - pv[0].x;
+			int32_t by = pv[2].y - pv[0].y;
+			int32_t cross_z = (ax >> 4) * (by >> 4) - (ay >> 4) * (bx >> 4);
+			int sign = (cross_z >> 31) & 1;
+
+			if(!(sign ^ st.frontface)) {
+				continue;	/* back-facing */
+			}
+		}
+#endif
+
+		switch(prim) {
+		case GAW_POINTS:
+			break;
+
+		case GAW_LINES:
+			break;
+
+		default:
+			fill_mode = st.polymode;
+			if(st.opt & GAW_TEXTURE_2D) {
+				fill_mode |= POLYFILL_TEX_BIT;
+			}
+			if((st.opt & GAW_BLEND) && (st.bsrc == GAW_SRC_ALPHA)) {
+				fill_mode |= POLYFILL_ALPHA_BIT;
+			} else if((st.opt & GAW_BLEND) && (st.bsrc == GAW_ONE)) {
+				fill_mode |= POLYFILL_ADD_BIT;
+			}
+			if(st.opt & GAW_DEPTH_TEST) {
+				fill_mode |= POLYFILL_ZBUF_BIT;
+			}
+			polyfill(fill_mode, pv, vnum);
+		}
+	}
+}
+
+void gaw_begin(int prim)
+{
+	st.imm_prim = prim;
+	st.imm_pcount = prim;
+	st.imm_numv = 0;
+}
+
+void gaw_end(void)
+{
+	imm_flush();
+}
+
+static void imm_flush(void)
+{
+	int numv = st.imm_numv;
+	st.imm_numv = 0;
+
+	gaw_vertex_array(3, sizeof(struct vertex), &st.imm_vbuf->x);
+	gaw_normal_array(sizeof(struct vertex), &st.imm_vbuf->nx);
+	gaw_texcoord_array(2, sizeof(struct vertex), &st.imm_vbuf->u);
+	gaw_color_array(4, sizeof(struct vertex), st.imm_cbuf);
+
+	gaw_draw_indexed(st.imm_prim, 0, numv);
+
+	gaw_vertex_array(0, 0, 0);
+	gaw_normal_array(0, 0);
+	gaw_texcoord_array(0, 0, 0);
+	gaw_color_array(0, 0, 0);
+}
+
+void gaw_color3f(float r, float g, float b)
+{
+	gaw_color4f(r, g, b, 1.0f);
+}
+
+void gaw_color4f(float r, float g, float b, float a)
+{
+	st.imm_curcol[0] = r;
+	st.imm_curcol[1] = g;
+	st.imm_curcol[2] = b;
+	st.imm_curcol[3] = a;
+}
+
+void gaw_color3ub(int r, int g, int b)
+{
+	st.imm_curcol[0] = r / 255.0f;
+	st.imm_curcol[1] = g / 255.0f;
+	st.imm_curcol[2] = b / 255.0f;
+	st.imm_curcol[3] = 1.0f;
+}
+
+void gaw_normal(float x, float y, float z)
+{
+	st.imm_curv.nx = x;
+	st.imm_curv.ny = y;
+	st.imm_curv.nz = z;
+}
+
+void gaw_texcoord1f(float u)
+{
+	st.imm_curv.u = u;
+	st.imm_curv.v = 0.0f;
+}
+
+void gaw_texcoord2f(float u, float v)
+{
+	st.imm_curv.u = u;
+	st.imm_curv.v = v;
+}
+
+void gaw_vertex2f(float x, float y)
+{
+	gaw_vertex3f(x, y, 0);
+}
+
+void gaw_vertex3f(float x, float y, float z)
+{
+	struct vertex *vptr = st.imm_vbuf + st.imm_numv++;
+	*vptr = st.imm_curv;
+	vptr->x = x;
+	vptr->y = y;
+	vptr->z = z;
+	vptr->w = 1.0f;
+
+	if(!--st.imm_pcount) {
+		if(st.imm_numv >= IMM_VBUF_SIZE - prim_vcount[st.imm_prim]) {
+			imm_flush();
+		}
+		st.imm_pcount = prim_vcount[st.imm_prim];
+	}
+}
+
+void gaw_rect(float x1, float y1, float x2, float y2)
+{
+	gaw_begin(GAW_QUADS);
+	gaw_vertex2f(x1, y1);
+	gaw_vertex2f(x2, y1);
+	gaw_vertex2f(x2, y2);
+	gaw_vertex2f(x1, y2);
+	gaw_end();
+}
+
+
+void gaw_pointsize(float sz)
+{
+	/* TODO */
+}
+
+void gaw_linewidth(float w)
+{
+	/* TODO */
+}
+
+int gaw_compile_begin(void)
+{
+	return 0;
+}
+
+void gaw_compile_end(void)
+{
+}
+
+void gaw_draw_compiled(int id)
+{
+}
+
+void gaw_free_compiled(int id)
+{
+}
+
+void gaw_mtl_diffuse(float r, float g, float b, float a)
+{
+	st.mtl.kd[0] = r;
+	st.mtl.kd[1] = g;
+	st.mtl.kd[2] = b;
+	st.mtl.kd[3] = a;
+}
+
+void gaw_mtl_specular(float r, float g, float b, float shin)
+{
+	st.mtl.ks[0] = r;
+	st.mtl.ks[1] = g;
+	st.mtl.ks[2] = b;
+	st.mtl.shin = shin;
+}
+
+void gaw_mtl_emission(float r, float g, float b)
+{
+	st.mtl.ke[0] = r;
+	st.mtl.ke[1] = g;
+	st.mtl.ke[2] = b;
+}
+
+void gaw_texenv_sphmap(int enable)
+{
+	if(enable) {
+		st.opt |= 1 << GAW_SPHEREMAP;
+	} else {
+		st.opt &= ~(1 << GAW_SPHEREMAP);
+	}
+}
+
+static int alloc_tex(void)
+{
+	int i;
+	for(i=0; i<MAX_TEXTURES; i++) {
+		if(st.textypes[i]) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+unsigned int gaw_create_tex1d(int texfilter)
+{
+	int idx;
+	if((idx = alloc_tex()) == -1) {
+		return 0;
+	}
+	st.textypes[idx] = 1;
+
+	memset(st.textures + idx, 0, sizeof *st.textures);
+	return idx + 1;
+}
+
+unsigned int gaw_create_tex2d(int texfilter)
+{
+	int idx;
+	if((idx = alloc_tex()) == -1) {
+		return 0;
+	}
+	st.textypes[idx] = 2;
+
+	memset(st.textures + idx, 0, sizeof *st.textures);
+	return idx + 1;
+}
+
+void gaw_destroy_tex(unsigned int texid)
+{
+	int idx = texid - 1;
+
+	if(!st.textypes[idx]) return;
+
+	free(st.textures[idx].pixels);
+	st.textypes[idx] = 0;
+}
+
+void gaw_texfilter1d(int texfilter)
+{
+}
+
+void gaw_texfilter2d(int texfilter)
+{
+}
+
+static __inline int calc_shift(unsigned int x)
+{
+	int res = -1;
+	while(x) {
+		x >>= 1;
+		++res;
+	}
+	return res;
+}
+
+void gaw_tex1d(int ifmt, int xsz, int fmt, void *pix)
+{
+	gaw_tex2d(ifmt, xsz, 1, fmt, pix);
+}
+
+void gaw_tex2d(int ifmt, int xsz, int ysz, int fmt, void *pix)
+{
+	int npix;
+	struct pimage *img;
+
+	if(!st.cur_tex) return;
+	img = st.textures + st.cur_tex;
+
+	npix = xsz * ysz;
+
+	free(img->pixels);
+	img->pixels = malloc_nf(npix * sizeof *img->pixels);
+	img->width = xsz;
+	img->height = ysz;
+
+	img->xmask = xsz - 1;
+	img->ymask = ysz - 1;
+	img->xshift = calc_shift(xsz);
+	img->yshift = calc_shift(ysz);
+
+	gaw_subtex2d(0, 0, 0, xsz, ysz, fmt, pix);
+}
+
+void gaw_subtex2d(int lvl, int x, int y, int xsz, int ysz, int fmt, void *pix)
+{
+	int i, j, r, g, b, a, val, npix;
+	uint32_t *dest;
+	unsigned char *src;
+	struct pimage *img;
+
+	if(st.cur_tex < 0) return;
+	img = st.textures + st.cur_tex;
+
+	dest = img->pixels + (y << img->xshift) + x;
+	src = pix;
+
+	switch(fmt) {
+	case GAW_LUMINANCE:
+		for(i=0; i<ysz; i++) {
+			for(j=0; j<xsz; j++) {
+				val = *src++;
+				dest[j] = PACK_RGBA(val, val, val, 255);
+			}
+			dest += img->width;
+		}
+		break;
+
+	case GAW_RGB:
+		for(i=0; i<ysz; i++) {
+			for(j=0; j<xsz; j++) {
+				r = src[0];
+				g = src[1];
+				b = src[2];
+				src += 3;
+				dest[j] = PACK_RGBA(r, g, b, 255);
+			}
+			dest += img->width;
+		}
+		break;
+
+	case GAW_RGBA:
+		for(i=0; i<ysz; i++) {
+			for(j=0; j<xsz; j++) {
+				dest[j] = *((uint32_t*)src);
+				src += 4;
+			}
+			dest += img->width;
+		}
+		break;
+
+	default:
+		break;
+	}
+}
+
+void gaw_set_tex1d(unsigned int texid)
+{
+	st.cur_tex = (int)texid - 1;
+}
+
+void gaw_set_tex2d(unsigned int texid)
+{
+	st.cur_tex = (int)texid - 1;
+}
+
+void gaw_ambient(float r, float g, float b)
+{
+	st.ambient[0] = r;
+	st.ambient[1] = g;
+	st.ambient[2] = b;
+}
+
+void gaw_light_pos(int idx, float x, float y, float z)
+{
+	int mvtop = st.mtop[GAW_MODELVIEW];
+
+	st.lt[idx].type = LT_POS;
+	st.lt[idx].x = x;
+	st.lt[idx].y = y;
+	st.lt[idx].z = z;
+
+	xform4_vec3(st.mat[GAW_MODELVIEW][mvtop], &st.lt[idx].x);
+}
+
+void gaw_light_dir(int idx, float x, float y, float z)
+{
+	int mvtop = st.mtop[GAW_MODELVIEW];
+
+	st.lt[idx].type = LT_DIR;
+	st.lt[idx].x = x;
+	st.lt[idx].y = y;
+	st.lt[idx].z = z;
+
+	/* calc the normal matrix */
+	memcpy(st.norm_mat, st.mat[GAW_MODELVIEW][mvtop], 16 * sizeof(float));
+	st.norm_mat[12] = st.norm_mat[13] = st.norm_mat[14] = 0.0f;
+
+	xform4_vec3(st.norm_mat, &st.lt[idx].x);
+
+	NORMALIZE(&st.lt[idx].x);
+}
+
+void gaw_light_color(int idx, float r, float g, float b, float s)
+{
+	st.lt[idx].r = r;
+	st.lt[idx].g = g;
+	st.lt[idx].b = b;
+}
+
+void gaw_lighting_fast(void)
+{
+}
+
+void gaw_fog_color(float r, float g, float b)
+{
+}
+
+void gaw_fog_linear(float z0, float z1)
+{
+}
+
+void gaw_fog_fast(void)
+{
+}
+
+
+void gaw_poly_wire(void)
+{
+	st.polymode = POLYFILL_WIRE;
+}
+
+void gaw_poly_flat(void)
+{
+	st.polymode = POLYFILL_FLAT;
+}
+
+void gaw_poly_gouraud(void)
+{
+	st.polymode = POLYFILL_GOURAUD;
+}
+
+
+static __inline void xform4_vec3(const float *mat, float *vec)
+{
+	float x = mat[0] * vec[0] + mat[4] * vec[1] + mat[8] * vec[2] + mat[12];
+	float y = mat[1] * vec[0] + mat[5] * vec[1] + mat[9] * vec[2] + mat[13];
+	float z = mat[2] * vec[0] + mat[6] * vec[1] + mat[10] * vec[2] + mat[14];
+	vec[3] = mat[3] * vec[0] + mat[7] * vec[1] + mat[11] * vec[2] + mat[15];
+	vec[2] = z;
+	vec[1] = y;
+	vec[0] = x;
+}
+
+static __inline void xform3_vec3(const float *mat, float *vec)
+{
+	float x = mat[0] * vec[0] + mat[4] * vec[1] + mat[8] * vec[2];
+	float y = mat[1] * vec[0] + mat[5] * vec[1] + mat[9] * vec[2];
+	vec[2] = mat[2] * vec[0] + mat[6] * vec[1] + mat[10] * vec[2];
+	vec[1] = y;
+	vec[0] = x;
+}
+
+static void shade(struct vertex *v)
+{
+	int i, r, g, b;
+	float color[3];
+
+	color[0] = st.ambient[0] * st.mtl.kd[0];
+	color[1] = st.ambient[1] * st.mtl.kd[1];
+	color[2] = st.ambient[2] * st.mtl.kd[2];
+
+	for(i=0; i<MAX_LIGHTS; i++) {
+		float ldir[3];
+		float ndotl;
+
+		if(!(st.opt & (GAW_LIGHT0 << i))) {
+			continue;
+		}
+
+		ldir[0] = st.lt[i].x;
+		ldir[1] = st.lt[i].y;
+		ldir[2] = st.lt[i].z;
+
+		if(st.lt[i].type != LT_DIR) {
+			ldir[0] -= v->x;
+			ldir[1] -= v->y;
+			ldir[2] -= v->z;
+			NORMALIZE(ldir);
+		}
+
+		if((ndotl = v->nx * ldir[0] + v->ny * ldir[1] + v->nz * ldir[2]) < 0.0f) {
+			ndotl = 0.0f;
+		}
+
+		color[0] += st.mtl.kd[0] * st.lt[i].r * ndotl;
+		color[1] += st.mtl.kd[1] * st.lt[i].g * ndotl;
+		color[2] += st.mtl.kd[2] * st.lt[i].b * ndotl;
+
+		/*
+		if(st.opt & GAW_SPECULAR) {
+			float ndoth;
+			ldir[2] += 1.0f;
+			NORMALIZE(ldir);
+			if((ndoth = v->nx * ldir[0] + v->ny * ldir[1] + v->nz * ldir[2]) < 0.0f) {
+				ndoth = 0.0f;
+			}
+			ndoth = pow(ndoth, st.mtl.shin);
+
+			color[0] += st.mtl.ks[0] * st.lt[i].r * ndoth;
+			color[1] += st.mtl.ks[1] * st.lt[i].g * ndoth;
+			color[2] += st.mtl.ks[2] * st.lt[i].b * ndoth;
+		}
+		*/
+	}
+
+	r = cround64(color[0] * 255.0);
+	g = cround64(color[1] * 255.0);
+	b = cround64(color[2] * 255.0);
+
+	v->r = r > 255 ? 255 : r;
+	v->g = g > 255 ? 255 : g;
+	v->b = b > 255 ? 255 : b;
+}

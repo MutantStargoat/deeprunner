@@ -398,7 +398,7 @@ static void draw_volume_bar(void)
 		gaw_pop_matrix();
 		gaw_matrix_mode(GAW_MODELVIEW);
 
-		gaw_poly_filled();
+		gaw_poly_gouraud();
 		gaw_restore();
 	}
 }

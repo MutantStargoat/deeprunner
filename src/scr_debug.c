@@ -125,7 +125,7 @@ static void dbg_display(void)
 			gaw_enable(GAW_BLEND);
 			gaw_blend_func(GAW_ONE, GAW_ONE);
 			col = 0.15;
-			gaw_poly_filled();
+			gaw_poly_gouraud();
 		}
 
 		/* plane */
