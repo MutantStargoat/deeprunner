@@ -42,7 +42,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
-# ADD CPP /nologo /W2 /GX /O2 /I "libs" /I "libs/imago/src" /I "libs/treestor/include" /I "libs/goat3d/include" /I "libs/drawtext" /I "libs/mikmod/include" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "MINIGLUT_USE_LIBC" /D "MIKMOD_STATIC" /YX /FD /c
+# ADD CPP /nologo /W2 /GX /O2 /I "src" /I "src/opengl" /I "libs" /I "libs/imago/src" /I "libs/treestor/include" /I "libs/goat3d/include" /I "libs/drawtext" /I "libs/mikmod/include" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "MINIGLUT_USE_LIBC" /D "MIKMOD_STATIC" /YX /FD /c
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
 # ADD RSC /l 0x409 /d "NDEBUG"
 BSC32=bscmake.exe
@@ -66,7 +66,7 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /GZ /c
-# ADD CPP /nologo /W2 /Gm /GX /ZI /Od /I "libs" /I "libs/imago/src" /I "libs/treestor/include" /I "libs/goat3d/include" /I "libs/drawtext" /I "libs/mikmod/include" /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /D "MINIGLUT_USE_LIBC" /D "MIKMOD_STATIC" /YX /FD /GZ /c
+# ADD CPP /nologo /W2 /Gm /GX /ZI /Od /I "src" /I "src/opengl" /I "libs" /I "libs/imago/src" /I "libs/treestor/include" /I "libs/goat3d/include" /I "libs/drawtext" /I "libs/mikmod/include" /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /D "MINIGLUT_USE_LIBC" /D "MIKMOD_STATIC" /YX /FD /GZ /c
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
 # ADD RSC /l 0x409 /d "_DEBUG"
 BSC32=bscmake.exe
@@ -163,7 +163,7 @@ SOURCE=.\src\loading.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\main.c
+SOURCE=.\src\opengl\main_gl.c
 # End Source File
 # Begin Source File
 
@@ -179,11 +179,11 @@ SOURCE=.\src\meshgen.c
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\miniglut.c
+SOURCE=.\src\opengl\miniglut.c
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\miniglut.h
+SOURCE=.\src\opengl\miniglut.h
 # End Source File
 # Begin Source File
 
