@@ -208,12 +208,15 @@ void POLYFILL(struct pvertex *varr, int vnum)
 		while(len-- > 0) {
 #if defined(GOURAUD) || defined(TEXMAP) || defined(BLEND_ALPHA) || defined(BLEND_ADD)
 			int cr, cg, cb;
+#ifdef BLEND_ALPHA
+			int ca;
+#endif
 #endif
 #if defined(BLEND_ALPHA) || defined(BLEND_ADD)
 			gaw_pixel fbcol;
 #endif
 #ifdef BLEND_ALPHA
-			int alpha, inv_alpha;
+			int inv_alpha;
 #endif
 #ifdef ZBUF
 			uint32_t cz = z;
@@ -252,6 +255,10 @@ void POLYFILL(struct pvertex *varr, int vnum)
 			r += rslope;
 			g += gslope;
 			b += bslope;
+#ifdef BLEND_ALPHA
+			ca = a < 0 ? 0 : (a >> COLOR_SHIFT);
+			a += aslope;
+#endif	/* BLEND_ALPHA */
 #endif	/* GOURAUD */
 #ifdef TEXMAP
 			tx = (tu >> (16 - pfill_tex.xshift)) & pfill_tex.xmask;
@@ -266,6 +273,9 @@ void POLYFILL(struct pvertex *varr, int vnum)
 			cr = varr[0].r;
 			cg = varr[0].g;
 			cb = varr[0].b;
+#ifdef BLEND_ALPHA
+			ca = varr[0].a;
+#endif
 #endif	/* !GOURAUD */
 			/* This is not correct, should be /255, but it's much faster
 			 * to shift by 8 (/256), and won't make a huge difference
@@ -273,21 +283,17 @@ void POLYFILL(struct pvertex *varr, int vnum)
 			cr = (cr * UNPACK_R(texel)) >> 8;
 			cg = (cg * UNPACK_G(texel)) >> 8;
 			cb = (cb * UNPACK_B(texel)) >> 8;
+#ifdef BLEND_ALPHA
+			ca = (ca * UNPACK_A(texel)) >> 8;
+#endif
 #endif	/* TEXMAP */
 
 #ifdef BLEND_ALPHA
-#ifdef GOURAUD
-			alpha = a >> COLOR_SHIFT;
-			inv_alpha = 255 - alpha;
-			a += aslope;
-#else
-			alpha = varr[0].a;
-#endif
-			inv_alpha = 255 - alpha;
+			inv_alpha = 255 - ca;
 			fbcol = *pptr;
-			cr = (cr * alpha + UNPACK_R(fbcol) * inv_alpha) >> 8;
-			cg = (cg * alpha + UNPACK_G(fbcol) * inv_alpha) >> 8;
-			cb = (cb * alpha + UNPACK_B(fbcol) * inv_alpha) >> 8;
+			cr = (cr * ca + UNPACK_R(fbcol) * inv_alpha) >> 8;
+			cg = (cg * ca + UNPACK_G(fbcol) * inv_alpha) >> 8;
+			cb = (cb * ca + UNPACK_B(fbcol) * inv_alpha) >> 8;
 #endif	/* BLEND_ALPHA */
 #ifdef BLEND_ADD
 			fbcol = *pptr;

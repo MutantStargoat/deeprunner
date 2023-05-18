@@ -853,7 +853,7 @@ static void gmotion(int x, int y)
 
 	if(!(dx | dy)) return;
 
-	if(mouse_state[0] || mouse_grabbed) {
+	if(mouse_state[0] || mouse_state[1] || mouse_grabbed) {
 		player->mouse_input.x += dx;
 		player->mouse_input.y += opt.inv_mouse_y ? -dy : dy;
 	}

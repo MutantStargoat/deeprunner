@@ -36,7 +36,7 @@ static void logo_motion(int x, int y);
 
 
 struct game_screen scr_logo = {
-	"menu",
+	"logo",
 	logo_init, logo_destroy,
 	logo_start, logo_stop,
 	logo_display, logo_reshape,

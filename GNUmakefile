@@ -1,6 +1,6 @@
 # --- build options ---
 # rend = <gl|sw>
-rend = gl
+rend = sw
 # ---------------------
 
 gawsrc_gl = $(wildcard src/opengl/*.c) src/gaw/gaw_gl.c
@@ -25,9 +25,9 @@ CFLAGS = $(warn) $(dbg) $(opt) $(inc) $(def) $(cflags_$(rend)) -MMD
 LDFLAGS = $(ldsys_pre) $(libs) $(ldsys)
 
 cflags_gl = -Isrc/opengl
-cflags_sw = -Isrc/swsdl `sdl2-config --cflags`
+cflags_sw = -Isrc/swsdl `sdl-config --cflags`
 
-ldflags_sw = `sdl2-config --ldflags`
+ldflags_sw = `sdl-config --libs`
 
 sys := $(shell uname -s | sed 's/MINGW.*/mingw/')
 ifeq ($(sys), mingw)

@@ -64,9 +64,9 @@ enum {
 typedef uint32_t gaw_pixel;
 
 #define PACK_RGB(r, g, b) \
-	(((b) << 16) | ((g) << 8) | (r))
+	(((r) << 16) | ((g) << 8) | (b))
 #define PACK_RGBA(r, g, b, a) \
-	(((a) << 24) | ((b) << 16) | ((g) << 8) | (r))
+	(((a) << 24) | ((r) << 16) | ((g) << 8) | (b))
 #define UNPACK_R(pix)	((pix) & 0xff)
 #define UNPACK_G(pix)	(((pix) >> 8) & 0xff)
 #define UNPACK_B(pix)	(((pix) >> 16) & 0xff)

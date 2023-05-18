@@ -18,7 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "config.h"
 
 #include "gaw/gaw.h"
-#include "miniglut.h"
 #include "game.h"
 #include "rendlvl.h"
 #include "darray.h"
