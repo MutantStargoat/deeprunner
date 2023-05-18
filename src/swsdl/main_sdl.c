@@ -44,6 +44,7 @@ int main(int argc, char **argv)
 		SDL_Quit();
 		return 1;
 	}
+	SDL_WM_SetCaption("DeepRunner", 0);
 	gaw_sw_init();
 	game_resize(640, 480);
 

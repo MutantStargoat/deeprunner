@@ -708,7 +708,8 @@ void gaw_draw_indexed(int prim, const unsigned int *idxarr, int nidx)
 
 			/* viewport transformation */
 			v[i].x = (v[i].x * 0.5f + 0.5f) * (float)st.vport[2] + st.vport[0];
-			v[i].y = (0.5f - v[i].y * 0.5f) * (float)st.vport[3] + st.vport[1];
+			v[i].y = (v[i].y * 0.5f + 0.5f) * (float)st.vport[3] + st.vport[1];
+			v[i].y = pfill_fb.height - v[i].y - 1;
 
 			/* convert pos to 24.8 fixed point */
 			pv[i].x = cround64(v[i].x * 256.0f);
