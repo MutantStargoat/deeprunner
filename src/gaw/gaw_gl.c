@@ -15,6 +15,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+#include <string.h>
+#include "util.h"
 #include "gaw.h"
 
 #if defined(WIN32) || defined(__WIN32)
@@ -28,6 +30,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 static const float *vertex_ptr, *normal_ptr, *texcoord_ptr, *color_ptr;
 static int vertex_nelem, texcoord_nelem, color_nelem;
 static int vertex_stride, normal_stride, texcoord_stride, color_stride;
+
+static char *glextstr;
+static int have_edgeclamp = -1;
+
 
 void gaw_viewport(int x, int y, int w, int h)
 {
@@ -483,6 +489,16 @@ void gaw_destroy_tex(unsigned int tex)
 	glDeleteTextures(1, &tex);
 }
 
+void gaw_bind_tex1d(int tex)
+{
+	glBindTexture(GL_TEXTURE_1D, tex);
+}
+
+void gaw_bind_tex2d(int tex)
+{
+	glBindTexture(GL_TEXTURE_2D, tex);
+}
+
 void gaw_texfilter1d(int texfilter)
 {
 	switch(texfilter) {
@@ -528,6 +544,43 @@ void gaw_texfilter2d(int texfilter)
 		break;
 	}
 }
+
+static int glwrap(int wrap)
+{
+	if(have_edgeclamp == -1) {
+		if(!glextstr) {
+			glextstr = strdup_nf((char*)glGetString(GL_EXTENSIONS));
+		}
+		have_edgeclamp = strstr(glextstr, "SGIS_texture_edge_clamp") != 0;
+	}
+
+	switch(wrap) {
+	case GAW_CLAMP:
+		if(have_edgeclamp) {
+			return GL_CLAMP_TO_EDGE;
+		} else {
+			return GL_CLAMP;
+		}
+		break;
+
+	case GAW_REPEAT:
+	default:
+		break;
+	}
+	return GL_REPEAT;
+}
+
+void gaw_texwrap1d(int wrap)
+{
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, glwrap(wrap));
+}
+
+void gaw_texwrap2d(int uwrap, int vwrap)
+{
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, glwrap(uwrap));
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, glwrap(vwrap));
+}
+
 
 static const int glfmt[] = {GL_LUMINANCE, GL_RGB, GL_RGBA};
 

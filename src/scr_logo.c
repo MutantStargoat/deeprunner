@@ -88,6 +88,9 @@ static int logo_start(void)
 	if(!(tex_o2boot = tex_load("data/o2boot.png"))) {
 		return 0;
 	}
+	gaw_bind_tex2d(tex_o2boot->texid);
+	gaw_texwrap2d(GAW_CLAMP, GAW_CLAMP);
+
 	if(!(tex_env = tex_load("data/refmap1.jpg"))) {
 		return 0;
 	}

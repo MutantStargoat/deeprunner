@@ -91,6 +91,11 @@ enum {
 	GAW_TRILINEAR
 };
 
+enum {
+	GAW_REPEAT,
+	GAW_CLAMP
+};
+
 void gaw_viewport(int x, int y, int w, int h);
 
 void gaw_matrix_mode(int mode);
@@ -159,8 +164,14 @@ unsigned int gaw_create_tex1d(int texfilter);
 unsigned int gaw_create_tex2d(int texfilter);
 void gaw_destroy_tex(unsigned int tex);
 
+void gaw_bind_tex1d(int tex);
+void gaw_bind_tex2d(int tex);
+
 void gaw_texfilter1d(int texfilter);
 void gaw_texfilter2d(int texfilter);
+
+void gaw_texwrap1d(int wrap);
+void gaw_texwrap2d(int uwrap, int vwrap);
 
 void gaw_tex1d(int ifmt, int xsz, int fmt, void *pix);
 void gaw_tex2d(int ifmt, int xsz, int ysz, int fmt, void *pix);

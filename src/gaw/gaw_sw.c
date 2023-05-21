@@ -1030,6 +1030,18 @@ void gaw_destroy_tex(unsigned int texid)
 	st.textypes[idx] = 0;
 }
 
+void gaw_bind_tex1d(int tex)
+{
+	st.cur_tex = (int)tex - 1;
+	pfill_tex = st.textures[st.cur_tex];
+}
+
+void gaw_bind_tex2d(int tex)
+{
+	st.cur_tex = (int)tex - 1;
+	pfill_tex = st.textures[st.cur_tex];
+}
+
 void gaw_texfilter1d(int texfilter)
 {
 }
@@ -1037,6 +1049,15 @@ void gaw_texfilter1d(int texfilter)
 void gaw_texfilter2d(int texfilter)
 {
 }
+
+void gaw_texwrap1d(int wrap)
+{
+}
+
+void gaw_texwrap2d(int uwrap, int vwrap)
+{
+}
+
 
 static __inline int calc_shift(unsigned int x)
 {
