@@ -19,24 +19,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <string.h>
 #include <math.h>
 #include "gaw.h"
+#include "gawswtnl.h"
 #include "polyfill.h"
 #include "polyclip.h"
 #include "../darray.h"
-
-enum {
-	GAW_SPHEREMAP	= 24
-};
-
-/* modelview, projection, texture */
-#define NUM_MATRICES	3
-#define STACK_SIZE	8
-typedef float gaw_matrix[16];
-
-#define MAX_LIGHTS		4
-#define MAX_TEXTURES	256
-#define MAX_COMPILED	256
-
-#define IMM_VBUF_SIZE	256
 
 #define NORMALIZE(v) \
 	do { \
@@ -49,78 +35,6 @@ typedef float gaw_matrix[16];
 		} \
 	} while(0)
 
-enum {LT_POS, LT_DIR};
-struct light {
-	int type;
-	float x, y, z;
-	float r, g, b;
-};
-
-struct material {
-	float kd[4];
-	float ks[3];
-	float ke[3];
-	float shin;
-};
-
-struct comp_geom {
-	int prim;
-	float *varr, *narr, *uvarr, *carr;	/* darr */
-};
-
-
-struct gaw_state {
-	uint32_t opt;
-	uint32_t savopt[STACK_SIZE];
-	int savopt_top;
-
-	int frontface;
-	int polymode;
-
-	const float *varr, *narr, *uvarr;
-
-	gaw_matrix mat[NUM_MATRICES][STACK_SIZE];
-	int mtop[NUM_MATRICES];
-	int mmode;
-
-	gaw_matrix norm_mat;
-
-	float ambient[3];
-	struct light lt[MAX_LIGHTS];
-	struct material mtl;
-
-	int bsrc, bdst;
-
-	int width, height;
-	gaw_pixel *pixels;
-
-	int vport[4];
-
-	uint32_t clear_color;
-	uint32_t clear_depth;
-
-	const float *vertex_ptr, *normal_ptr, *texcoord_ptr, *color_ptr;
-	int vertex_nelem, texcoord_nelem, color_nelem;
-	int vertex_stride, normal_stride, texcoord_stride, color_stride;
-
-	/* immediate mode */
-	int imm_prim;
-	int imm_numv, imm_pcount;
-	struct vertex imm_curv;
-	float imm_curcol[4];
-	struct vertex imm_vbuf[IMM_VBUF_SIZE];
-	float imm_cbuf[IMM_VBUF_SIZE * 4];
-
-	/* textures */
-	int cur_tex;
-	int textypes[MAX_TEXTURES];
-	struct pimage textures[MAX_TEXTURES];
-
-	/* compiled geometries */
-	int cur_comp;
-	struct comp_geom comp[MAX_COMPILED];
-};
-
 
 static void imm_flush(void);
 static __inline void xform4_vec3(const float *mat, float *vec);
@@ -131,6 +45,8 @@ static void shade(struct vertex *v);
 #define cround64(x)		(int)(x)
 
 static struct gaw_state st;
+struct gaw_state *gaw_state;
+
 static const float idmat[] = {
 	1, 0, 0, 0,
 	0, 1, 0, 0,
@@ -166,6 +82,8 @@ void gaw_sw_reset(void)
 	st.cur_tex = -1;
 
 	gaw_color3f(1, 1, 1);
+
+	gaw_state = &st;
 }
 
 void gaw_sw_init(void)
@@ -485,10 +403,8 @@ void gaw_clear_color(float r, float g, float b, float a)
 
 void gaw_clear_depth(float z)
 {
-	/*int iz = (int)(z * (float)0xffffff);
-	st.clear_depth = CLAMP(iz, 0, 0xffffff);*/
-	int iz = (int)(z * (float)0xffff);
-	st.clear_depth = CLAMP(iz, 0, 0xffff);
+	int iz = (int)(z * (float)0xffffff);
+	st.clear_depth = CLAMP(iz, 0, 0xffffff);
 }
 
 void gaw_clear(unsigned int flags)
@@ -557,6 +473,7 @@ void gaw_draw(int prim, int nverts)
 	gaw_draw_indexed(prim, 0, nverts);
 }
 
+
 #define NEED_NORMALS \
 	(st.opt & ((1 << GAW_LIGHTING) | (1 << GAW_SPHEREMAP)))
 
@@ -564,26 +481,25 @@ static int prim_vcount[] = {1, 2, 3, 4, 0};
 
 void gaw_draw_indexed(int prim, const unsigned int *idxarr, int nidx)
 {
-	int i, j, vidx, vnum, nfaces, fill_mode;
-	struct pvertex pv[16];
+	int i, j, vidx, vnum, nfaces;
 	struct vertex v[16];
-	int mvtop = st.mtop[GAW_MODELVIEW];
-	int ptop = st.mtop[GAW_PROJECTION];
+	int mvtop = ST->mtop[GAW_MODELVIEW];
+	int ptop = ST->mtop[GAW_PROJECTION];
 	struct vertex *tmpv;
 	const float *vptr;
 
 	if(prim == GAW_QUAD_STRIP) return;	/* TODO */
 
-	if(st.cur_comp >= 0) {
-		st.comp[st.cur_comp].prim = prim;
+	if(ST->cur_comp >= 0) {
+		ST->comp[ST->cur_comp].prim = prim;
 	}
 
 	tmpv = alloca(prim * 6 * sizeof *tmpv);
 
 	/* calc the normal matrix */
 	if(NEED_NORMALS) {
-		memcpy(st.norm_mat, st.mat[GAW_MODELVIEW][mvtop], 16 * sizeof(float));
-		st.norm_mat[12] = st.norm_mat[13] = st.norm_mat[14] = 0.0f;
+		memcpy(ST->norm_mat, ST->mat[GAW_MODELVIEW][mvtop], 16 * sizeof(float));
+		ST->norm_mat[12] = ST->norm_mat[13] = ST->norm_mat[14] = 0.0f;
 	}
 
 	vidx = 0;
@@ -596,44 +512,44 @@ void gaw_draw_indexed(int prim, const unsigned int *idxarr, int nidx)
 			if(idxarr) {
 				vidx = *idxarr++;
 			}
-			vptr = (const float*)((char*)st.vertex_ptr + vidx * st.vertex_stride);
+			vptr = (const float*)((char*)ST->vertex_ptr + vidx * ST->vertex_stride);
 			v[i].x = vptr[0];
 			v[i].y = vptr[1];
-			v[i].z = st.vertex_nelem > 2 ? vptr[2] : 0.0f;
-			v[i].w = st.vertex_nelem > 3 ? vptr[3] : 1.0f;
+			v[i].z = ST->vertex_nelem > 2 ? vptr[2] : 0.0f;
+			v[i].w = ST->vertex_nelem > 3 ? vptr[3] : 1.0f;
 
-			if(st.normal_ptr) {
-				vptr = (const float*)((char*)st.normal_ptr + vidx * st.normal_stride);
+			if(ST->normal_ptr) {
+				vptr = (const float*)((char*)ST->normal_ptr + vidx * ST->normal_stride);
 			} else {
-				vptr = &st.imm_curv.nx;
+				vptr = &ST->imm_curv.nx;
 			}
 			v[i].nx = vptr[0];
 			v[i].ny = vptr[1];
 			v[i].nz = vptr[2];
 
-			if(st.texcoord_ptr) {
-				vptr = (const float*)((char*)st.texcoord_ptr + vidx * st.texcoord_stride);
+			if(ST->texcoord_ptr) {
+				vptr = (const float*)((char*)ST->texcoord_ptr + vidx * ST->texcoord_stride);
 			} else {
-				vptr = &st.imm_curv.u;
+				vptr = &ST->imm_curv.u;
 			}
 			v[i].u = vptr[0];
 			v[i].v = vptr[1];
 
-			if(st.color_ptr) {
-				vptr = (const float*)((char*)st.color_ptr + vidx * st.color_stride);
+			if(ST->color_ptr) {
+				vptr = (const float*)((char*)ST->color_ptr + vidx * ST->color_stride);
 			} else {
-				vptr = st.imm_curcol;
+				vptr = ST->imm_curcol;
 			}
 			v[i].r = (int)(vptr[0] * 255.0f);
 			v[i].g = (int)(vptr[1] * 255.0f);
 			v[i].b = (int)(vptr[2] * 255.0f);
-			v[i].a = st.color_nelem > 3 ? (int)(vptr[3] * 255.0f) : 255;
+			v[i].a = ST->color_nelem > 3 ? (int)(vptr[3] * 255.0f) : 255;
 
 			vidx++;
 
-			if(st.cur_comp >= 0) {
+			if(ST->cur_comp >= 0) {
 				/* currently compiling geometry */
-				struct comp_geom *cg = st.comp + st.cur_comp;
+				struct comp_geom *cg = ST->comp + ST->cur_comp;
 				float col[4];
 
 				col[0] = v[i].r / 255.0f;
@@ -656,30 +572,30 @@ void gaw_draw_indexed(int prim, const unsigned int *idxarr, int nidx)
 				continue;	/* don't transform, just skip to the next vertex */
 			}
 
-			xform4_vec3(st.mat[GAW_MODELVIEW][mvtop], &v[i].x);
+			xform4_vec3(ST->mat[GAW_MODELVIEW][mvtop], &v[i].x);
 
 			if(NEED_NORMALS) {
-				xform3_vec3(st.norm_mat, &v[i].nx);
-				if(st.opt & (1 << GAW_LIGHTING)) {
+				xform3_vec3(ST->norm_mat, &v[i].nx);
+				if(ST->opt & (1 << GAW_LIGHTING)) {
 					shade(v + i);
 				}
-				if(st.opt & (1 << GAW_SPHEREMAP)) {
+				if(ST->opt & (1 << GAW_SPHEREMAP)) {
 					v[i].u = v[i].nx * 0.5 + 0.5;
 					v[i].v = 0.5 - v[i].ny * 0.5;
 				}
 			}
 			{
-				float *mat = st.mat[GAW_TEXTURE][st.mtop[GAW_TEXTURE]];
+				float *mat = ST->mat[GAW_TEXTURE][ST->mtop[GAW_TEXTURE]];
 				float x = mat[0] * v[i].u + mat[4] * v[i].v + mat[12];
 				float y = mat[1] * v[i].u + mat[5] * v[i].v + mat[13];
 				float w = mat[3] * v[i].u + mat[7] * v[i].v + mat[15];
 				v[i].u = x / w;
 				v[i].v = y / w;
 			}
-			xform4_vec3(st.mat[GAW_PROJECTION][ptop], &v[i].x);
+			xform4_vec3(ST->mat[GAW_PROJECTION][ptop], &v[i].x);
 		}
 
-		if(st.cur_comp >= 0) {
+		if(ST->cur_comp >= 0) {
 			/* compiling geometry, don't draw, skip to the next primitive */
 			continue;
 		}
@@ -701,73 +617,83 @@ void gaw_draw_indexed(int prim, const unsigned int *idxarr, int nidx)
 			if(v[i].w != 0.0f) {
 				v[i].x /= v[i].w;
 				v[i].y /= v[i].w;
-				if(st.opt & (1 << GAW_DEPTH_TEST)) {
+				if(ST->opt & (1 << GAW_DEPTH_TEST)) {
 					v[i].z /= v[i].w;
 				}
 			}
 
 			/* viewport transformation */
-			v[i].x = (v[i].x * 0.5f + 0.5f) * (float)st.vport[2] + st.vport[0];
-			v[i].y = (v[i].y * 0.5f + 0.5f) * (float)st.vport[3] + st.vport[1];
+			v[i].x = (v[i].x * 0.5f + 0.5f) * (float)ST->vport[2] + ST->vport[0];
+			v[i].y = (v[i].y * 0.5f + 0.5f) * (float)ST->vport[3] + ST->vport[1];
 			v[i].y = pfill_fb.height - v[i].y - 1;
-
-			/* convert pos to 24.8 fixed point */
-			pv[i].x = cround64(v[i].x * 256.0f);
-			pv[i].y = cround64(v[i].y * 256.0f);
-
-			if(st.opt & (1 << GAW_DEPTH_TEST)) {
-				/* after div/w z is in [-1, 1], remap it to [0, 0xffffff] */
-				pv[i].z = cround64(v[i].z * 8388607.5f + 8388607.5f);
-			}
-
-			/* convert tex coords to 16.16 fixed point */
-			pv[i].u = cround64(v[i].u * 65536.0f);
-			pv[i].v = cround64(v[i].v * 65536.0f);
-			/* pass the color through as is */
-			pv[i].r = v[i].r;
-			pv[i].g = v[i].g;
-			pv[i].b = v[i].b;
-			pv[i].a = v[i].a;
 		}
 
-		/* backface culling */
+		gaw_swtnl_drawprim(prim, v, vnum);
+	}
+}
+
+void gaw_swtnl_drawprim(int prim, struct vertex *v, int vnum)
+{
+	int i, fill_mode;
+	struct pvertex pv[16];
+
+	for(i=0; i<vnum; i++) {
+		/* convert pos to 24.8 fixed point */
+		pv[i].x = cround64(v[i].x * 256.0f);
+		pv[i].y = cround64(v[i].y * 256.0f);
+
+		if(st.opt & (1 << GAW_DEPTH_TEST)) {
+			/* after div/w z is in [-1, 1], remap it to [0, 0xffffff] */
+			pv[i].z = cround64(v[i].z * 8388607.5f + 8388607.5f);
+		}
+
+		/* convert tex coords to 16.16 fixed point */
+		pv[i].u = cround64(v[i].u * 65536.0f);
+		pv[i].v = cround64(v[i].v * 65536.0f);
+		/* pass the color through as is */
+		pv[i].r = v[i].r;
+		pv[i].g = v[i].g;
+		pv[i].b = v[i].b;
+		pv[i].a = v[i].a;
+	}
+
+	/* backface culling */
 #if 0	/* TODO fix culling */
-		if(vnum > 2 && (st.opt & (1 << GAW_CULL_FACE))) {
-			int32_t ax = pv[1].x - pv[0].x;
-			int32_t ay = pv[1].y - pv[0].y;
-			int32_t bx = pv[2].x - pv[0].x;
-			int32_t by = pv[2].y - pv[0].y;
-			int32_t cross_z = (ax >> 4) * (by >> 4) - (ay >> 4) * (bx >> 4);
-			int sign = (cross_z >> 31) & 1;
+	if(vnum > 2 && (st.opt & (1 << GAW_CULL_FACE))) {
+		int32_t ax = pv[1].x - pv[0].x;
+		int32_t ay = pv[1].y - pv[0].y;
+		int32_t bx = pv[2].x - pv[0].x;
+		int32_t by = pv[2].y - pv[0].y;
+		int32_t cross_z = (ax >> 4) * (by >> 4) - (ay >> 4) * (bx >> 4);
+		int sign = (cross_z >> 31) & 1;
 
-			if(!(sign ^ st.frontface)) {
-				continue;	/* back-facing */
-			}
+		if(!(sign ^ st.frontface)) {
+			continue;	/* back-facing */
 		}
+	}
 #endif
 
-		switch(prim) {
-		case GAW_POINTS:
-			break;
+	switch(prim) {
+	case GAW_POINTS:
+		break;
 
-		case GAW_LINES:
-			break;
+	case GAW_LINES:
+		break;
 
-		default:
-			fill_mode = st.polymode;
-			if(st.opt & ((1 << GAW_TEXTURE_2D) | (1 << GAW_TEXTURE_1D))) {
-				fill_mode |= POLYFILL_TEX_BIT;
-			}
-			if((st.opt & (1 << GAW_BLEND)) && (st.bsrc == GAW_SRC_ALPHA)) {
-				fill_mode |= POLYFILL_ALPHA_BIT;
-			} else if((st.opt & (1 << GAW_BLEND)) && (st.bsrc == GAW_ONE)) {
-				fill_mode |= POLYFILL_ADD_BIT;
-			}
-			if(st.opt & (1 << GAW_DEPTH_TEST)) {
-				fill_mode |= POLYFILL_ZBUF_BIT;
-			}
-			polyfill(fill_mode, pv, vnum);
+	default:
+		fill_mode = st.polymode;
+		if(st.opt & ((1 << GAW_TEXTURE_2D) | (1 << GAW_TEXTURE_1D))) {
+			fill_mode |= POLYFILL_TEX_BIT;
 		}
+		if((st.opt & (1 << GAW_BLEND)) && (st.bsrc == GAW_SRC_ALPHA)) {
+			fill_mode |= POLYFILL_ALPHA_BIT;
+		} else if((st.opt & (1 << GAW_BLEND)) && (st.bsrc == GAW_ONE)) {
+			fill_mode |= POLYFILL_ADD_BIT;
+		}
+		if(st.opt & (1 << GAW_DEPTH_TEST)) {
+			fill_mode |= POLYFILL_ZBUF_BIT;
+		}
+		polyfill(fill_mode, pv, vnum);
 	}
 }
 
