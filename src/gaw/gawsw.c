@@ -18,6 +18,36 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "gaw.h"
 #include "gawswtnl.h"
 
+void gaw_sw_reset(void)
+{
+	gaw_swtnl_reset();
+
+	free(pfill_zbuf);
+}
+
+void gaw_sw_init(void)
+{
+	gaw_swtnl_init();
+
+	gaw_sw_reset();
+}
+
+void gaw_sw_destroy(void)
+{
+	gaw_swtnl_destroy();
+
+	free(pfill_zbuf);
+}
+
+void gaw_enable(int what)
+{
+	gaw_swtnl_enable(what);
+}
+
+void gaw_disable(int what)
+{
+	gaw_swtnl_disable(what);
+}
 
 void gaw_swtnl_drawprim(int prim, struct vertex *v, int vnum)
 {

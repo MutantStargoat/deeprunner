@@ -55,11 +55,10 @@ static const float idmat[] = {
 };
 
 
-void gaw_sw_reset(void)
+void gaw_swtnl_reset(void)
 {
 	int i;
 
-	free(pfill_zbuf);
 	memset(&st, 0, sizeof st);
 
 	st.polymode = POLYFILL_GOURAUD;
@@ -86,14 +85,12 @@ void gaw_sw_reset(void)
 	gaw_state = &st;
 }
 
-void gaw_sw_init(void)
+void gaw_swtnl_init(void)
 {
-	gaw_sw_reset();
 }
 
-void gaw_sw_destroy(void)
+void gaw_swtnl_destroy(void)
 {
-	free(pfill_zbuf);
 }
 
 
@@ -162,7 +159,7 @@ void gaw_sw_dump_textures(void)
 	}
 }
 
-void gaw_viewport(int x, int y, int w, int h)
+void gaw_swtnl_viewport(int x, int y, int w, int h)
 {
 	st.vport[0] = x;
 	st.vport[1] = y;
@@ -360,12 +357,12 @@ void gaw_restore(void)
 	st.opt = st.savopt[--st.savopt_top];
 }
 
-void gaw_enable(int what)
+void gaw_swtnl_enable(int what)
 {
 	st.opt |= 1 << what;
 }
 
-void gaw_disable(int what)
+void gaw_swtnl_disable(int what)
 {
 	st.opt &= ~(1 << what);
 }
@@ -424,7 +421,12 @@ void gaw_clear(unsigned int flags)
 	}
 }
 
-void gaw_depth_mask(int mask)
+void gaw_swtnl_color_mask(int rmask, int gmask, int bmask, int amask)
+{
+	/* TODO */
+}
+
+void gaw_swtnl_depth_mask(int mask)
 {
 	/* TODO */
 }

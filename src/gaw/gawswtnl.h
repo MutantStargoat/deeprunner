@@ -110,4 +110,15 @@ struct gaw_state {
 extern struct gaw_state *gaw_state;
 #define ST	gaw_state
 
+
+void gaw_swtnl_reset(void);
+void gaw_swtnl_init(void);
+void gaw_swtnl_destroy(void);
+
+void gaw_swtnl_enable(int what);
+void gaw_swtnl_disable(int what);
+
+void gaw_swtnl_color_mask(int rmask, int gmask, int bmask);
+void gaw_swtnl_depth_mask(int mask);
+
 #endif	/* GAWSWTNL_H_ */
