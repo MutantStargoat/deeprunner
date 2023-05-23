@@ -92,12 +92,12 @@ void gaw_disable(int what)
 void gaw_color_mask(int rmask, int gmask, int bmask, int amask)
 {
 	int rgbmask = rmask | gmask | bmask;
-	grColorMask(rgbmask ? GR_TRUE : GR_FALSE, amask ? GR_TRUE : GR_FALSE);
+	grColorMask(rgbmask ? FXTRUE : FXFALSE, FXFALSE);
 }
 
 void gaw_depth_mask(int mask)
 {
-	grDepthMask(mask ? 1 : 0);
+	grDepthMask(mask ? FXTRUE : FXFALSE);
 }
 
 void gaw_swtnl_drawprim(int prim, struct vertex *v, int vnum)
