@@ -25,4 +25,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <GL/gl.h>
 #include <GL/glu.h>
 
+#ifndef GL_CLAMP_TO_EDGE
+#define GL_CLAMP_TO_EDGE	0x812f
+#endif
+
 #endif	/* OPENGL_H_ */

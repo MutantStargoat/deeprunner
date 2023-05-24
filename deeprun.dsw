@@ -33,6 +33,36 @@ Package=<4>
 
 ###############################################################################
 
+Project: "deeprun_glide"=.\deeprun_glide.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name drawtext
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name goat3d
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name imago
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name mikmod
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name psys
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name treestor
+    End Project Dependency
+}}}
+
+###############################################################################
+
 Project: "drawtext"=.\LIBS\drawtext\drawtext.dsp - Package Owner=<4>
 
 Package=<5>
