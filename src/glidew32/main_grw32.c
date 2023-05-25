@@ -24,17 +24,20 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 static LRESULT CALLBACK handle_message(HWND win, unsigned int msg, WPARAM wparam, LPARAM lparam);
 static void handle_mbutton(int bn, int st, WPARAM wparam, LPARAM lparam);
+static void warp_mouse(int x, int y);
 
 static HINSTANCE hinst;
 static HWND win;
 static HDC dc;
 
 static int mapped, upd_pending, quit;
+static int warping;
+static unsigned long start_time;
 
 
 int main(int argc, char **argv)
 {
-	int x, y;
+	int xsz, ysz;
 	MSG msg;
 	WNDCLASSEX wc = {0};
 
@@ -53,11 +56,11 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	x = (GetSystemMetrics(SM_CXSCREEN) + 640) / 2;
-	y = (GetSystemMetrics(SM_CYSCREEN) + 480) / 2;
+	xsz = GetSystemMetrics(SM_CXSCREEN);
+	ysz = GetSystemMetrics(SM_CYSCREEN);
 
-	if(!(win = CreateWindow("grwin32", "Deeprunner", WS_OVERLAPPEDWINDOW, x, y,
-					640, 480, 0, 0, hinst, 0))) {
+	if(!(win = CreateWindow("grwin32", "Deeprunner", WS_POPUP, 0, 0,
+					xsz, ysz, 0, 0, hinst, 0))) {
 		fprintf(stderr, "Failed to create window\n");
 		UnregisterClass("grwin32", hinst);
 		return 1;
@@ -67,8 +70,14 @@ int main(int argc, char **argv)
 	ShowWindow(win, 1);
 	SetForegroundWindow(win);
 	SetFocus(win);
+	SetCapture(win);
 
-	gaw_glide_init();
+	start_time = timeGetTime();
+	fullscr = 1;
+	mouse_grabbed = 1;
+	warp_mouse(320, 240);
+
+	gaw_glide_init(640, 480);
 
 	game_reshape(640, 480);
 
@@ -86,13 +95,14 @@ int main(int argc, char **argv)
 		game_display();
 	}
 
+	ReleaseCapture();
 	game_shutdown();
 	return 0;
 }
 
 long game_getmsec(void)
 {
-	return timeGetTime();
+	return (long)(timeGetTime() - start_time);
 }
 
 void game_swap_buffers(void)
@@ -115,6 +125,24 @@ void game_fullscreen(int fs)
 
 void game_grabmouse(int grab)
 {
+	static int prev_x, prev_y;
+
+	if(grab == -1) {
+		grab = !mouse_grabbed;
+	}
+
+	if(grab == mouse_grabbed) return;
+
+	if(grab) {
+		warping = 1;
+		prev_x = mouse_x;
+		prev_y = mouse_y;
+		warp_mouse(win_width / 2, win_height / 2);
+	} else {
+		warping = 1;
+		warp_mouse(prev_x, prev_y);
+	}
+	mouse_grabbed = grab;
 }
 
 void game_vsync(int vsync)
@@ -186,10 +214,21 @@ static LRESULT CALLBACK handle_message(HWND win, unsigned int msg, WPARAM wparam
 		break;
 
 	case WM_MOUSEMOVE:
-		if(wparam & (MK_LBUTTON | MK_MBUTTON | MK_RBUTTON)) {
-			game_motion(lparam & 0xffff, lparam >> 16);
+		x = lparam & 0xffff;
+		y = lparam >> 16;
+
+		if(mouse_grabbed) {
+			if(!warping) {
+				game_motion(x, y);
+				warping = 1;
+				warp_mouse(win_width / 2, win_height / 2);
+			} else {
+				warping = 0;
+				mouse_x = x;
+				mouse_y = y;
+			}
 		} else {
-			game_motion(lparam & 0xffff, lparam >> 16);
+			game_motion(x, y);
 		}
 		break;
 
@@ -274,4 +313,15 @@ static void handle_mbutton(int bn, int st, WPARAM wparam, LPARAM lparam)
 	x = lparam & 0xffff;
 	y = lparam >> 16;
 	game_mouse(bn, st, x, y);
+}
+
+static void warp_mouse(int x, int y)
+{
+	/*POINT pt;
+	pt.x = x;
+	pt.y = y;
+
+	ClientToScreen(win, &pt);
+	SetCursorPos(pt.x, pt.y);*/
+	SetCursorPos(x, y);
 }

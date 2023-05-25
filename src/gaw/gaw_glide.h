@@ -18,4 +18,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef GAW_GLIDE_H_
 #define GAW_GLIDE_H_
 
+void gaw_glide_init(int xsz, int ysz);
+void gaw_glide_reset(void);
+void gaw_glide_destroy(void);
+
+
 #endif	/* GAW_GLIDE_H_ */

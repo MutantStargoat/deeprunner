@@ -113,6 +113,8 @@ int game_init(void)
 		gaw_disable(GAW_DITHER);
 	}
 
+	time_msec = game_getmsec();
+
 	for(i=0; i<num_screens; i++) {
 		if(screens[i]->name && start_scr_name && strcmp(screens[i]->name, start_scr_name) == 0) {
 			game_chscr(screens[i]);

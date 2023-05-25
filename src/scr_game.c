@@ -471,7 +471,7 @@ static void gdisplay(void)
 {
 	static long prev_msec;
 	static float tm_acc = TSTEP;
-	long msec;
+	long msec, upd_iter;
 
 #ifdef DBG_FREEZEVIS
 	if(dbg_freezevis) {
@@ -488,7 +488,8 @@ static void gdisplay(void)
 	update_player_mouse(player);
 
 	/* update all other game logic once per timestep */
-	while(tm_acc >= TSTEP) {
+	upd_iter = 16;
+	while(tm_acc >= TSTEP && --upd_iter > 0) {
 		gupdate();
 		tm_acc -= TSTEP;
 	}

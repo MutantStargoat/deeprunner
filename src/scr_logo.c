@@ -235,7 +235,7 @@ static void sgiscr(void)
 	//z = 100.0f - cgm_smoothstep(-5, 5, tsec - 1.0f) * 50.0;
 	alpha = clamp((tsec / 2) - 0.5, 0, 1);
 
-	gaw_viewport(win_width / 4, win_height * 0.43, win_width / 2, win_height / 2);
+	gaw_viewport(win_width / 4, win_height * 0.43f, win_width / 2, win_height / 2);
 	gaw_matrix_mode(GAW_MODELVIEW);
 	gaw_translate(0, 0, -z);
 
@@ -270,6 +270,7 @@ static void logo_display(void)
 
 	if(tmsec >= END_TIME) {
 		game_chscr(&scr_menu);
+		return;
 	}
 
 	switch(state) {

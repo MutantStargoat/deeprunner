@@ -88,6 +88,7 @@ void gaw_swtnl_reset(void)
 
 void gaw_swtnl_init(void)
 {
+	gaw_swtnl_reset();
 }
 
 void gaw_swtnl_destroy(void)
