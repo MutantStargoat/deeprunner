@@ -127,7 +127,6 @@ void gaw_clear(unsigned int flags)
 	if(!(flags & GAW_COLORBUF)) {
 		grColorMask(FXTRUE, FXFALSE);
 	}
-		
 }
 
 void gaw_color_mask(int rmask, int gmask, int bmask, int amask)
