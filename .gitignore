@@ -7,9 +7,12 @@ mklevel
 data/
 *.cfg
 *.exe
+*.lib
+*.dll
 core
 *.ncb
 *.opt
 *.plg
 *Debug/
 *Release/
+*.zip

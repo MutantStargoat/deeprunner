@@ -17,16 +17,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include <stdio.h>
 #include <windows.h>
+#include "glide.h"
 #include "game.h"
 #include "gaw/gaw_glide.h"
+#include "options.h"
 
 static LRESULT CALLBACK handle_message(HWND win, unsigned int msg, WPARAM wparam, LPARAM lparam);
+static void handle_mbutton(int bn, int st, WPARAM wparam, LPARAM lparam);
 
 static HINSTANCE hinst;
 static HWND win;
 static HDC dc;
 
-static int mapped, upd_pending;
+static int mapped, upd_pending, quit;
 
 
 int main(int argc, char **argv)
@@ -65,6 +68,14 @@ int main(int argc, char **argv)
 	SetForegroundWindow(win);
 	SetFocus(win);
 
+	gaw_glide_init();
+
+	game_reshape(640, 480);
+
+	if(game_init() == -1) {
+		return 1;
+	}
+
 	while(!quit) {
 		while(PeekMessage(&msg, win, 0, 0, PM_REMOVE)) {
 			TranslateMessage(&msg);
@@ -74,11 +85,45 @@ int main(int argc, char **argv)
 
 		game_display();
 	}
+
+	game_shutdown();
+	return 0;
+}
+
+long game_getmsec(void)
+{
+	return timeGetTime();
+}
+
+void game_swap_buffers(void)
+{
+	grBufferSwap(opt.vsync ? 1 : 0);
+}
+
+void game_quit(void)
+{
+	quit = 1;
+}
+
+void game_resize(int x, int y)
+{
+}
+
+void game_fullscreen(int fs)
+{
+}
+
+void game_grabmouse(int grab)
+{
+}
+
+void game_vsync(int vsync)
+{
 }
 
 static LRESULT CALLBACK handle_message(HWND win, unsigned int msg, WPARAM wparam, LPARAM lparam)
 {
-	int x, y;
+	int x, y, key;
 
 	switch(msg) {
 	case WM_CLOSE:
@@ -86,7 +131,6 @@ static LRESULT CALLBACK handle_message(HWND win, unsigned int msg, WPARAM wparam
 		break;
 
 	case WM_DESTROY:
-		cleanup();
 		quit = 1;
 		PostQuitMessage(0);
 		break;
@@ -164,19 +208,19 @@ static LRESULT CALLBACK handle_message(HWND win, unsigned int msg, WPARAM wparam
 static void update_modkeys(void)
 {
 	if(GetKeyState(VK_SHIFT) & 0x8000) {
-		modstate |= GKEY_MOD_SHIFT;
+		modkeys |= GKEY_MOD_SHIFT;
 	} else {
-		modstate &= ~GKEY_MOD_SHIFT;
+		modkeys &= ~GKEY_MOD_SHIFT;
 	}
 	if(GetKeyState(VK_CONTROL) & 0x8000) {
-		modstate |= GKEY_MOD_CTRL;
+		modkeys |= GKEY_MOD_CTRL;
 	} else {
-		modstate &= ~GKEY_MOD_CTRL;
+		modkeys &= ~GKEY_MOD_CTRL;
 	}
 	if(GetKeyState(VK_MENU) & 0x8000) {
-		modstate |= GKEY_MODE_ALT;
+		modkeys |= GKEY_MOD_ALT;
 	} else {
-		modstate &= ~GKEY_MOD_ALT;
+		modkeys &= ~GKEY_MOD_ALT;
 	}
 }
 
@@ -227,9 +271,7 @@ static void handle_mbutton(int bn, int st, WPARAM wparam, LPARAM lparam)
 
 	update_modkeys();
 
-	if(cb_mouse) {
-		x = lparam & 0xffff;
-		y = lparam >> 16;
-		game_mouse(bn, st, x, y);
-	}
+	x = lparam & 0xffff;
+	y = lparam >> 16;
+	game_mouse(bn, st, x, y);
 }

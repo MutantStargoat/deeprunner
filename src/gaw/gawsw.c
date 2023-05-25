@@ -39,6 +39,39 @@ void gaw_sw_destroy(void)
 	free(pfill_zbuf);
 }
 
+void gaw_sw_framebuffer(int width, int height, void *pixels)
+{
+	static int max_height;
+	static int max_npixels;
+	int npixels = width * height;
+
+	if(npixels > max_npixels) {
+		free(pfill_zbuf);
+		pfill_zbuf = malloc_nf(npixels * sizeof *pfill_zbuf);
+		max_npixels = npixels;
+	}
+
+	if(height > max_height) {
+		polyfill_fbheight(height);
+		max_height = height;
+	}
+
+	ST->width = width;
+	ST->height = height;
+
+	pfill_fb.pixels = pixels;
+	pfill_fb.width = width;
+	pfill_fb.height = height;
+
+	gaw_viewport(0, 0, width, height);
+}
+
+/* set the framebuffer pointer, without resetting the size */
+void gaw_sw_framebuffer_addr(void *pixels)
+{
+	pfill_fb.pixels = pixels;
+}
+
 void gaw_enable(int what)
 {
 	gaw_swtnl_enable(what);
@@ -49,17 +82,51 @@ void gaw_disable(int what)
 	gaw_swtnl_disable(what);
 }
 
+void gaw_clear(unsigned int flags)
+{
+	int i, npix = pfill_fb.width * pfill_fb.height;
+
+	if(flags & GAW_COLORBUF) {
+		for(i=0; i<npix; i++) {
+			pfill_fb.pixels[i] = ST->clear_color;
+		}
+	}
+
+	if(flags & GAW_DEPTHBUF) {
+		for(i=0; i<npix; i++) {
+			pfill_zbuf[i] = ST->clear_depth;
+		}
+	}
+}
+
+void gaw_bind_tex1d(int tex)
+{
+	ST->cur_tex = (int)tex - 1;
+	pfill_tex = ST->textures[ST->cur_tex];
+}
+
+void gaw_bind_tex2d(int tex)
+{
+	ST->cur_tex = (int)tex - 1;
+	pfill_tex = ST->textures[ST->cur_tex];
+}
+
 void gaw_swtnl_drawprim(int prim, struct vertex *v, int vnum)
 {
 	int i, fill_mode;
 	struct pvertex pv[16];
 
 	for(i=0; i<vnum; i++) {
+		/* viewport transformation */
+		v[i].x = (v[i].x * 0.5f + 0.5f) * (float)ST->vport[2] + ST->vport[0];
+		v[i].y = (v[i].y * 0.5f + 0.5f) * (float)ST->vport[3] + ST->vport[1];
+		v[i].y = pfill_fb.height - v[i].y - 1;
+
 		/* convert pos to 24.8 fixed point */
 		pv[i].x = cround64(v[i].x * 256.0f);
 		pv[i].y = cround64(v[i].y * 256.0f);
 
-		if(st.opt & (1 << GAW_DEPTH_TEST)) {
+		if(ST->opt & (1 << GAW_DEPTH_TEST)) {
 			/* after div/w z is in [-1, 1], remap it to [0, 0xffffff] */
 			pv[i].z = cround64(v[i].z * 8388607.5f + 8388607.5f);
 		}
@@ -76,7 +143,7 @@ void gaw_swtnl_drawprim(int prim, struct vertex *v, int vnum)
 
 	/* backface culling */
 #if 0	/* TODO fix culling */
-	if(vnum > 2 && (st.opt & (1 << GAW_CULL_FACE))) {
+	if(vnum > 2 && (ST->opt & (1 << GAW_CULL_FACE))) {
 		int32_t ax = pv[1].x - pv[0].x;
 		int32_t ay = pv[1].y - pv[0].y;
 		int32_t bx = pv[2].x - pv[0].x;
@@ -84,7 +151,7 @@ void gaw_swtnl_drawprim(int prim, struct vertex *v, int vnum)
 		int32_t cross_z = (ax >> 4) * (by >> 4) - (ay >> 4) * (bx >> 4);
 		int sign = (cross_z >> 31) & 1;
 
-		if(!(sign ^ st.frontface)) {
+		if(!(sign ^ ST->frontface)) {
 			continue;	/* back-facing */
 		}
 	}
@@ -98,16 +165,16 @@ void gaw_swtnl_drawprim(int prim, struct vertex *v, int vnum)
 		break;
 
 	default:
-		fill_mode = st.polymode;
-		if(st.opt & ((1 << GAW_TEXTURE_2D) | (1 << GAW_TEXTURE_1D))) {
+		fill_mode = ST->polymode;
+		if(ST->opt & ((1 << GAW_TEXTURE_2D) | (1 << GAW_TEXTURE_1D))) {
 			fill_mode |= POLYFILL_TEX_BIT;
 		}
-		if((st.opt & (1 << GAW_BLEND)) && (st.bsrc == GAW_SRC_ALPHA)) {
+		if((ST->opt & (1 << GAW_BLEND)) && (ST->bsrc == GAW_SRC_ALPHA)) {
 			fill_mode |= POLYFILL_ALPHA_BIT;
-		} else if((st.opt & (1 << GAW_BLEND)) && (st.bsrc == GAW_ONE)) {
+		} else if((ST->opt & (1 << GAW_BLEND)) && (ST->bsrc == GAW_ONE)) {
 			fill_mode |= POLYFILL_ADD_BIT;
 		}
-		if(st.opt & (1 << GAW_DEPTH_TEST)) {
+		if(ST->opt & (1 << GAW_DEPTH_TEST)) {
 			fill_mode |= POLYFILL_ZBUF_BIT;
 		}
 		polyfill(fill_mode, pv, vnum);

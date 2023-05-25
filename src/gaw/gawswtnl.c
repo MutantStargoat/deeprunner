@@ -95,38 +95,6 @@ void gaw_swtnl_destroy(void)
 }
 
 
-void gaw_sw_framebuffer(int width, int height, void *pixels)
-{
-	static int max_height;
-	static int max_npixels;
-	int npixels = width * height;
-
-	if(npixels > max_npixels) {
-		free(pfill_zbuf);
-		pfill_zbuf = malloc_nf(npixels * sizeof *pfill_zbuf);
-		max_npixels = npixels;
-	}
-
-	if(height > max_height) {
-		polyfill_fbheight(height);
-		max_height = height;
-	}
-
-	st.width = width;
-	st.height = height;
-
-	pfill_fb.pixels = pixels;
-	pfill_fb.width = width;
-	pfill_fb.height = height;
-
-	gaw_viewport(0, 0, width, height);
-}
-
-/* set the framebuffer pointer, without resetting the size */
-void gaw_sw_framebuffer_addr(void *pixels)
-{
-	pfill_fb.pixels = pixels;
-}
 
 static void dump_texture(struct pimage *img, const char *fname)
 {
@@ -160,7 +128,7 @@ void gaw_sw_dump_textures(void)
 	}
 }
 
-void gaw_swtnl_viewport(int x, int y, int w, int h)
+void gaw_viewport(int x, int y, int w, int h)
 {
 	st.vport[0] = x;
 	st.vport[1] = y;
@@ -405,23 +373,6 @@ void gaw_clear_depth(float z)
 	st.clear_depth = CLAMP(iz, 0, 0xffffff);
 }
 
-void gaw_clear(unsigned int flags)
-{
-	int i, npix = pfill_fb.width * pfill_fb.height;
-
-	if(flags & GAW_COLORBUF) {
-		for(i=0; i<npix; i++) {
-			pfill_fb.pixels[i] = st.clear_color;
-		}
-	}
-
-	if(flags & GAW_DEPTHBUF) {
-		for(i=0; i<npix; i++) {
-			pfill_zbuf[i] = st.clear_depth;
-		}
-	}
-}
-
 void gaw_swtnl_color_mask(int rmask, int gmask, int bmask, int amask)
 {
 	/* TODO */
@@ -486,23 +437,23 @@ void gaw_draw_indexed(int prim, const unsigned int *idxarr, int nidx)
 {
 	int i, j, vidx, vnum, nfaces;
 	struct vertex v[16];
-	int mvtop = ST->mtop[GAW_MODELVIEW];
-	int ptop = ST->mtop[GAW_PROJECTION];
+	int mvtop = st.mtop[GAW_MODELVIEW];
+	int ptop = st.mtop[GAW_PROJECTION];
 	struct vertex *tmpv;
 	const float *vptr;
 
 	if(prim == GAW_QUAD_STRIP) return;	/* TODO */
 
-	if(ST->cur_comp >= 0) {
-		ST->comp[ST->cur_comp].prim = prim;
+	if(st.cur_comp >= 0) {
+		st.comp[st.cur_comp].prim = prim;
 	}
 
 	tmpv = alloca(prim * 6 * sizeof *tmpv);
 
 	/* calc the normal matrix */
 	if(NEED_NORMALS) {
-		memcpy(ST->norm_mat, ST->mat[GAW_MODELVIEW][mvtop], 16 * sizeof(float));
-		ST->norm_mat[12] = ST->norm_mat[13] = ST->norm_mat[14] = 0.0f;
+		memcpy(st.norm_mat, st.mat[GAW_MODELVIEW][mvtop], 16 * sizeof(float));
+		st.norm_mat[12] = st.norm_mat[13] = st.norm_mat[14] = 0.0f;
 	}
 
 	vidx = 0;
@@ -515,44 +466,44 @@ void gaw_draw_indexed(int prim, const unsigned int *idxarr, int nidx)
 			if(idxarr) {
 				vidx = *idxarr++;
 			}
-			vptr = (const float*)((char*)ST->vertex_ptr + vidx * ST->vertex_stride);
+			vptr = (const float*)((char*)st.vertex_ptr + vidx * st.vertex_stride);
 			v[i].x = vptr[0];
 			v[i].y = vptr[1];
-			v[i].z = ST->vertex_nelem > 2 ? vptr[2] : 0.0f;
-			v[i].w = ST->vertex_nelem > 3 ? vptr[3] : 1.0f;
+			v[i].z = st.vertex_nelem > 2 ? vptr[2] : 0.0f;
+			v[i].w = st.vertex_nelem > 3 ? vptr[3] : 1.0f;
 
-			if(ST->normal_ptr) {
-				vptr = (const float*)((char*)ST->normal_ptr + vidx * ST->normal_stride);
+			if(st.normal_ptr) {
+				vptr = (const float*)((char*)st.normal_ptr + vidx * st.normal_stride);
 			} else {
-				vptr = &ST->imm_curv.nx;
+				vptr = &st.imm_curv.nx;
 			}
 			v[i].nx = vptr[0];
 			v[i].ny = vptr[1];
 			v[i].nz = vptr[2];
 
-			if(ST->texcoord_ptr) {
-				vptr = (const float*)((char*)ST->texcoord_ptr + vidx * ST->texcoord_stride);
+			if(st.texcoord_ptr) {
+				vptr = (const float*)((char*)st.texcoord_ptr + vidx * st.texcoord_stride);
 			} else {
-				vptr = &ST->imm_curv.u;
+				vptr = &st.imm_curv.u;
 			}
 			v[i].u = vptr[0];
 			v[i].v = vptr[1];
 
-			if(ST->color_ptr) {
-				vptr = (const float*)((char*)ST->color_ptr + vidx * ST->color_stride);
+			if(st.color_ptr) {
+				vptr = (const float*)((char*)st.color_ptr + vidx * st.color_stride);
 			} else {
-				vptr = ST->imm_curcol;
+				vptr = st.imm_curcol;
 			}
 			v[i].r = (int)(vptr[0] * 255.0f);
 			v[i].g = (int)(vptr[1] * 255.0f);
 			v[i].b = (int)(vptr[2] * 255.0f);
-			v[i].a = ST->color_nelem > 3 ? (int)(vptr[3] * 255.0f) : 255;
+			v[i].a = st.color_nelem > 3 ? (int)(vptr[3] * 255.0f) : 255;
 
 			vidx++;
 
-			if(ST->cur_comp >= 0) {
+			if(st.cur_comp >= 0) {
 				/* currently compiling geometry */
-				struct comp_geom *cg = ST->comp + ST->cur_comp;
+				struct comp_geom *cg = st.comp + st.cur_comp;
 				float col[4];
 
 				col[0] = v[i].r / 255.0f;
@@ -575,30 +526,30 @@ void gaw_draw_indexed(int prim, const unsigned int *idxarr, int nidx)
 				continue;	/* don't transform, just skip to the next vertex */
 			}
 
-			xform4_vec3(ST->mat[GAW_MODELVIEW][mvtop], &v[i].x);
+			xform4_vec3(st.mat[GAW_MODELVIEW][mvtop], &v[i].x);
 
 			if(NEED_NORMALS) {
-				xform3_vec3(ST->norm_mat, &v[i].nx);
-				if(ST->opt & (1 << GAW_LIGHTING)) {
+				xform3_vec3(st.norm_mat, &v[i].nx);
+				if(st.opt & (1 << GAW_LIGHTING)) {
 					shade(v + i);
 				}
-				if(ST->opt & (1 << GAW_SPHEREMAP)) {
+				if(st.opt & (1 << GAW_SPHEREMAP)) {
 					v[i].u = v[i].nx * 0.5 + 0.5;
 					v[i].v = 0.5 - v[i].ny * 0.5;
 				}
 			}
 			{
-				float *mat = ST->mat[GAW_TEXTURE][ST->mtop[GAW_TEXTURE]];
+				float *mat = st.mat[GAW_TEXTURE][st.mtop[GAW_TEXTURE]];
 				float x = mat[0] * v[i].u + mat[4] * v[i].v + mat[12];
 				float y = mat[1] * v[i].u + mat[5] * v[i].v + mat[13];
 				float w = mat[3] * v[i].u + mat[7] * v[i].v + mat[15];
 				v[i].u = x / w;
 				v[i].v = y / w;
 			}
-			xform4_vec3(ST->mat[GAW_PROJECTION][ptop], &v[i].x);
+			xform4_vec3(st.mat[GAW_PROJECTION][ptop], &v[i].x);
 		}
 
-		if(ST->cur_comp >= 0) {
+		if(st.cur_comp >= 0) {
 			/* compiling geometry, don't draw, skip to the next primitive */
 			continue;
 		}
@@ -620,83 +571,13 @@ void gaw_draw_indexed(int prim, const unsigned int *idxarr, int nidx)
 			if(v[i].w != 0.0f) {
 				v[i].x /= v[i].w;
 				v[i].y /= v[i].w;
-				if(ST->opt & (1 << GAW_DEPTH_TEST)) {
+				if(st.opt & (1 << GAW_DEPTH_TEST)) {
 					v[i].z /= v[i].w;
 				}
 			}
-
-			/* viewport transformation */
-			v[i].x = (v[i].x * 0.5f + 0.5f) * (float)ST->vport[2] + ST->vport[0];
-			v[i].y = (v[i].y * 0.5f + 0.5f) * (float)ST->vport[3] + ST->vport[1];
-			v[i].y = pfill_fb.height - v[i].y - 1;
 		}
 
 		gaw_swtnl_drawprim(prim, v, vnum);
-	}
-}
-
-void gaw_swtnl_drawprim(int prim, struct vertex *v, int vnum)
-{
-	int i, fill_mode;
-	struct pvertex pv[16];
-
-	for(i=0; i<vnum; i++) {
-		/* convert pos to 24.8 fixed point */
-		pv[i].x = cround64(v[i].x * 256.0f);
-		pv[i].y = cround64(v[i].y * 256.0f);
-
-		if(st.opt & (1 << GAW_DEPTH_TEST)) {
-			/* after div/w z is in [-1, 1], remap it to [0, 0xffffff] */
-			pv[i].z = cround64(v[i].z * 8388607.5f + 8388607.5f);
-		}
-
-		/* convert tex coords to 16.16 fixed point */
-		pv[i].u = cround64(v[i].u * 65536.0f);
-		pv[i].v = cround64(v[i].v * 65536.0f);
-		/* pass the color through as is */
-		pv[i].r = v[i].r;
-		pv[i].g = v[i].g;
-		pv[i].b = v[i].b;
-		pv[i].a = v[i].a;
-	}
-
-	/* backface culling */
-#if 0	/* TODO fix culling */
-	if(vnum > 2 && (st.opt & (1 << GAW_CULL_FACE))) {
-		int32_t ax = pv[1].x - pv[0].x;
-		int32_t ay = pv[1].y - pv[0].y;
-		int32_t bx = pv[2].x - pv[0].x;
-		int32_t by = pv[2].y - pv[0].y;
-		int32_t cross_z = (ax >> 4) * (by >> 4) - (ay >> 4) * (bx >> 4);
-		int sign = (cross_z >> 31) & 1;
-
-		if(!(sign ^ st.frontface)) {
-			continue;	/* back-facing */
-		}
-	}
-#endif
-
-	switch(prim) {
-	case GAW_POINTS:
-		break;
-
-	case GAW_LINES:
-		break;
-
-	default:
-		fill_mode = st.polymode;
-		if(st.opt & ((1 << GAW_TEXTURE_2D) | (1 << GAW_TEXTURE_1D))) {
-			fill_mode |= POLYFILL_TEX_BIT;
-		}
-		if((st.opt & (1 << GAW_BLEND)) && (st.bsrc == GAW_SRC_ALPHA)) {
-			fill_mode |= POLYFILL_ALPHA_BIT;
-		} else if((st.opt & (1 << GAW_BLEND)) && (st.bsrc == GAW_ONE)) {
-			fill_mode |= POLYFILL_ADD_BIT;
-		}
-		if(st.opt & (1 << GAW_DEPTH_TEST)) {
-			fill_mode |= POLYFILL_ZBUF_BIT;
-		}
-		polyfill(fill_mode, pv, vnum);
 	}
 }
 
@@ -959,18 +840,6 @@ void gaw_destroy_tex(unsigned int texid)
 	st.textypes[idx] = 0;
 }
 
-void gaw_bind_tex1d(int tex)
-{
-	st.cur_tex = (int)tex - 1;
-	pfill_tex = st.textures[st.cur_tex];
-}
-
-void gaw_bind_tex2d(int tex)
-{
-	st.cur_tex = (int)tex - 1;
-	pfill_tex = st.textures[st.cur_tex];
-}
-
 void gaw_texfilter1d(int texfilter)
 {
 }
@@ -1081,8 +950,7 @@ void gaw_subtex2d(int lvl, int x, int y, int xsz, int ysz, int fmt, void *pix)
 void gaw_set_tex1d(unsigned int texid)
 {
 	if(texid > 0) {
-		st.cur_tex = (int)texid - 1;
-		pfill_tex = st.textures[st.cur_tex];
+		gaw_bind_tex1d(texid);
 		gaw_enable(GAW_TEXTURE_1D);
 	} else {
 		st.cur_tex = -1;
@@ -1093,8 +961,7 @@ void gaw_set_tex1d(unsigned int texid)
 void gaw_set_tex2d(unsigned int texid)
 {
 	if(texid > 0) {
-		st.cur_tex = (int)texid - 1;
-		pfill_tex = st.textures[st.cur_tex];
+		gaw_bind_tex2d(texid);
 		gaw_enable(GAW_TEXTURE_2D);
 	} else {
 		st.cur_tex = -1;

@@ -118,7 +118,9 @@ void gaw_swtnl_destroy(void);
 void gaw_swtnl_enable(int what);
 void gaw_swtnl_disable(int what);
 
-void gaw_swtnl_color_mask(int rmask, int gmask, int bmask);
+void gaw_swtnl_color_mask(int rmask, int gmask, int bmask, int amask);
 void gaw_swtnl_depth_mask(int mask);
+
+void gaw_swtnl_drawprim(int prim, struct vertex *v, int vnum);
 
 #endif	/* GAWSWTNL_H_ */

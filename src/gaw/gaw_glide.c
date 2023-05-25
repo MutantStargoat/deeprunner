@@ -37,7 +37,7 @@ void gaw_glide_init(void)
 		abort();
 	}
 
-	grGlideinit();
+	grGlideInit();
 	if(!grSstQueryHardware(&hwcfg)) {
 		fprintf(stderr, "No 3dfx graphics board detected!\n");
 		abort();
@@ -89,6 +89,28 @@ void gaw_disable(int what)
 	gaw_swtnl_disable(what);
 }
 
+void gaw_clear(unsigned int flags)
+{
+	if(!(flags & GAW_COLORBUF)) {
+		grColorMask(FXFALSE, FXFALSE);
+	}
+	if(flags & GAW_DEPTHBUF) {
+		grDepthBufferMode(GR_DEPTHBUFFER_WBUFFER);
+		grDepthMask(FXTRUE);
+	}
+
+	grBufferClear(ST->clear_color, 0xff, GR_WDEPTHVALUE_FARTHEST);
+
+	if(flags & GAW_DEPTHBUF) {
+		grDepthBufferMode(!(ST->opt & GAW_DEPTH_TEST) ? GR_DEPTHBUFFER_DISABLE : GR_DEPTHBUFFER_WBUFFER);
+		/* also revert depth mask */
+	}
+	if(!(flags & GAW_COLORBUF)) {
+		grColorMask(FXTRUE, FXFALSE);
+	}
+		
+}
+
 void gaw_color_mask(int rmask, int gmask, int bmask, int amask)
 {
 	int rgbmask = rmask | gmask | bmask;
@@ -100,6 +122,38 @@ void gaw_depth_mask(int mask)
 	grDepthMask(mask ? FXTRUE : FXFALSE);
 }
 
+void gaw_bind_tex1d(int tex)
+{
+	ST->cur_tex = (int)tex - 1;
+	/* TODO */
+}
+
+void gaw_bind_tex2d(int tex)
+{
+	ST->cur_tex = (int)tex - 1;
+	/* TODO */
+}
+
 void gaw_swtnl_drawprim(int prim, struct vertex *v, int vnum)
 {
+	int i;
+	GrVertex vert[16];
+
+	for(i=0; i<vnum; i++) {
+		/* viewport transformation */
+		vert[i].x = (v[i].x * 0.5f + 0.5f) * (float)ST->vport[2] + ST->vport[0];
+		vert[i].y = (v[i].y * 0.5f + 0.5f) * (float)ST->vport[3] + ST->vport[1];
+		vert[i].y = ST->height - v[i].y - 1;
+
+		vert[i].oow = 1.0f / v[i].w;
+
+		vert[i].r = v->r * 255.0f;
+		vert[i].g = v->g * 255.0f;
+		vert[i].b = v->b * 255.0f;
+		vert[i].a = v->a * 255.0f;
+
+		if(i >= 2) {
+			grDrawTriangle(vert, vert + (i - 1), vert + i);
+		}
+	}
 }

@@ -55,7 +55,7 @@ typedef struct { float r, g, b, a; } FxColor4;
 ** export macros
 */
 
-#if defined(__MSC__)
+#if defined(__MSC__) || defined(_MSC_VER)
   #if defined (MSVC16)
     #define FX_ENTRY 
     #define FX_CALL
