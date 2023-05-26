@@ -93,7 +93,9 @@ void disable_fpexcept(void)
 }
 
 #elif defined(__GLIBC__) && !defined(__MINGW32__)
+#ifndef __USE_GNU
 #define __USE_GNU
+#endif
 #include <fenv.h>
 
 void enable_fpexcept(void)

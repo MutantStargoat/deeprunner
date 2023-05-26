@@ -4,8 +4,8 @@ rend = gl
 # ---------------------
 
 gawsrc_gl = $(wildcard src/opengl/*.c) src/gaw/gaw_gl.c
-gawsrc_sw = $(wildcard src/swsdl/*.c) src/gaw/gaw_sw.c src/gaw/polyfill.c \
-			src/gaw/polyclip.c
+gawsrc_sw = $(wildcard src/swsdl/*.c) src/gaw/gaw_sw.c src/gaw/gawswtnl.c \
+			src/gaw/polyfill.c src/gaw/polyclip.c
 
 src = $(wildcard src/*.c) $(gawsrc_$(rend))
 obj = $(src:.c=.o)

@@ -121,6 +121,27 @@ void gaw_swtnl_disable(int what);
 void gaw_swtnl_color_mask(int rmask, int gmask, int bmask, int amask);
 void gaw_swtnl_depth_mask(int mask);
 
+void gaw_swtnl_tex1d(int ifmt, int xsz, int fmt, void *pix);
+void gaw_swtnl_tex2d(int ifmt, int xsz, int ysz, int fmt, void *pix);
+void gaw_swtnl_subtex2d(int lvl, int x, int y, int xsz, int ysz, int fmt, void *pix);
+
 void gaw_swtnl_drawprim(int prim, struct vertex *v, int vnum);
+
+
+#if defined(__i386__) || defined(__386__) || defined(MSDOS)
+/* fast conversion of double -> 32bit int
+ * for details see:
+ *  - http://chrishecker.com/images/f/fb/Gdmfp.pdf
+ *  - http://stereopsis.com/FPU.html#convert
+ */
+static INLINE int32_t cround64(double val)
+{
+	val += 6755399441055744.0;
+	return *(int32_t*)&val;
+}
+#else
+#define cround64(x)	((int32_t)(x))
+#endif
+
 
 #endif	/* GAWSWTNL_H_ */

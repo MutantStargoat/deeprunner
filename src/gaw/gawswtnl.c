@@ -42,9 +42,6 @@ static __inline void xform4_vec3(const float *mat, float *vec);
 static __inline void xform3_vec3(const float *mat, float *vec);
 static void shade(struct vertex *v);
 
-/* TODO */
-#define cround64(x)		(int)(x)
-
 static struct gaw_state st;
 struct gaw_state *gaw_state;
 
@@ -868,12 +865,12 @@ static __inline int calc_shift(unsigned int x)
 	return res;
 }
 
-void gaw_tex1d(int ifmt, int xsz, int fmt, void *pix)
+void gaw_swtnl_tex1d(int ifmt, int xsz, int fmt, void *pix)
 {
 	gaw_tex2d(ifmt, xsz, 1, fmt, pix);
 }
 
-void gaw_tex2d(int ifmt, int xsz, int ysz, int fmt, void *pix)
+void gaw_swtnl_tex2d(int ifmt, int xsz, int ysz, int fmt, void *pix)
 {
 	int npix;
 	struct pimage *img;
@@ -893,10 +890,10 @@ void gaw_tex2d(int ifmt, int xsz, int ysz, int fmt, void *pix)
 	img->xshift = calc_shift(xsz);
 	img->yshift = calc_shift(ysz);
 
-	gaw_subtex2d(0, 0, 0, xsz, ysz, fmt, pix);
+	gaw_swtnl_subtex2d(0, 0, 0, xsz, ysz, fmt, pix);
 }
 
-void gaw_subtex2d(int lvl, int x, int y, int xsz, int ysz, int fmt, void *pix)
+void gaw_swtnl_subtex2d(int lvl, int x, int y, int xsz, int ysz, int fmt, void *pix)
 {
 	int i, j, r, g, b, val;
 	uint32_t *dest;

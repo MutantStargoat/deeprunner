@@ -99,6 +99,31 @@ void gaw_clear(unsigned int flags)
 	}
 }
 
+void gaw_color_mask(int rmask, int gmask, int bmask, int amask)
+{
+	gaw_swtnl_color_mask(rmask, gmask, bmask, amask);
+}
+
+void gaw_depth_mask(int mask)
+{
+	gaw_swtnl_depth_mask(mask);
+}
+
+void gaw_tex1d(int ifmt, int xsz, int fmt, void *pix)
+{
+	gaw_swtnl_tex2d(ifmt, xsz, 1, fmt, pix);
+}
+
+void gaw_tex2d(int ifmt, int xsz, int ysz, int fmt, void *pix)
+{
+	gaw_swtnl_tex2d(ifmt, xsz, ysz, fmt, pix);
+}
+
+void gaw_subtex2d(int lvl, int x, int y, int xsz, int ysz, int fmt, void *pix)
+{
+	gaw_swtnl_subtex2d(lvl, x, y, xsz, ysz, fmt, pix);
+}
+
 void gaw_bind_tex1d(int tex)
 {
 	ST->cur_tex = (int)tex - 1;
