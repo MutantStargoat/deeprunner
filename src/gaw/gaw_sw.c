@@ -15,8 +15,12 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+#include <string.h>
 #include "gaw.h"
 #include "gawswtnl.h"
+#include "polyfill.h"
+
+static struct pimage textures[MAX_TEXTURES];
 
 void gaw_sw_reset(void)
 {
@@ -109,31 +113,202 @@ void gaw_depth_mask(int mask)
 	gaw_swtnl_depth_mask(mask);
 }
 
+static int alloc_tex(void)
+{
+	int i;
+	for(i=0; i<MAX_TEXTURES; i++) {
+		if(ST->textypes[i] == 0) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+unsigned int gaw_create_tex1d(int texfilter)
+{
+	int idx;
+	if((idx = alloc_tex()) == -1) {
+		return 0;
+	}
+	ST->textypes[idx] = 1;
+
+	memset(textures + idx, 0, sizeof *textures);
+	ST->cur_tex = idx;
+	return idx + 1;
+}
+
+unsigned int gaw_create_tex2d(int texfilter)
+{
+	int idx;
+	if((idx = alloc_tex()) == -1) {
+		return 0;
+	}
+	ST->textypes[idx] = 2;
+
+	memset(textures + idx, 0, sizeof *textures);
+	ST->cur_tex = idx;
+	return idx + 1;
+}
+
+void gaw_destroy_tex(unsigned int texid)
+{
+	int idx = texid - 1;
+
+	if(!ST->textypes[idx]) return;
+
+	free(textures[idx].pixels);
+	ST->textypes[idx] = 0;
+}
+
+void gaw_texfilter1d(int texfilter)
+{
+}
+
+void gaw_texfilter2d(int texfilter)
+{
+}
+
+void gaw_texwrap1d(int wrap)
+{
+}
+
+void gaw_texwrap2d(int uwrap, int vwrap)
+{
+}
+
+
+static __inline int calc_shift(unsigned int x)
+{
+	int res = -1;
+	while(x) {
+		x >>= 1;
+		++res;
+	}
+	return res;
+}
+
 void gaw_tex1d(int ifmt, int xsz, int fmt, void *pix)
 {
-	gaw_swtnl_tex2d(ifmt, xsz, 1, fmt, pix);
+	gaw_tex2d(ifmt, xsz, 1, fmt, pix);
 }
 
 void gaw_tex2d(int ifmt, int xsz, int ysz, int fmt, void *pix)
 {
-	gaw_swtnl_tex2d(ifmt, xsz, ysz, fmt, pix);
+	int npix;
+	struct pimage *img;
+
+	if(ST->cur_tex < 0) return;
+	img = textures + ST->cur_tex;
+
+	npix = xsz * ysz;
+
+	free(img->pixels);
+	img->pixels = malloc_nf(npix * sizeof *img->pixels);
+	img->width = xsz;
+	img->height = ysz;
+
+	img->xmask = xsz - 1;
+	img->ymask = ysz - 1;
+	img->xshift = calc_shift(xsz);
+	img->yshift = calc_shift(ysz);
+
+	gaw_subtex2d(0, 0, 0, xsz, ysz, fmt, pix);
 }
 
 void gaw_subtex2d(int lvl, int x, int y, int xsz, int ysz, int fmt, void *pix)
 {
-	gaw_swtnl_subtex2d(lvl, x, y, xsz, ysz, fmt, pix);
+	int i, j, r, g, b, val;
+	uint32_t *dest;
+	unsigned char *src;
+	struct pimage *img;
+
+	if(ST->cur_tex < 0) return;
+	img = textures + ST->cur_tex;
+
+	dest = img->pixels + (y << img->xshift) + x;
+	src = pix;
+
+	switch(fmt) {
+	case GAW_LUMINANCE:
+		for(i=0; i<ysz; i++) {
+			for(j=0; j<xsz; j++) {
+				val = *src++;
+				dest[j] = PACK_RGBA(val, val, val, 255);
+			}
+			dest += img->width;
+		}
+		break;
+
+	case GAW_RGB:
+		for(i=0; i<ysz; i++) {
+			for(j=0; j<xsz; j++) {
+				b = src[0];
+				g = src[1];
+				r = src[2];
+				src += 3;
+				dest[j] = PACK_RGBA(r, g, b, 255);
+			}
+			dest += img->width;
+		}
+		break;
+
+	case GAW_RGBA:
+		for(i=0; i<ysz; i++) {
+			for(j=0; j<xsz; j++) {
+				dest[j] = *((uint32_t*)src);
+				src += 4;
+			}
+			dest += img->width;
+		}
+		break;
+
+	default:
+		break;
+	}
 }
 
 void gaw_bind_tex1d(int tex)
 {
 	ST->cur_tex = (int)tex - 1;
-	pfill_tex = ST->textures[ST->cur_tex];
+	pfill_tex = textures[ST->cur_tex];
 }
 
 void gaw_bind_tex2d(int tex)
 {
 	ST->cur_tex = (int)tex - 1;
-	pfill_tex = ST->textures[ST->cur_tex];
+	pfill_tex = textures[ST->cur_tex];
+}
+
+static void dump_texture(struct pimage *img, const char *fname)
+{
+	int i, npix = img->width * img->height;
+	FILE *fp = fopen(fname, "wb");
+	if(!fp) return;
+
+	fprintf(fp, "P6\n%d %d\n255\n", img->width, img->height);
+	for(i=0; i<npix; i++) {
+		int r = UNPACK_R(img->pixels[i]);
+		int g = UNPACK_G(img->pixels[i]);
+		int b = UNPACK_B(img->pixels[i]);
+		fputc(r, fp);
+		fputc(g, fp);
+		fputc(b, fp);
+	}
+	fclose(fp);
+}
+
+void gaw_sw_dump_textures(void)
+{
+	int i;
+	char buf[64];
+
+	for(i=0; i<MAX_TEXTURES; i++) {
+		if(ST->textypes[i] <= 0) continue;
+
+		sprintf(buf, "tex%04d.ppm", i);
+		printf("dumping %s ...\n", buf);
+		dump_texture(textures + i, buf);
+	}
 }
 
 void gaw_swtnl_drawprim(int prim, struct vertex *v, int vnum)

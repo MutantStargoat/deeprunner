@@ -21,6 +21,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "gaw.h"
 #include "gawswtnl.h"
 
+struct texture {
+	int idx;
+	int fmt;
+	long size;
+	long addr;	/* -1 if not resident */
+};
+
 static void print_board_info(GrHwConfiguration *hw, int idx);
 static void init_texman(void);
 
@@ -164,36 +171,158 @@ void gaw_depth_mask(int mask)
 	grDepthMask(mask ? FXTRUE : FXFALSE);
 }
 
-
-void gaw_tex1d(int ifmt, int xsz, int fmt, void *pix)
+static int alloc_tex(void)
 {
-	gaw_swtnl_tex2d(ifmt, xsz, 1, fmt, pix);
-
-	/* add glode stuff */
+	int i;
+	for(i=0; i<MAX_TEXTURES; i++) {
+		if(st.textypes[i] == 0) {
+			return i;
+		}
+	}
+	return -1;
 }
 
-void gaw_tex2d(int ifmt, int xsz, int ysz, int fmt, void *pix)
+unsigned int gaw_create_tex1d(int texfilter)
 {
-	gaw_swtnl_tex2d(ifmt, xsz, ysz, fmt, pix);
+	int idx;
+	if((idx = alloc_tex()) == -1) {
+		return 0;
+	}
+	st.textypes[idx] = 1;
 
-	/* add glide stuff */
+	memset(st.textures + idx, 0, sizeof *st.textures);
+	st.cur_tex = idx;
+	return idx + 1;
+}
+
+unsigned int gaw_create_tex2d(int texfilter)
+{
+	int idx;
+	if((idx = alloc_tex()) == -1) {
+		return 0;
+	}
+	st.textypes[idx] = 2;
+
+	memset(st.textures + idx, 0, sizeof *st.textures);
+	st.cur_tex = idx;
+	return idx + 1;
+}
+
+void gaw_destroy_tex(unsigned int texid)
+{
+	int idx = texid - 1;
+
+	if(!st.textypes[idx]) return;
+
+	free(st.textures[idx].pixels);
+	st.textypes[idx] = 0;
+}
+
+void gaw_texfilter1d(int texfilter)
+{
+}
+
+void gaw_texfilter2d(int texfilter)
+{
+}
+
+void gaw_texwrap1d(int wrap)
+{
+}
+
+void gaw_texwrap2d(int uwrap, int vwrap)
+{
+}
+
+
+static __inline int calc_shift(unsigned int x)
+{
+	int res = -1;
+	while(x) {
+		x >>= 1;
+		++res;
+	}
+	return res;
+}
+
+void gaw_swtnl_tex1d(int ifmt, int xsz, int fmt, void *pix)
+{
+	gaw_tex2d(ifmt, xsz, 1, fmt, pix);
+}
+
+void gaw_swtnl_tex2d(int ifmt, int xsz, int ysz, int fmt, void *pix)
+{
+	int npix;
+	struct pimage *img;
+
+	if(st.cur_tex < 0) return;
+	img = st.textures + st.cur_tex;
+
+	npix = xsz * ysz;
+
+	free(img->pixels);
+	img->pixels = malloc_nf(npix * sizeof *img->pixels);
+	img->width = xsz;
+	img->height = ysz;
+
+	img->xmask = xsz - 1;
+	img->ymask = ysz - 1;
+	img->xshift = calc_shift(xsz);
+	img->yshift = calc_shift(ysz);
+
+	gaw_subtex2d(0, 0, 0, xsz, ysz, fmt, pix);
 }
 
 void gaw_subtex2d(int lvl, int x, int y, int xsz, int ysz, int fmt, void *pix)
 {
-	gaw_swtnl_subtex2d(lvl, x, y, xsz, ysz, fmt, pix);
-}
+	int i, j, r, g, b, val;
+	uint32_t *dest;
+	unsigned char *src;
+	struct pimage *img;
 
-void gaw_bind_tex1d(int tex)
-{
-	ST->cur_tex = (int)tex - 1;
-	/* TODO */
-}
+	if(st.cur_tex < 0) return;
+	img = st.textures + st.cur_tex;
 
-void gaw_bind_tex2d(int tex)
-{
-	ST->cur_tex = (int)tex - 1;
-	/* TODO */
+	dest = img->pixels + (y << img->xshift) + x;
+	src = pix;
+
+	switch(fmt) {
+	case GAW_LUMINANCE:
+		for(i=0; i<ysz; i++) {
+			for(j=0; j<xsz; j++) {
+				val = *src++;
+				dest[j] = PACK_RGBA(val, val, val, 255);
+			}
+			dest += img->width;
+		}
+		break;
+
+	case GAW_RGB:
+		for(i=0; i<ysz; i++) {
+			for(j=0; j<xsz; j++) {
+				b = src[0];
+				g = src[1];
+				r = src[2];
+				src += 3;
+				dest[j] = PACK_RGBA(r, g, b, 255);
+			}
+			dest += img->width;
+		}
+		break;
+
+	case GAW_RGBA:
+		for(i=0; i<ysz; i++) {
+			for(j=0; j<xsz; j++) {
+				dest[j] = *((uint32_t*)src);
+				src += 4;
+			}
+			dest += img->width;
+		}
+		break;
+
+	default:
+		break;
+	}
 }
 
 void gaw_swtnl_drawprim(int prim, struct vertex *v, int vnum)

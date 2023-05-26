@@ -68,7 +68,7 @@ int goat3d_init(struct goat3d *g)
 {
 	memset(g, 0, sizeof *g);
 
-	cgm_vcons(&g->ambient, 0.05, 0.05, 0.05);
+	cgm_vcons(&g->ambient, 0.05f, 0.05f, 0.05f);
 
 	if(!(g->materials = dynarr_alloc(0, sizeof *g->materials))) goto err;
 	if(!(g->meshes = dynarr_alloc(0, sizeof *g->meshes))) goto err;

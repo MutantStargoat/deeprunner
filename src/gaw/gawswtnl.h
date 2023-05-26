@@ -100,7 +100,6 @@ struct gaw_state {
 	/* textures */
 	int cur_tex;
 	int textypes[MAX_TEXTURES];
-	struct pimage textures[MAX_TEXTURES];
 
 	/* compiled geometries */
 	int cur_comp;

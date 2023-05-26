@@ -125,7 +125,7 @@ static void unpack_grey8(struct pixel *unp, void *pptr, int count, struct img_co
 	unsigned char *pix = pptr;
 
 	for(i=0; i<count; i++) {
-		unp->r = unp->g = unp->b = (float)*pix++ / 255.0;
+		unp->r = unp->g = unp->b = (float)*pix++ / 255.0f;
 		unp->a = 1.0;
 		unp++;
 	}
@@ -137,9 +137,9 @@ static void unpack_rgb24(struct pixel *unp, void *pptr, int count, struct img_co
 	unsigned char *pix = pptr;
 
 	for(i=0; i<count; i++) {
-		unp->r = (float)*pix++ / 255.0;
-		unp->g = (float)*pix++ / 255.0;
-		unp->b = (float)*pix++ / 255.0;
+		unp->r = (float)*pix++ / 255.0f;
+		unp->g = (float)*pix++ / 255.0f;
+		unp->b = (float)*pix++ / 255.0f;
 		unp->a = 1.0;
 		unp++;
 	}
@@ -151,10 +151,10 @@ static void unpack_rgba32(struct pixel *unp, void *pptr, int count, struct img_c
 	unsigned char *pix = pptr;
 
 	for(i=0; i<count; i++) {
-		unp->r = (float)*pix++ / 255.0;
-		unp->g = (float)*pix++ / 255.0;
-		unp->b = (float)*pix++ / 255.0;
-		unp->a = (float)*pix++ / 255.0;
+		unp->r = (float)*pix++ / 255.0f;
+		unp->g = (float)*pix++ / 255.0f;
+		unp->b = (float)*pix++ / 255.0f;
+		unp->a = (float)*pix++ / 255.0f;
 		unp++;
 	}
 }
@@ -165,10 +165,10 @@ static void unpack_bgra32(struct pixel *unp, void *pptr, int count, struct img_c
 	unsigned char *pix = pptr;
 
 	for(i=0; i<count; i++) {
-		unp->a = (float)*pix++ / 255.0;
-		unp->r = (float)*pix++ / 255.0;
-		unp->g = (float)*pix++ / 255.0;
-		unp->b = (float)*pix++ / 255.0;
+		unp->a = (float)*pix++ / 255.0f;
+		unp->r = (float)*pix++ / 255.0f;
+		unp->g = (float)*pix++ / 255.0f;
+		unp->b = (float)*pix++ / 255.0f;
 		unp++;
 	}
 }
@@ -328,7 +328,7 @@ static void pack_greyf(void *pptr, struct pixel *unp, int count)
 	float *pix = pptr;
 
 	for(i=0; i<count; i++) {
-		*pix++ = (unp->r + unp->g + unp->b) / 3.0;
+		*pix++ = (unp->r + unp->g + unp->b) / 3.0f;
 		unp++;
 	}
 }

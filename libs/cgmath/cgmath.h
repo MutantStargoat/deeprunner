@@ -270,6 +270,10 @@ static CGM_INLINE void cgm_bary(cgm_vec3 *bary, const cgm_vec3 *a,
 static CGM_INLINE void cgm_uvec_to_sph(float *theta, float *phi, const cgm_vec3 *v);
 static CGM_INLINE void cgm_sph_to_uvec(cgm_vec3 *v, float theta, float phi);
 
+#ifdef _MSC_VER
+#pragma warning (disable: 4244)
+#endif
+
 #include "cgmvec3.inl"
 #include "cgmvec4.inl"
 #include "cgmquat.inl"
