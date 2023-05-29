@@ -21,18 +21,53 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "gaw.h"
 #include "gawswtnl.h"
 
-struct texture {
+#define MAX_MIPMAP_LEVELS	9
+
+#define PACK_RGB565(r, g, b)	\
+	(((uint16_t)((r) & 0xf8) << 8) | \
+	 ((uint16_t)((g) & 0xfc) << 3) | \
+	 ((uint16_t)((b) & 0xf8) >> 3))
+
+#define PACK_RGBA4444(r, g, b, a) \
+	(((uint16_t)((a) & 0xf0) << 8) | \
+	 ((uint16_t)((r) & 0xf0) << 4) | \
+	 ((uint16_t)(g) & 0xf0) | \
+	 ((uint16_t)((b) & 0xf0) >> 4))
+
+struct mipmap {
+	int width, height;
+	int size;
+	void *pixels;
+};
+
+struct teximg {
 	int idx;
 	int fmt;
-	long size;
+	long size, res_size;
 	long addr;	/* -1 if not resident */
+
+	struct mipmap mip[MAX_MIPMAP_LEVELS];
+	int levels;
+
+	long last_bind;
 };
 
 static void print_board_info(GrHwConfiguration *hw, int idx);
+
+static int grlod(int x, int y);
+static int graspect(int x, int y);
+static int grfmt(int ifmt);
+static int texdim(int x, int lvl);
+static int texlevels(int x, int y);
+static int texsize(int x, int y, int pixsz);
+static void halve_image(void *dest, void *src, int xsz, int ysz, int fmt);
+
 static void init_texman(void);
 
 static GrHwConfiguration hwcfg;
 static int num_tmu;
+
+static struct teximg textures[MAX_TEXTURES];
 
 
 void gaw_glide_reset(void)
@@ -109,6 +144,7 @@ void gaw_glide_init(int xsz, int ysz)
 void gaw_glide_destroy(void)
 {
 	gaw_swtnl_destroy();
+	grSstWinClose();
 }
 
 void gaw_enable(int what)
@@ -175,7 +211,7 @@ static int alloc_tex(void)
 {
 	int i;
 	for(i=0; i<MAX_TEXTURES; i++) {
-		if(st.textypes[i] == 0) {
+		if(ST->textypes[i] == 0) {
 			return i;
 		}
 	}
@@ -188,10 +224,10 @@ unsigned int gaw_create_tex1d(int texfilter)
 	if((idx = alloc_tex()) == -1) {
 		return 0;
 	}
-	st.textypes[idx] = 1;
+	ST->textypes[idx] = 1;
 
-	memset(st.textures + idx, 0, sizeof *st.textures);
-	st.cur_tex = idx;
+	memset(textures + idx, 0, sizeof *textures);
+	ST->cur_tex = idx;
 	return idx + 1;
 }
 
@@ -201,10 +237,10 @@ unsigned int gaw_create_tex2d(int texfilter)
 	if((idx = alloc_tex()) == -1) {
 		return 0;
 	}
-	st.textypes[idx] = 2;
+	ST->textypes[idx] = 2;
 
-	memset(st.textures + idx, 0, sizeof *st.textures);
-	st.cur_tex = idx;
+	memset(textures + idx, 0, sizeof *textures);
+	ST->cur_tex = idx;
 	return idx + 1;
 }
 
@@ -212,10 +248,11 @@ void gaw_destroy_tex(unsigned int texid)
 {
 	int idx = texid - 1;
 
-	if(!st.textypes[idx]) return;
+	if(!ST->textypes[idx]) return;
 
-	free(st.textures[idx].pixels);
-	st.textypes[idx] = 0;
+	free(textures[idx].mip[0].pixels);
+	memset(textures + idx, 0, sizeof *textures);
+	ST->textypes[idx] = 0;
 }
 
 void gaw_texfilter1d(int texfilter)
@@ -234,89 +271,140 @@ void gaw_texwrap2d(int uwrap, int vwrap)
 {
 }
 
-
-static __inline int calc_shift(unsigned int x)
-{
-	int res = -1;
-	while(x) {
-		x >>= 1;
-		++res;
-	}
-	return res;
-}
-
-void gaw_swtnl_tex1d(int ifmt, int xsz, int fmt, void *pix)
+void gaw_tex1d(int ifmt, int xsz, int fmt, void *pix)
 {
 	gaw_tex2d(ifmt, xsz, 1, fmt, pix);
 }
 
-void gaw_swtnl_tex2d(int ifmt, int xsz, int ysz, int fmt, void *pix)
+void gaw_tex2d(int ifmt, int xsz, int ysz, int fmt, void *pix)
 {
-	int npix;
-	struct pimage *img;
+	int i, sz, pixsz;
+	struct teximg *tex;
+	GrTexInfo tinf;
+	void *tmpbuf = 0;
 
-	if(st.cur_tex < 0) return;
-	img = st.textures + st.cur_tex;
+	if(ST->cur_tex < 0) return;
+	if(xsz > 256 || ysz > 256) {
+		fprintf(stderr, "unsupported texture size: %dx%d\n", xsz, ysz);
+		return;
+	}
+	if(xsz / ysz > 8 || ysz / xsz > 8) {
+		fprintf(stderr, "unsupported texture aspect: %dx%d\n", xsz, ysz);
+		return;
+	}
 
-	npix = xsz * ysz;
+	pixsz = ifmt == GAW_LUMINANCE ? 1 : 2;
 
-	free(img->pixels);
-	img->pixels = malloc_nf(npix * sizeof *img->pixels);
-	img->width = xsz;
-	img->height = ysz;
+	tex = textures + ST->cur_tex;
+	memset(tex, 0, sizeof *tex);
 
-	img->xmask = xsz - 1;
-	img->ymask = ysz - 1;
-	img->xshift = calc_shift(xsz);
-	img->yshift = calc_shift(ysz);
+	tinf.smallLod = GR_LOD_1;
+	tinf.largeLod = grlod(xsz, ysz);
+	tinf.aspectRatio = graspect(xsz, ysz);
+	tinf.format = grfmt(ifmt);
+	tex->res_size = grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &tinf);
 
-	gaw_subtex2d(0, 0, 0, xsz, ysz, fmt, pix);
+	tex->levels = texlevels(xsz, ysz);
+	tex->size = texsize(xsz, ysz, pixsz);
+
+	free(tex->mip[0].pixels);
+	tex->mip[0].pixels = malloc_nf(tex->size);
+	if(pix) {
+		tmpbuf = malloc_nf(xsz * ysz * 2);
+	}
+
+	for(i=0; i<tex->levels; i++) {
+		tex->mip[i].width = xsz;
+		tex->mip[i].height = ysz;
+		tex->mip[i].size = xsz * ysz * pixsz;
+		if(i > 0) {
+			tex->mip[i].pixels = (uint16_t*)((char*)tex->mip[i - 1].pixels + tex->mip[i - 1].size);
+		}
+
+		if(pix) {
+			if(i > 0) {
+				void *dest, *src;
+
+				if(i & 1) {
+					dest = tmpbuf;
+					src = (char*)tmpbuf + xsz * ysz;
+				} else {
+					dest = (char*)tmpbuf + xsz * ysz;
+					src = tmpbuf;
+				}
+				halve_image(dest, i > 1 ? src : pix, xsz, ysz, fmt);
+				gaw_subtex2d(i, 0, 0, xsz, ysz, fmt, tmpbuf);
+			} else {
+				gaw_subtex2d(0, 0, 0, xsz, ysz, fmt, pix);
+			}
+		}
+
+		if(xsz > 1) xsz >>= 1;
+		if(ysz > 1) ysz >>= 1;
+	}
+
+	free(tmpbuf);
 }
 
 void gaw_subtex2d(int lvl, int x, int y, int xsz, int ysz, int fmt, void *pix)
 {
-	int i, j, r, g, b, val;
-	uint32_t *dest;
+	int i, j, r, g, b, a, val, lvlwidth;
+	uint16_t *dest;
 	unsigned char *src;
-	struct pimage *img;
+	struct teximg *tex;
 
-	if(st.cur_tex < 0) return;
-	img = st.textures + st.cur_tex;
+	if(ST->cur_tex < 0) return;
+	tex = textures + ST->cur_tex;
+	if(!tex->mip[lvl].pixels) {
+		fprintf(stderr, "subtex2d error: texture data not allocated\n");
+		return;
+	}
+	if(x + xsz > tex->mip[lvl].width) {
+		xsz = tex->mip[lvl].width - x;
+	}
+	if(y + ysz > tex->mip[lvl].height) {
+		ysz = tex->mip[lvl].height - y;
+	}
 
-	dest = img->pixels + (y << img->xshift) + x;
+	lvlwidth = tex->mip[lvl].width;
 	src = pix;
 
 	switch(fmt) {
 	case GAW_LUMINANCE:
+		dest = (uint16_t*)((char*)tex->mip[lvl].pixels + y * lvlwidth + x);
 		for(i=0; i<ysz; i++) {
-			for(j=0; j<xsz; j++) {
-				val = *src++;
-				dest[j] = PACK_RGBA(val, val, val, 255);
-			}
-			dest += img->width;
+			memcpy(dest, src, xsz);
+			src += xsz;
+			dest += lvlwidth >> 1;
 		}
 		break;
 
 	case GAW_RGB:
+		dest = (uint16_t*)tex->mip[lvl].pixels + y * lvlwidth + x;
 		for(i=0; i<ysz; i++) {
 			for(j=0; j<xsz; j++) {
 				b = src[0];
 				g = src[1];
 				r = src[2];
 				src += 3;
-				dest[j] = PACK_RGBA(r, g, b, 255);
+				dest[j] = PACK_RGB565(r, g, b);
 			}
-			dest += img->width;
+			dest += lvlwidth;
 		}
 		break;
 
 	case GAW_RGBA:
+		dest = (uint16_t*)tex->mip[lvl].pixels + y * lvlwidth + x;
 		for(i=0; i<ysz; i++) {
 			for(j=0; j<xsz; j++) {
-				dest[j] = *((uint32_t*)src);
+				b = src[0];
+				g = src[1];
+				r = src[2];
+				a = src[3];
 				src += 4;
+				dest[j] = PACK_RGBA4444(r, g, b, a);
 			}
-			dest += img->width;
+			dest += lvlwidth;
 		}
 		break;
 
@@ -324,6 +412,22 @@ void gaw_subtex2d(int lvl, int x, int y, int xsz, int ysz, int fmt, void *pix)
 		break;
 	}
 }
+
+void gaw_bind_tex1d(int tex)
+{
+	ST->cur_tex = (int)tex - 1;
+}
+
+void gaw_bind_tex2d(int tex)
+{
+	ST->cur_tex = (int)tex - 1;
+}
+
+
+void gaw_sw_dump_textures(void)
+{
+}
+
 
 void gaw_swtnl_drawprim(int prim, struct vertex *v, int vnum)
 {
@@ -380,6 +484,98 @@ static void print_board_info(GrHwConfiguration *hw, int idx)
 	default:
 		putchar('\n');	/* TODO */
 	}
+}
+
+/* texture helper functions */
+static int grlod(int x, int y)
+{
+	if(y > x) x = y;
+
+	switch(x) {
+	case 256: return GR_LOD_256;
+	case 128: return GR_LOD_128;
+	case 64: return GR_LOD_64;
+	case 32: return GR_LOD_32;
+	case 16: return GR_LOD_16;
+	case 8: return GR_LOD_8;
+	case 4: return GR_LOD_4;
+	case 2: return GR_LOD_2;
+	case 1: return GR_LOD_1;
+	default:
+		break;
+	}
+	return GR_LOD_1;
+}
+
+static int graspect(int x, int y)
+{
+	int steps;
+
+	if(x == y) return GR_ASPECT_1x1;
+
+	if(x > y) {
+		steps = GR_ASPECT_1x1;
+		while(y < x && steps > GR_ASPECT_8x1) {
+			y <<= 1;
+			steps--;
+		}
+	} else {
+		steps = 0;
+		while(x < y && steps < GR_ASPECT_1x8) {
+			x <<= 1;
+			steps++;
+		}
+	}
+	return steps;
+}
+
+static int grfmt(int ifmt)
+{
+	switch(ifmt) {
+	case GAW_LUMINANCE:
+		return GR_TEXFMT_INTENSITY_8;
+	case GAW_RGB:
+		return GR_TEXFMT_RGB_565;
+	case GAW_RGBA:
+		return GR_TEXFMT_ARGB_4444;
+	default:
+		break;
+	}
+	return GR_TEXFMT_RGB_565;
+}
+
+static int texdim(int x, int lvl)
+{
+	while(x > 1 && lvl-- > 0) {
+		x >>= 1;
+	}
+	return x;
+}
+
+static int texlevels(int x, int y)
+{
+	int lvl = 0;
+	while(x > 1 || y > 1) {
+		lvl++;
+		x >>= 1;
+		y >>= 1;
+	}
+	return lvl;
+}
+
+static int texsize(int x, int y, int pixsz)
+{
+	long sz = 0;
+	while(x > 1 || y > 1) {
+		sz += x * y * pixsz;
+		x >>= 1;
+		y >>= 1;
+	}
+	return sz;
+}
+
+static void halve_image(void *dest, void *src, int xsz, int ysz, int fmt)
+{
 }
 
 /* texture memory manager */
