@@ -1,6 +1,6 @@
 # --- build options ---
 # rend = <gl|sw>
-rend = gl
+rend = sw
 # ---------------------
 
 gawsrc_gl = $(wildcard src/opengl/*.c) src/gaw/gaw_gl.c

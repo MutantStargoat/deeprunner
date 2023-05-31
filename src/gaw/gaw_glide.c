@@ -60,7 +60,9 @@ static int grfmt(int ifmt);
 static int texdim(int x, int lvl);
 static int texlevels(int x, int y);
 static int texsize(int x, int y, int pixsz);
-static void halve_image(void *dest, void *src, int xsz, int ysz, int fmt);
+static void halve_image_lum(uint8_t *dest, uint8_t *src, int xsz, int ysz);
+static void halve_image_rgb(uint8_t *dest, uint8_t *src, int xsz, int ysz);
+static void halve_image_rgba(uint32_t *dest, uint32_t *src, int xsz, int ysz);
 
 static void init_texman(void);
 
@@ -332,7 +334,20 @@ void gaw_tex2d(int ifmt, int xsz, int ysz, int fmt, void *pix)
 					dest = (char*)tmpbuf + xsz * ysz;
 					src = tmpbuf;
 				}
-				halve_image(dest, i > 1 ? src : pix, xsz, ysz, fmt);
+
+				switch(fmt) {
+				case GAW_LUMINANCE:
+					halve_image_lum(dest, i > 1 ? src : pix, xsz, ysz);
+					break;
+
+				case GAW_RGB:
+					halve_image_rgb(dest, i > 1 ? src : pix, xsz, ysz);
+					break;
+
+				case GAW_RGBA:
+					halve_image_rgba(dest, i > 1 ? src : pix, xsz, ysz);
+					break;
+				}
 				gaw_subtex2d(i, 0, 0, xsz, ysz, fmt, tmpbuf);
 			} else {
 				gaw_subtex2d(0, 0, 0, xsz, ysz, fmt, pix);
@@ -426,6 +441,7 @@ void gaw_bind_tex2d(int tex)
 
 void gaw_sw_dump_textures(void)
 {
+	/* TODO dump whole pyramid for each tex */
 }
 
 
@@ -574,8 +590,74 @@ static int texsize(int x, int y, int pixsz)
 	return sz;
 }
 
-static void halve_image(void *dest, void *src, int xsz, int ysz, int fmt)
+static void halve_image_lum(uint8_t *dest, uint8_t *src, int xsz, int ysz)
 {
+	int i, j;
+	int dest_w = xsz >> 1;
+	int dest_h = ysz >> 1;
+
+	for(i=0; i<dest_h; i++) {
+		for(j=0; j<dest_w; j++) {
+			dest[j] = (*src + src[1] + src[xsz] + src[xsz + 1]) >> 2;
+			src += 2;
+		}
+		dest += dest_w;
+		src += xsz;
+	}
+}
+
+static void halve_image_rgb(uint8_t *dest, uint8_t *src, int xsz, int ysz)
+{
+	int i, j;
+	int dest_w = xsz >> 1;
+	int dest_h = ysz >> 1;
+	int sscanlen = xsz * 3;
+	uint8_t *srcodd = src + sscanlen;
+
+	for(i=0; i<dest_h; i++) {
+		for(j=0; j<dest_w; j++) {
+			dest[0] = (src[0] + src[3] + srcodd[0] + srcodd[3]) >> 2;
+			dest[1] = (src[1] + src[4] + srcodd[1] + srcodd[4]) >> 2;
+			dest[2] = (src[2] + src[5] + srcodd[2] + srcodd[5]) >> 2;
+			dest += 3;
+			src += 6;
+			srcodd += 6;
+		}
+		src += sscanlen;
+		srcodd += sscanlen;
+	}
+}
+
+
+#define PACK_RGBA(r, g, b, a) \
+	(((a) << 24) | ((r) << 16) | ((g) << 8) | (b))
+#define UNPACK_R(pix)	((pix) & 0xff)
+#define UNPACK_G(pix)	(((pix) >> 8) & 0xff)
+#define UNPACK_B(pix)	(((pix) >> 16) & 0xff)
+#define UNPACK_A(pix)	((pix) >> 24)
+
+static void halve_image_rgba(uint32_t *dest, uint32_t *src, int xsz, int ysz)
+{
+	int i, j, r, g, b;
+	int dest_w = xsz >> 1;
+	int dest_h = ysz >> 1;
+
+	for(i=0; i<dest_h; i++) {
+		for(j=0; j<dest_w; j++) {
+			r = (UNPACK_R(*src) + UNPACK_R(src[1]) + UNPACK_R(src[xsz]) +
+					UNPACK_R(src[xsz + 1])) >> 2;
+			g = (UNPACK_G(*src) + UNPACK_G(src[1]) + UNPACK_G(src[xsz]) +
+					UNPACK_G(src[xsz + 1])) >> 2;
+			b = (UNPACK_B(*src) + UNPACK_B(src[1]) + UNPACK_B(src[xsz]) +
+					UNPACK_B(src[xsz + 1])) >> 2;
+			a = (UNPACK_A(*src) + UNPACK_A(src[1]) + UNPACK_A(src[xsz]) +
+					UNPACK_A(src[xsz + 1])) >> 2;
+			dest[j] = PACK_RGBA(r, g, b, a);
+			src += 2;
+		}
+		src += xsz;
+		dest += dest_w;
+	}
 }
 
 /* texture memory manager */
