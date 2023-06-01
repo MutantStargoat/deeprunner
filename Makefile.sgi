@@ -1,9 +1,9 @@
 obj = src/audio.o src/darray.o src/game.o src/geom.o src/gfxutil.o src/input.o \
-	  src/level.o src/main.o src/meshgen.o src/mesh.o src/mtltex.o \
+	  src/level.o src/meshgen.o src/mesh.o src/mtltex.o \
 	  src/octree.o src/options.o src/player.o src/rbtree.o src/rendlvl.o \
 	  src/scr_debug.o src/scr_game.o src/scr_menu.o src/scr_logo.o src/util.o \
 	  src/enemy.o src/loading.o \
-	  src/gaw/gaw_gl.o src/opengl/main_gl.c src/opengl/miniglut.o 
+	  src/gaw/gaw_gl.o src/opengl/main_gl.o src/opengl/miniglut.o
 bin = game
 
 dbg = -g
