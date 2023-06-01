@@ -535,8 +535,8 @@ static void gdisplay(void)
 		gaw_begin(GAW_QUADS);
 		for(i=0; i<2; i++) {
 			float x = (i ? -1 : 1) * s;
-			gaw_texcoord1f(0); gaw_vertex3f(x - sz, -1, 0);
-			gaw_texcoord1f(1); gaw_vertex3f(x + sz, -1, 0);
+			gaw_texcoord1f(0); gaw_vertex3f(x - sz, -1, -0.05);
+			gaw_texcoord1f(1); gaw_vertex3f(x + sz, -1, -0.05);
 			gaw_texcoord1f(1); gaw_vertex3f(x + sz, -1, -opt.gfx.drawdist);
 			gaw_texcoord1f(0); gaw_vertex3f(x - sz, -1, -opt.gfx.drawdist);
 		}
