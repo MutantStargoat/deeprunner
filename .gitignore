@@ -16,3 +16,4 @@ core
 *Debug/
 *Release/
 *.zip
+config.mk

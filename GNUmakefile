@@ -1,7 +1,7 @@
-# --- build options ---
-# rend = <gl|sw>
-rend = sw
-# ---------------------
+-include config.mk
+
+# defaults for config.mk build options so that config.mk need not exist
+rend ?= gl
 
 gawsrc_gl = $(wildcard src/opengl/*.c) src/gaw/gaw_gl.c
 gawsrc_sw = $(wildcard src/swsdl/*.c) src/gaw/gaw_sw.c src/gaw/gawswtnl.c \
