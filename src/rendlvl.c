@@ -462,7 +462,7 @@ void render_explosion(struct explosion *expl)
 	gaw_enable(GAW_BLEND);
 	gaw_blend_func(GAW_SRC_ALPHA, GAW_ONE_MINUS_SRC_ALPHA);
 	gaw_disable(GAW_LIGHTING);
-	gaw_disable(GAW_DEPTH_TEST);
+	gaw_depth_mask(0);
 	gaw_set_tex2d(tex_expl->texid);
 
 	gaw_matrix_mode(GAW_TEXTURE);
@@ -477,6 +477,7 @@ void render_explosion(struct explosion *expl)
 	gaw_matrix_mode(GAW_MODELVIEW);
 
 	gaw_restore();
+	gaw_depth_mask(1);
 }
 
 int add_explosion(const cgm_vec3 *pos, float sz, long start_tm)
