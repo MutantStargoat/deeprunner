@@ -1,7 +1,7 @@
 obj = font.o draw.o drawgl.o drawrast.o utf8.o
 alib = ../unix/drawtext.a
 
-CFLAGS = -O0 -g -DNO_FREETYPE -DNO_OPENGL
+CFLAGS = -O3 -g -DNO_FREETYPE -DNO_OPENGL
 
 $(alib): $(obj)
 	$(AR) rcs $@ $(obj)
