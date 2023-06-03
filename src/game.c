@@ -21,9 +21,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include "drawtext.h"
 #include "gaw/gaw.h"
 #include "game.h"
+#include "font.h"
 #include "input.h"
 #include "audio.h"
 #include "options.h"
@@ -46,6 +46,8 @@ struct game_screen *cur_scr;
 
 struct au_sample *sfx_o2chime;
 struct au_sample *sfx_laser, *sfx_gling1;
+
+struct font *font_menu;
 
 /* available screens */
 #define MAX_SCREENS	8
@@ -81,6 +83,12 @@ int game_init(void)
 
 	dtx_target_user(txdraw, 0);
 
+	font_menu = malloc_nf(sizeof *font_menu);
+	if(load_font(font_menu, "data/menufont.gmp") == -1) {
+		free(font_menu);
+		return -1;
+	}
+
 	if(au_init() == -1) {
 		return -1;
 	}
@@ -93,6 +101,7 @@ int game_init(void)
 	screens[num_screens++] = &scr_menu;
 	screens[num_screens++] = &scr_game;
 	screens[num_screens++] = &scr_debug;
+	screens[num_screens++] = &scr_opt;
 
 	start_scr_name = getenv("START_SCREEN");
 
@@ -153,6 +162,9 @@ void game_shutdown(void)
 	}
 
 	iman_destroy();
+
+	destroy_font(font_menu);
+	free(font_menu);
 }
 
 void game_display(void)

@@ -19,7 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "game.h"
 #include "mtltex.h"
 #include "gfxutil.h"
-#include "drawtext.h"
+#include "font.h"
 
 #define FONT_SCALE	0.7
 
@@ -46,9 +46,6 @@ struct game_screen scr_menu = {
 
 static struct texture *gamelogo;
 static struct texture *startex;/*, *blurmenu;*/
-struct dtx_font *font_menu;
-int font_menu_sz;
-static float font_height, font_baseline;
 
 static int sel, hover = -1;
 
@@ -76,20 +73,12 @@ static int menu_init(void)
 	}
 	*/
 
-	if(!(font_menu = dtx_open_font_glyphmap("data/menufont.gmp"))) {
-		fprintf(stderr, "failed to open menu font\n");
-		return -1;
-	}
-	font_menu_sz = dtx_get_glyphmap_ptsize(dtx_get_glyphmap(font_menu, 0));
-	dtx_use_font(font_menu, font_menu_sz);
-	font_height = dtx_line_height() * FONT_SCALE;
-	font_baseline = font_height * 0.2;
-
 	for(i=0; i<NUM_MENU_ITEMS; i++) {
-		itemrect[i].width = dtx_string_width(menustr[i]) * FONT_SCALE;
-		itemrect[i].height = font_height;
+		itemrect[i].width = font_strwidth(font_menu, menustr[i]) * FONT_SCALE;
+		itemrect[i].height = font_menu->height * FONT_SCALE;
 		itemrect[i].x = 320 - itemrect[i].width / 2;
-		itemrect[i].y = i > 0 ? itemrect[i - 1].y + font_height : 360 - font_height + font_baseline;
+		itemrect[i].y = i > 0 ? itemrect[i - 1].y + font_menu->height * FONT_SCALE :
+			360 - (font_menu->height + font_menu->baseline) * FONT_SCALE;
 	}
 
 	return 0;
@@ -147,7 +136,7 @@ static void menu_display(void)
 
 	gaw_pop_matrix();
 
-	dtx_use_font(font_menu, font_menu_sz);
+	use_font(font_menu);
 
 	gaw_matrix_mode(GAW_MODELVIEW);
 
@@ -159,7 +148,7 @@ static void menu_display(void)
 			gaw_color3f(0.133, 0.161, 0.271);
 		}
 		x = xoffs + itemrect[i].x;
-		y = itemrect[i].y + itemrect[i].height - font_baseline;
+		y = itemrect[i].y + itemrect[i].height - font_menu->baseline * FONT_SCALE;
 
 		gaw_translate(x, y, 0);
 		gaw_scale(FONT_SCALE, -FONT_SCALE, FONT_SCALE);
@@ -172,7 +161,7 @@ static void menu_display(void)
 			blit_tex_rect(x - 25, y - 16, 16, 16, gamelogo, 1, 0.00469, 0.9604, 0.025, 0.033333);
 			blit_tex_rect(x + itemrect[i].width + 25 - 16, y - 16, 16, 16, gamelogo, 1, 0.00469, 0.9604, 0.025, 0.033333);
 		}
-		y += font_height;
+		y += font_menu->height * FONT_SCALE;
 	}
 
 	end2d();

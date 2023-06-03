@@ -29,6 +29,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "player.h"
 #include "cgmath/cgmath.h"
 #include "audio.h"
+#include "font.h"
 #include "options.h"
 #include "rendlvl.h"
 #include "gfxutil.h"
@@ -79,9 +80,6 @@ static struct texture *font_hp_tex;
 
 static struct dtx_font *font_timer;
 static int font_timer_size;
-
-extern struct dtx_font *font_menu;
-extern int font_menu_sz;
 
 static struct au_module *mod;
 
@@ -724,8 +722,8 @@ static void draw_ui(void)
 
 	if(gameover) {
 		gaw_push_matrix();
-		dtx_use_font(font_menu, font_menu_sz);
-		gaw_translate(x - dtx_string_width("GAME OVER!") / 2, 240, 0);
+		use_font(font_menu);
+		gaw_translate(x - font_strwidth(font_menu, "GAME OVER!") / 2, 240, 0);
 		gaw_scale(1, -1, 1);
 		gaw_color3f(1, 1, 1);
 		dtx_printf("GAME OVER!");
@@ -734,8 +732,8 @@ static void draw_ui(void)
 
 	if(victory) {
 		gaw_push_matrix();
-		dtx_use_font(font_menu, font_menu_sz);
-		gaw_translate(x - dtx_string_width("VICTORY!") / 2, 240, 0);
+		use_font(font_menu);
+		gaw_translate(x - font_strwidth(font_menu, "VICTORY!") / 2, 240, 0);
 		gaw_scale(1, -1, 1);
 		gaw_color3f(1, 1, 1);
 		dtx_printf("VICTORY!");

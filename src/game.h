@@ -70,12 +70,15 @@ extern int fullscr;
 
 extern long time_msec;
 extern struct game_screen *cur_scr;
-extern struct game_screen scr_logo, scr_menu, scr_game, scr_debug;
+extern struct game_screen scr_logo, scr_menu, scr_game, scr_debug, scr_opt;
 
 extern struct player *player;
 
 extern struct au_sample *sfx_o2chime;
 extern struct au_sample *sfx_laser, *sfx_gling1;
+
+struct font;
+extern struct font *font_menu;
 
 int game_init(void);
 void game_shutdown(void);

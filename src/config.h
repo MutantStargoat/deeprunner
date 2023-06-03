@@ -36,4 +36,6 @@
 #undef DBG_SHOW_PORTALS
 #undef DBG_SHOW_FRUST
 
+#define DBG_GUI_FRAMES
+
 #endif	/* CONFIG_H_ */
