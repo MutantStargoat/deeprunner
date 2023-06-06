@@ -271,6 +271,10 @@ SOURCE=.\src\scr_menu.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\src\scr_opt.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\src\util.c
 # End Source File
 # Begin Source File
