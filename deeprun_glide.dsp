@@ -234,11 +234,15 @@ SOURCE=.\src\options.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\src\options.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\src\font.c
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\options.h
+SOURCE=.\src\gui.c
 # End Source File
 # Begin Source File
 
