@@ -236,7 +236,7 @@ static void act_item(int sel)
 		break;
 
 	case OPTIONS:
-		/* game_chscr(&scr_opt); */
+		game_chscr(&scr_opt);
 		break;
 
 	case HIGHSCORES:
