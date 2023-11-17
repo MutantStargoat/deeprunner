@@ -12,6 +12,7 @@ Supported platforms:
   - FreeBSD
   - MS Windows
 
+### Links
  - Website: http://nuclear.mutantstargoat.com/sw/games/deeprunner
  - Game page on itch.io: https://nuclear.itch.io/deeprunner
  - Source code repo: https://github.com/MutantStargoat/deeprunner
