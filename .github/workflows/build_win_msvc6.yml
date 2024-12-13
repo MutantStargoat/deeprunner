@@ -39,7 +39,7 @@ jobs:
       run: |
         svn export svn://mutantstargoat.com/datadirs/deeprunner data
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: game-win32-msvc6
         path: |

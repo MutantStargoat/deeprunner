@@ -27,7 +27,7 @@ jobs:
     - name: build
       run: mingw32-make
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: game-win32
         path: |
