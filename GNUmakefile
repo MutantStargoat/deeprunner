@@ -29,7 +29,7 @@ cflags_sw = -Isrc/swsdl `sdl-config --cflags`
 
 ldflags_sw = `sdl-config --libs`
 
-sys := $(shell uname -s | sed 's/MINGW.*/mingw/')
+sys := $(shell uname -s | sed 's/MINGW.*/mingw/;s/IRIX.*/IRIX/')
 ifeq ($(sys), mingw)
 	bin = game.exe
 
@@ -37,8 +37,13 @@ ifeq ($(sys), mingw)
 	ldsys_pre = -static-libgcc -lmingw32 -mconsole
 	ldsys = $(ldflags_$(rend))
 else
+ifeq ($(sys), IRIX)
+	ldflags_gl = -lGL -lGLU -lX11
+	ldsys = $(ldflags_$(rend)) -laudio -lm -lpthread
+else
 	ldflags_gl = -lGL -lGLU -lX11
 	ldsys = $(ldflags_$(rend)) -lasound -lm
+endif
 endif
 
 $(bin): $(obj) libs
