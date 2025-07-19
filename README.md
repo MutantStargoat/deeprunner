@@ -96,7 +96,7 @@ Control options:
 License
 -------
 ### Code
-Copyright (C) 2023 John Tsiombikas <nuclear@mutantstargoat.com>
+Copyright (C) 2023-2025 John Tsiombikas <nuclear@mutantstargoat.com>
 
 This program is free software. Feel free to use, modify and/or redistribute it
 under the terms of the GNU General Public License v3, or at your option any
@@ -127,10 +127,11 @@ Data files are in a separate subversion repo. Grab them with:
 Just type `make`.
 
 On IRIX you can use any compiler and make utility, system make and MIPSPro are
-supported as well as GCC and GNU make.
+supported as well as GCC and GNU make. To build with MIPSPro and the native make
+utility, type `make -f Makefile.sgi`. To build with gcc and GNU make, type
+`gmake CC=gcc`.
 
 ### Windows build
 
 Install msys2, start a mingw32 shell, and type `make`. The windows version can
 also be cross-compiled with `make crosswin`.
-
