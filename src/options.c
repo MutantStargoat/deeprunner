@@ -276,6 +276,9 @@ static void detect_defaults(void)
 				printf("???\n");
 				gfxdefopt = gfxdef_vpro128;
 			}
+		} else {
+			/* TODO temp stopgap, research the octane impact options and adjust */
+			gfxdefopt = gfxdef_o2;
 		}
 	} else if(ip < 32) {
 		printf("gfx detect: low end\n");
