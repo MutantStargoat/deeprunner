@@ -278,6 +278,7 @@ static void detect_defaults(void)
 			}
 		} else {
 			/* TODO temp stopgap, research the octane impact options and adjust */
+			printf("Impact\n");
 			gfxdefopt = gfxdef_o2;
 		}
 	} else if(ip < 32) {
