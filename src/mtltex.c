@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 #include "gaw/gaw.h"
 #include "mtltex.h"
@@ -40,11 +41,13 @@ struct texture *tex_load(const char *fname)
 
 struct texture *tex_image(struct img_pixmap *img)
 {
+	int i;
 	struct texture *tex;
 	int alpha = img_has_alpha(img);
 	int ifmt, fmt, pixsz, sz;
 	static void *zerobuf;
 	static int zerobuf_size;
+	unsigned char *sptr, *dptr;
 
 	if(!(tex = malloc(sizeof *tex))) {
 		fprintf(stderr, "failed to allocate texture\n");
@@ -79,12 +82,19 @@ struct texture *tex_image(struct img_pixmap *img)
 			memset(zerobuf, 0, sz);
 		}
 
+		sptr = img->pixels;
+		dptr = zerobuf;
+		for(i=0; i<img->height; i++) {
+			memcpy(dptr, sptr, img->width * pixsz);
+			sptr += img->width * pixsz;
+			dptr += tex->tex_width * pixsz;
+		}
+
 		/* avoid using mipmaps */
 		if(opt.gfx.texfilter == GFXOPT_TEX_TRILINEAR) {
 			gaw_texfilter2d(GAW_BILINEAR);
 		}
 		gaw_tex2d(ifmt, tex->tex_width, tex->tex_height, fmt, zerobuf);
-		gaw_subtex2d(0, 0, 0, img->width, img->height, fmt, img->pixels);
 	} else {
 		cgm_midentity(tex->matrix);
 		tex->use_matrix = 0;
