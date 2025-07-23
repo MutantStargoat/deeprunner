@@ -74,6 +74,13 @@ static struct gfxoptions gfxdef_o2 = {
 	GFXOPT_TEX_MID,
 	0		/* dither */
 };
+static struct gfxoptions gfxdev_impact = {
+	1,		/* blendui */
+	80,		/* draw distance */
+	GFXOPT_TEX_BILINEAR,
+	GFXOPT_TEX_LOW,
+	1		/* dither */
+};
 #endif
 static struct gfxoptions gfxdef_lowest = {
 	0,		/* blendui */
@@ -277,9 +284,8 @@ static void detect_defaults(void)
 				gfxdefopt = gfxdef_vpro128;
 			}
 		} else {
-			/* TODO temp stopgap, research the octane impact options and adjust */
 			printf("Impact\n");
-			gfxdefopt = gfxdef_o2;
+			gfxdefopt = gfxdef_impact;
 		}
 	} else if(ip < 32) {
 		printf("gfx detect: low end\n");
@@ -288,6 +294,7 @@ static void detect_defaults(void)
 		printf("gfx detect: high end\n");
 		gfxdefopt = gfxdef_vpro128;
 	}
+	/* TODO detect impact indigo2 */
 
 #else
 	/* TODO: improve detection, for now assume non-IRIX means modern PC */
