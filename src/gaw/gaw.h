@@ -173,6 +173,8 @@ void gaw_texfilter2d(int texfilter);
 void gaw_texwrap1d(int wrap);
 void gaw_texwrap2d(int uwrap, int vwrap);
 
+void gaw_texborder(float r, float g, float b, float a);
+
 void gaw_tex1d(int ifmt, int xsz, int fmt, void *pix);
 void gaw_tex2d(int ifmt, int xsz, int ysz, int fmt, void *pix);
 void gaw_subtex2d(int lvl, int x, int y, int xsz, int ysz, int fmt, void *pix);

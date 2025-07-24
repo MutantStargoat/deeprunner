@@ -273,6 +273,10 @@ void gaw_texwrap2d(int uwrap, int vwrap)
 {
 }
 
+void gaw_texborder(float r, float g, float b, float a)
+{
+}
+
 void gaw_tex1d(int ifmt, int xsz, int fmt, void *pix)
 {
 	gaw_tex2d(ifmt, xsz, 1, fmt, pix);

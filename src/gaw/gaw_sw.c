@@ -176,6 +176,9 @@ void gaw_texwrap2d(int uwrap, int vwrap)
 {
 }
 
+void gaw_texborder(float r, float g, float b, float a)
+{
+}
 
 static __inline int calc_shift(unsigned int x)
 {

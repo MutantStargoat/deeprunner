@@ -575,6 +575,15 @@ void gaw_texwrap2d(int uwrap, int vwrap)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, glwrap(vwrap));
 }
 
+void gaw_texborder(float r, float g, float b, float a)
+{
+	float col[4];
+	col[0] = r;
+	col[1] = g;
+	col[2] = b;
+	col[3] = a;
+	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, col);
+}
 
 static const int glfmt[] = {GL_LUMINANCE, GL_RGB, GL_RGBA};
 

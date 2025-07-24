@@ -89,7 +89,8 @@ static int logo_start(void)
 		return 0;
 	}
 	gaw_bind_tex2d(tex_o2boot->texid);
-	gaw_texwrap2d(GAW_CLAMP, GAW_CLAMP);
+	gaw_texwrap2d(GAW_REPEAT, GAW_CLAMP);
+	gaw_texborder(0.471, 0.514, 0.698, 1);
 
 	if(!(tex_env = tex_load("data/refmap1.jpg"))) {
 		return 0;
