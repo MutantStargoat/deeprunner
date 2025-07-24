@@ -104,6 +104,7 @@ void free_room(struct room *room)
 	free(room->name);
 
 	oct_free(room->octree);
+	free(room);
 }
 
 
@@ -251,6 +252,7 @@ int lvl_load(struct level *lvl, const char *fname)
 		if(!(room = alloc_room())) {
 			fprintf(stderr, "lvl_load(%s): failed to allocate room\n", fname);
 			ts_free_tree(ts);
+			goat3d_free(gscn);
 			return -1;
 		}
 		room->name = strdup_nf(goat3d_get_node_name(gnode));
@@ -283,6 +285,7 @@ int lvl_load(struct level *lvl, const char *fname)
 
 		loading_step();
 	}
+	goat3d_free(gscn);
 
 	/* make a list of all trigger actions first, to instanciate triggers while
 	 * reading the objects

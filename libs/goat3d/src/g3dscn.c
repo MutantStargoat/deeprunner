@@ -27,7 +27,7 @@ int g3dimpl_obj_init(struct object *o, int type)
 	struct goat3d_camera *cam;
 	char *name;
 
-	if(!(name = malloc(64))) {
+	if(!(name = calloc(1, 64))) {
 		return -1;
 	}
 
@@ -86,6 +86,8 @@ err:
 void g3dimpl_obj_destroy(struct object *o)
 {
 	struct goat3d_mesh *m;
+
+	free(o->name);
 
 	switch(o->type) {
 	case OBJTYPE_MESH:

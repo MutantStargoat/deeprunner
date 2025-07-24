@@ -120,6 +120,7 @@ void tex_free(struct texture *tex)
 #ifdef DBG_NO_IMAN
 	img_free(tex->img);
 #endif
+	free(tex);
 }
 
 void mtl_init(struct material *mtl)
