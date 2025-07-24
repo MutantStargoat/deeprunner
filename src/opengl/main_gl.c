@@ -43,7 +43,8 @@ static void (*glx_swap_interval_sgi)();
 #endif
 #ifdef _WIN32
 #include <windows.h>
-static int (WINAPI * wgl_swap_interval_ext)(int);
+typedef int (WINAPI * wgl_swap_interval_ext_func)(int);
+static wgl_swap_interval_ext_func wgl_swap_interval_ext;
 #endif
 
 
@@ -78,7 +79,7 @@ int main(int argc, char **argv)
 	}
 #endif
 #ifdef _WIN32
-	wgl_swap_interval_ext = wglGetProcAddress("wglSwapIntervalEXT");
+	wgl_swap_interval_ext = (wgl_swap_interval_ext_func)wglGetProcAddress("wglSwapIntervalEXT");
 #endif
 
 	game_reshape(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
