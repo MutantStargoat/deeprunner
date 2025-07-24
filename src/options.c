@@ -1,6 +1,6 @@
 /*
 Deep Runner - 6dof shooter game for the SGI O2.
-Copyright (C) 2023  John Tsiombikas <nuclear@mutantstargoat.com>
+Copyright (C) 2025  John Tsiombikas <nuclear@mutantstargoat.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -74,7 +74,7 @@ static struct gfxoptions gfxdef_o2 = {
 	GFXOPT_TEX_MID,
 	0		/* dither */
 };
-static struct gfxoptions gfxdev_impact = {
+static struct gfxoptions gfxdef_impact = {
 	1,		/* blendui */
 	80,		/* draw distance */
 	GFXOPT_TEX_BILINEAR,

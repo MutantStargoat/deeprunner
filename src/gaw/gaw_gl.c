@@ -1,6 +1,6 @@
 /*
 Deep Runner - 6dof shooter game for the SGI O2.
-Copyright (C) 2023  John Tsiombikas <nuclear@mutantstargoat.com>
+Copyright (C) 2025  John Tsiombikas <nuclear@mutantstargoat.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -545,7 +545,7 @@ static int glwrap(int wrap)
 		if(!glextstr) {
 			glextstr = strdup_nf((char*)glGetString(GL_EXTENSIONS));
 		}
-		have_edgeclamp = strstr(glextstr, "SGIS_texture_edge_clamp") != 0;
+		have_edgeclamp = strstr(glextstr, "_texture_edge_clamp") != 0;
 	}
 
 	switch(wrap) {

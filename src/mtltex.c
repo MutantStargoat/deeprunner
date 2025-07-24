@@ -79,8 +79,8 @@ struct texture *tex_image(struct img_pixmap *img)
 		if(zerobuf_size < sz) {
 			zerobuf = realloc_nf(zerobuf, sz);
 			zerobuf_size = sz;
-			memset(zerobuf, 0, sz);
 		}
+		memset(zerobuf, 0, zerobuf_size);
 
 		sptr = img->pixels;
 		dptr = zerobuf;
