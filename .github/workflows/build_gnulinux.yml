@@ -15,7 +15,7 @@ jobs:
     - name: install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install libgl-dev libglu1-mesa-dev libasound2-dev libpulse-dev
+        sudo apt-get install libgl-dev libglu1-mesa-dev libasound2-dev libpulse-dev subversion
 
     - name: prepare datafiles
       run: |

@@ -43,7 +43,7 @@ static void (*glx_swap_interval_sgi)();
 #endif
 #ifdef _WIN32
 #include <windows.h>
-static PROC wgl_swap_interval_ext;
+static int (WINAPI * wgl_swap_interval_ext)();
 #endif
 
 
