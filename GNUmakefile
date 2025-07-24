@@ -12,7 +12,7 @@ obj = $(src:.c=.o)
 dep = $(src:.c=.d)
 bin = game
 
-warn = -pedantic -Wall
+warn = -pedantic -Wall -fno-strict-prototype
 dbg = -g
 #opt = -O3
 def = -DMINIGLUT_USE_LIBC -DMIKMOD_STATIC
