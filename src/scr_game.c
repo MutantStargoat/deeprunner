@@ -230,6 +230,9 @@ static int gstart(void)
 
 	lvl_spawn_enemies(&lvl);
 
+	gameover = 0;
+	victory = 0;
+
 	if((env = getenv("START_ROOM"))) {
 		struct room *sr = lvl_find_room(&lvl, env);
 		if(sr) {
@@ -282,6 +285,9 @@ static void gstop(void)
 
 	rendlvl_destroy();
 	lvl_destroy(&lvl);
+
+	free(player);
+	player = 0;
 }
 
 #define KB_MOVE_SPEED	0.4
